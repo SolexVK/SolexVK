@@ -91,12 +91,25 @@ Run `python3 scripts/run_payout.py`. Findings on the real winner/payout data:
 Prize structure verified against reality: СУПЕР was won S1=18 / S2=58 times vs
 19.3 / 58.0 expected. See `runs/sprint2_payout_report.md`.
 
+## Sprint 3 result — hypothesis harness (walk-forward)
+
+Run `python3 scripts/run_backtest.py`. Every strategy sees only the past at each
+of 23,043 draws, picks a ticket, and is scored against the real result.
+
+- **No strategy beats random** (`H020`): hot, cold, overdue, repeat-last, delta,
+  popular, unpopular all score ~0.694 matches/draw — the random expectation.
+  0 of 7 survive Benjamini–Hochberg FDR.
+- **Test your own idea:** add a function to `lab/backtest.py` → `STRATEGIES`
+  (`def s_x(counts, last, t, prev, rng): return [...5 numbers]`) and re-run — it
+  faces the same walk-forward + null + FDR gauntlet. Pre-register it as `H021`.
+
+See `runs/sprint3_backtest_report.md`.
+
 ## Roadmap
 
-- **Sprint 3** — hypothesis harness with walk-forward validation for any
-  user-proposed "pattern", scored against the Monte-Carlo null (`H020`).
 - **Ongoing** — multi-game support (6x45, 4x20), deeper history via secondary
-  sources, agent-orchestrated adversarial verification of every finding.
+  sources, agent-orchestrated adversarial verification, and user-proposed
+  strategies (`H021`+) run through the Sprint 3 harness.
 
 > Research only. This toolkit does not place bets and provides no way to "beat"
 > a fair lottery — because, mathematically, none exists.

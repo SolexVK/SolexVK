@@ -54,9 +54,15 @@ hypotheses:
     result: "REJECTED: realized RTP=51.8% (house edge 48.2%). EV turns positive only above a ~66M rub СУПЕР-1 jackpot; observed max is 18.8M. No positive-EV draw exists."
     status: confirmed-negative-ev
 
-  # ---- proposed for later sprints ----
   - id: H020
     sprint: 3
-    claim: "A user-proposed 'pattern' rule beats random ticket selection out-of-sample."
-    statistic: "walk-forward backtest vs Monte-Carlo null, pre-registered"
-    status: proposed
+    claim: "A history-based number-picking strategy beats random selection out-of-sample."
+    statistic: "walk-forward backtest (23043 draws); mean matches vs analytic random null; z-test + BH-FDR"
+    result: "REJECTED for all 7 tested strategies (hot, cold, overdue, repeat-last, delta, popular, unpopular): 0 survive FDR. Every strategy scores ~0.694 matches/draw = random. repeat-last dips to raw p=0.024 but z<0 (worse) and fails FDR. Harness is open for user strategies via lab/backtest.py STRATEGIES."
+    status: confirmed-no-edge
+
+  # ---- your turn: drop a strategy into lab/backtest.py STRATEGIES and pre-register it here ----
+  # - id: H021
+  #   sprint: 3
+  #   claim: "<your pattern>"
+  #   status: proposed
