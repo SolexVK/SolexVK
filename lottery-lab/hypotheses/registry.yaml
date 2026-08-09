@@ -68,6 +68,13 @@ hypotheses:
     result: "REJECTED: mean return/cost=0.362; best draw ever=0.490 (still -54M rub loss); 0 of 25043 draws profitable. Break-even needs a ~78M rub jackpot; observed max 18.8M. Mandel-style full cover is structurally impossible here; EV is linear in stake so wheeling only reshapes variance, not the mean."
     status: confirmed-no-edge
 
+  - id: H040
+    sprint: 4
+    claim: "On a bigger-jackpot lottery, buying ALL combinations (Mandel) beats the draw."
+    statistic: "honest pari-mutuel flood model: profit = jackpot - (1 - lower_pool_fraction)*cover_cost, per draw"
+    result: "MIXED, game-dependent. 5x36plus: never (cost 113M, breakeven 78M, max jackpot 19M). 6x45: THRESHOLD REACHED - break-even 253M vs 304M max jackpot, 116/18252 draws nominally profitable, best +51M rub (ratio 1.13). 7x49: never - 85.9M combinations => 4.3B cover cost vs 2.8B break-even, max jackpot only 221M. Coverage cost grows combinatorially while jackpots grow linearly, so only mid-size 6x45 crossed. Not exploitable in practice (logistics of 8.1M tickets, tax, thin margin)."
+    status: confirmed-mixed
+
   # ---- your turn: drop a strategy into lab/backtest.py STRATEGIES and pre-register it here ----
   # - id: H021
   #   sprint: 3

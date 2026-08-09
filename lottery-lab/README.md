@@ -105,9 +105,26 @@ of 23,043 draws, picks a ticket, and is scored against the real result.
 
 See `runs/sprint3_backtest_report.md`.
 
+## Sprint 4 result — full coverage on bigger jackpots (`H040`)
+
+`python3 scripts/run_coverage.py` runs the honest pari-mutuel "buy every
+combination" (Mandel) model across games. Full archives added for **6x45**
+(18,357 draws, max jackpot 304M ₽) and **7x49** (23,733 draws, max 221M ₽).
+
+| Game | C(n,k) | Cover cost | Break-even jackpot | Max jackpot | Mandel reached? |
+|---|---|---|---|---|---|
+| 5 из 36 плюс | 1.5M | 113M ₽ | 78M | 19M | No (0 draws) |
+| **6 из 45** | 8.1M | 407M ₽ | 253M | **304M** | **Yes — 116 draws** |
+| 7 из 49 | 85.9M | 4.3B ₽ | 2.8B | 221M | No (0 draws) |
+
+Coverage cost grows **combinatorially** while jackpots grow ~linearly, so only
+the mid-size **6x45** ever crossed the threshold (best case +51M ₽, ratio 1.13).
+Still not exploitable: buying 8.1M tickets is logistically impossible, tax and
+thin margins erase it. See `runs/sprint4_coverage_report.md`.
+
 ## Roadmap
 
-- **Ongoing** — multi-game support (6x45, 4x20), deeper history via secondary
+- **Ongoing** — more games (4x20, topspin), deeper history via secondary
   sources, agent-orchestrated adversarial verification, and user-proposed
   strategies (`H021`+) run through the Sprint 3 harness.
 
