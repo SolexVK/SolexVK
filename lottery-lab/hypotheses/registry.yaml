@@ -1,0 +1,54 @@
+# Experiment registry — pre-register every hypothesis BEFORE testing it.
+# This is the p-hacking guard: FDR correction is applied across the whole
+# campaign (all tests below), not per-test. A finding is "real" only if it
+# survives corrected significance AND out-of-sample AND an independent seed.
+#
+# status: proposed | tested | rejected | confirmed
+# Add new hypotheses at the bottom; never edit a result after the fact.
+
+campaign: 5x36plus
+alpha: 0.05
+correction: benjamini-hochberg
+
+hypotheses:
+  - id: H001
+    sprint: 1
+    claim: "The main field (5 of 36) is drawn uniformly at random."
+    statistic: "chi-square goodness-of-fit, df=35"
+    null_model: "uniform pool, sampling without replacement"
+    result: "not rejected (p=0.9876) — consistent with fair"
+    status: confirmed-fair
+
+  - id: H002
+    sprint: 1
+    claim: "The plus field (1 of 4) is drawn uniformly at random."
+    statistic: "chi-square goodness-of-fit, df=3"
+    result: "not rejected (p=0.6551) — consistent with fair"
+    status: confirmed-fair
+
+  - id: H003
+    sprint: 1
+    claim: "No individual number 1..36 deviates from its expected rate."
+    statistic: "36 exact binomial tests + Benjamini-Hochberg FDR"
+    result: "0 of 36 significant after FDR (min raw p=0.134)"
+    status: confirmed-fair
+
+  - id: H004
+    sprint: 1
+    claim: "The per-draw sum series has no serial dependence."
+    statistic: "Ljung-Box Q over 20 lags; runs test around median"
+    result: "Ljung-Box p=0.22, runs p=0.99 — no dependence"
+    status: confirmed-fair
+
+  # ---- proposed for later sprints (examples; refine with SolexVK) ----
+  - id: H010
+    sprint: 2
+    claim: "Player-chosen numbers are non-uniform, so avoiding popular picks raises expected jackpot share."
+    statistic: "compare win_tickets per category vs uniform expectation; payout-EV model"
+    status: proposed
+
+  - id: H011
+    sprint: 2
+    claim: "Some draws have positive expected value (rollover / prize-fund structure)."
+    statistic: "EV per ticket from winningCategories vs ticket price"
+    status: proposed

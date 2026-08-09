@@ -1,0 +1,6 @@
+# Raw archive (124 MB) is kept out of git; regenerate with scripts/download.py.
+data/raw/*.jsonl
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/

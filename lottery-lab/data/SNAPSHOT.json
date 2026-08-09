@@ -1,0 +1,20 @@
+{
+  "game": "5x36plus",
+  "source": "stoloto.ru mobile API v35 /service/draws/archive",
+  "downloaded_utc": "2026-08-09",
+  "draws": 25043,
+  "draw_range": [
+    139205,
+    164254
+  ],
+  "date_range": [
+    "2025-06-17T06:30:30+0300",
+    "2026-08-09T23:00:30+0300"
+  ],
+  "structure": {
+    "main": "5 distinct of 1..36",
+    "plus": "1 of 1..4"
+  },
+  "clean_csv_sha256": "1371002230074a741c4b4c3dacd69b5975b1433c97da2529e47f8c2dfadeccca",
+  "note": "Raw JSONL (124MB) kept out of git; clean CSV + payout CSV are the committed authoritative snapshot."
+}
