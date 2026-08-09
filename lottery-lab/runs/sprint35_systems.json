@@ -1,0 +1,13 @@
+{
+  "tickets_to_cover": 1507968,
+  "cost_at_75": 113097600,
+  "mean_return_over_cost": 0.3619852980364164,
+  "best_return_over_cost": 0.4899188794836116,
+  "best_draw": 139651,
+  "best_jackpot_rub": 18768739.5,
+  "best_pl_rub": -53843020.5,
+  "profitable_draws": 0,
+  "n_draws": 25043,
+  "breakeven_jackpot_rub": 78012600.0,
+  "max_jackpot_rub": 18768739.5
+}

@@ -61,6 +61,13 @@ hypotheses:
     result: "REJECTED for all 7 tested strategies (hot, cold, overdue, repeat-last, delta, popular, unpopular): 0 survive FDR. Every strategy scores ~0.694 matches/draw = random. repeat-last dips to raw p=0.024 but z<0 (worse) and fails FDR. Harness is open for user strategies via lab/backtest.py STRATEGIES."
     status: confirmed-no-edge
 
+  - id: H030
+    sprint: "3.5"
+    claim: "Playing a SYSTEM of combinations (up to full coverage) on one draw gives an edge."
+    statistic: "per-draw return/cost of buying all 1,507,968 tickets, nominal fixed prizes"
+    result: "REJECTED: mean return/cost=0.362; best draw ever=0.490 (still -54M rub loss); 0 of 25043 draws profitable. Break-even needs a ~78M rub jackpot; observed max 18.8M. Mandel-style full cover is structurally impossible here; EV is linear in stake so wheeling only reshapes variance, not the mean."
+    status: confirmed-no-edge
+
   # ---- your turn: drop a strategy into lab/backtest.py STRATEGIES and pre-register it here ----
   # - id: H021
   #   sprint: 3
