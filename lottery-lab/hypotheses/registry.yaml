@@ -40,15 +40,23 @@ hypotheses:
     result: "Ljung-Box p=0.22, runs p=0.99 — no dependence"
     status: confirmed-fair
 
-  # ---- proposed for later sprints (examples; refine with SolexVK) ----
   - id: H010
     sprint: 2
-    claim: "Player-chosen numbers are non-uniform, so avoiding popular picks raises expected jackpot share."
-    statistic: "compare win_tickets per category vs uniform expectation; payout-EV model"
-    status: proposed
+    claim: "Players pick numbers non-uniformly (favouring low/calendar numbers)."
+    statistic: "per-number delta of lower-tier winner-rate vs Monte-Carlo uniform null; T=sum(delta^2)"
+    result: "REJECTED uniformity: p=0.0020 (2-of-5 tier; robust on 3-of-5, p=0.0020). Spearman(popularity, number)=-0.50 -> smaller numbers over-picked. Most over-picked 17,11,7,9,21,3; least 34,35,30,36,32. NOTE: 5x36plus lower tiers pay a fixed per-draw amount, so this edge only bites on the shared СУПЕР jackpot."
+    status: confirmed-nonuniform
 
   - id: H011
     sprint: 2
     claim: "Some draws have positive expected value (rollover / prize-fund structure)."
-    statistic: "EV per ticket from winningCategories vs ticket price"
+    statistic: "realized RTP = summPayed/stakes; EV(jackpot) vs price threshold"
+    result: "REJECTED: realized RTP=51.8% (house edge 48.2%). EV turns positive only above a ~66M rub СУПЕР-1 jackpot; observed max is 18.8M. No positive-EV draw exists."
+    status: confirmed-negative-ev
+
+  # ---- proposed for later sprints ----
+  - id: H020
+    sprint: 3
+    claim: "A user-proposed 'pattern' rule beats random ticket selection out-of-sample."
+    statistic: "walk-forward backtest vs Monte-Carlo null, pre-registered"
     status: proposed

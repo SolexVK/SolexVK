@@ -75,12 +75,26 @@ FDR, no serial dependence (Ljung–Box p=0.22), near-maximal entropy (0.99998).
 
 See `runs/sprint1_audit_report.md` for the full table and caveats.
 
+## Sprint 2 result — payout & EV
+
+Run `python3 scripts/run_payout.py`. Findings on the real winner/payout data:
+
+- **House edge ≈ 48%** (realized RTP 51.8%, from actual prizes paid ÷ stakes).
+- **No positive-EV draw exists** (`H011`): EV would turn positive only above a
+  ~66M ₽ СУПЕР-1 jackpot; the observed max is 18.8M ₽.
+- **Players pick numbers non-uniformly** (`H010`, p=0.002): smaller / "calendar"
+  numbers are over-picked (Spearman −0.50). But 5x36plus lower tiers pay a
+  *fixed* per-draw amount, so this edge only bites on the shared СУПЕР jackpot —
+  whose 1-in-1,507,968 odds make the practical EV uplift negligible. Real, measured,
+  honestly un-exploitable.
+
+Prize structure verified against reality: СУПЕР was won S1=18 / S2=58 times vs
+19.3 / 58.0 expected. See `runs/sprint2_payout_report.md`.
+
 ## Roadmap
 
-- **Sprint 2** — payout-EV engine: player-pick popularity, jackpot-share model,
-  positive-EV detection (`H010`, `H011`).
 - **Sprint 3** — hypothesis harness with walk-forward validation for any
-  user-proposed "pattern", scored against the Monte-Carlo null.
+  user-proposed "pattern", scored against the Monte-Carlo null (`H020`).
 - **Ongoing** — multi-game support (6x45, 4x20), deeper history via secondary
   sources, agent-orchestrated adversarial verification of every finding.
 

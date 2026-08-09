@@ -39,15 +39,24 @@ def main():
                       "jackpot": wc.get("jackpot"), "tickets": wc.get("columns"),
                       "players": wc.get("players"), "ticketPrice": r.get("ticketPrice"),
                       "superPrizeWon": r.get("superPrizeWon")})
-        rec = {"draw": r["number"], "datetime": r["date"], "tickets": wc.get("columns"),
-               "players": wc.get("players"), "totalPrizeFund": wc.get("totalPrizeFund"),
-               "jackpot": wc.get("jackpot")}
-        for cat in wc.get("categories", []):
-            k = cat.get("wcnumber")
-            rec[f"cat{k}_desc"] = cat.get("description")
-            rec[f"cat{k}_wintickets"] = cat.get("win_tickets")
-            rec[f"cat{k}_dividend"] = cat.get("dividend_per_column")
-        payout.append(rec)
+        # Realized winners come from the top-level `winners` array (participants +
+        # per-winner amount), NOT from winningCategories (whose counts are 0 here).
+        # category map: 1=СУПЕР№1, 2=СУПЕР№2, 3=4of5, 4=3of5, 5=2of5.
+        w = {cat["category"]: cat for cat in r.get("winners", [])}
+        def part(cat): return int((w.get(cat) or {}).get("participants", 0) or 0)
+        def amt(cat): return int((w.get(cat) or {}).get("amount", 0) or 0)
+        payout.append({
+            "draw": r["number"], "datetime": r["date"],
+            "bets": r.get("betsCount") or 0, "ticketCount": r.get("ticketCount") or 0,
+            "price": r.get("ticketPrice") or 0,
+            "jackpot_kop": int(wc.get("jackpot", 0) or 0),
+            "superPrizeWon": r.get("superPrizeWon"),
+            "s1_part": part(1), "s2_part": part(2),
+            "w4of5": part(3), "a4of5": amt(3),
+            "w3of5": part(4), "a3of5": amt(4),
+            "w2of5": part(5), "a2of5": amt(5),
+            "summPayed": r.get("summPayed") or 0,
+        })
 
     _write_csv(CLEAN, clean)
     _write_csv(PAYOUT, payout)
