@@ -1,5 +1,8 @@
-# Raw archive (124 MB) is kept out of git; regenerate with scripts/download.py.
+# Data artifacts are large and fully regenerable via scripts/download.py, so
+# they are kept out of git. The provenance hash lives in data/SNAPSHOT.json.
 data/raw/*.jsonl
+data/clean/*.csv
+runs/figures/*.png
 __pycache__/
 *.pyc
 .venv/

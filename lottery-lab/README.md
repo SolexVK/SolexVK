@@ -53,6 +53,10 @@ lottery-lab/
 - **Structure:** 5 distinct numbers of 1–36 + one "плюс" of 1–4 (independent RNG).
 - **Limit:** the endpoint caps depth at ~25k recent draws and ignores date
   filters. To extend history, add a secondary source (see `ingest.py` notes).
+- **Note:** the CSVs and figures are git-ignored (large, regenerable). Run
+  `python3 scripts/download.py` to (re)build `data/clean/*.csv`, then
+  `python3 scripts/run_audit.py` to regenerate `runs/`. `data/SNAPSHOT.json`
+  records the authoritative sha256 of the dataset the committed report used.
 
 ## Quick start
 
