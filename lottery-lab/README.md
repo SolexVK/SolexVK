@@ -122,6 +122,22 @@ the mid-size **6x45** ever crossed the threshold (best case +51M ₽, ratio 1.13
 Still not exploitable: buying 8.1M tickets is logistically impossible, tax and
 thin margins erase it. See `runs/sprint4_coverage_report.md`.
 
+## Sprint 5 result — anomaly hunt (`H050`)
+
+`python3 scripts/run_anomaly.py [slug n k]` (default 7x49). Instead of patterns,
+hunt statistically improbable events, then ask whether each has a real cause.
+
+- **No exploitable anomaly** on 7x49 (23,733 draws, 2011–2026): 0 of 8 tests flag
+  one. The scariest candidate — a number absent for **84 draws** — sits at the
+  **64th percentile** of the fair-null max-drought distribution (~82 expected).
+  Repeats match the birthday paradox (3 vs 3.3), no yearly regime shift,
+  carryover exactly k²/n. Apparent anomalies dissolve under a proper null.
+- Method: analytic checks (repeats, consecutive combos, carryover, extreme
+  number w/ Bonferroni, yearly change-point) + Monte-Carlo extreme-value nulls
+  (max drought, max streak, hottest pair). Generalised to any k-of-n game.
+
+See `runs/sprint5_anomaly_report.md`.
+
 ## Roadmap
 
 - **Ongoing** — more games (4x20, topspin), deeper history via secondary

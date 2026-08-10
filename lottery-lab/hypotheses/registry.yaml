@@ -75,6 +75,13 @@ hypotheses:
     result: "MIXED, game-dependent. 5x36plus: never (cost 113M, breakeven 78M, max jackpot 19M). 6x45: THRESHOLD REACHED - break-even 253M vs 304M max jackpot, 116/18252 draws nominally profitable, best +51M rub (ratio 1.13). 7x49: never - 85.9M combinations => 4.3B cover cost vs 2.8B break-even, max jackpot only 221M. Coverage cost grows combinatorially while jackpots grow linearly, so only mid-size 6x45 crossed. Not exploitable in practice (logistics of 8.1M tickets, tax, thin margin)."
     status: confirmed-mixed
 
+  - id: H050
+    sprint: 5
+    claim: "An exploitable anomaly (a statistically improbable event with a real cause) exists in the archive."
+    statistic: "8-dimension anomaly hunt vs fair null: repeats, consecutive combos, carryover, extreme number (Bonferroni), yearly change-point (Bonferroni), and Monte-Carlo extreme-value nulls for max drought / max streak / hottest pair"
+    result: "REJECTED on 7x49 (23,733 draws, 2011-2026): 0 of 8 tests flag an anomaly. The scariest candidate (number 18 absent for 84 draws) sits at the 64th percentile of the fair-null max-drought distribution - a textbook apophenia case. Repeats match the birthday paradox (3 vs 3.3 expected), no yearly regime shift, carryover exactly k^2/n. No cause found => no edge."
+    status: confirmed-no-anomaly
+
   # ---- your turn: drop a strategy into lab/backtest.py STRATEGIES and pre-register it here ----
   # - id: H021
   #   sprint: 3

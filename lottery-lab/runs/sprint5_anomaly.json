@@ -1,0 +1,84 @@
+{
+  "game": "7 из 49",
+  "draws": 23733,
+  "date_range": [
+    "2011-05-22",
+    "2026-08-09"
+  ],
+  "n_tests": 8,
+  "n_anomalies": 0,
+  "findings": [
+    {
+      "name": "repeated combinations (pairs)",
+      "observed": 3,
+      "null_mean": 3.28,
+      "null_p95": null,
+      "percentile": null,
+      "anomaly": false,
+      "note": "max multiplicity 2"
+    },
+    {
+      "name": "fully-consecutive combos",
+      "observed": 0,
+      "null_mean": 0.012,
+      "null_p95": null,
+      "percentile": null,
+      "anomaly": false,
+      "note": "e.g. 1-2-3-4-5-6-7"
+    },
+    {
+      "name": "carryover from previous draw (mean)",
+      "observed": 1.0,
+      "null_mean": 1.0,
+      "null_p95": null,
+      "percentile": null,
+      "anomaly": false,
+      "note": "max 5 shared"
+    },
+    {
+      "name": "most-extreme number frequency",
+      "observed": 0.026,
+      "null_mean": null,
+      "null_p95": null,
+      "percentile": null,
+      "anomaly": false,
+      "note": "Bonferroni p = 1.000 (x49 numbers)"
+    },
+    {
+      "name": "yearly regime shift (change-point)",
+      "observed": 0,
+      "null_mean": 0,
+      "null_p95": null,
+      "percentile": null,
+      "anomaly": false,
+      "note": "years failing Bonferroni: none"
+    },
+    {
+      "name": "longest drought (max gap for a number)",
+      "observed": 84.0,
+      "null_mean": 82.09,
+      "null_p95": 97.04999999999998,
+      "percentile": 0.635,
+      "anomaly": false,
+      "note": "самая длинная серия НЕвыпадения одного числа"
+    },
+    {
+      "name": "longest streak (consecutive appearances)",
+      "observed": 6.0,
+      "null_mean": 6.88,
+      "null_p95": 8.0,
+      "percentile": 0.0,
+      "anomaly": false,
+      "note": "самое долгое присутствие одного числа подряд"
+    },
+    {
+      "name": "hottest pair count",
+      "observed": 500.0,
+      "null_mean": 491.75,
+      "null_p95": 504.05,
+      "percentile": 0.883,
+      "anomaly": false,
+      "note": "самая частая пара чисел"
+    }
+  ]
+}
