@@ -1,0 +1,795 @@
+<title>Штатное расписание агентов</title>
+<style>
+  :root{
+    --ground:#F4F6F1; --surface:#FFFFFF; --sunk:#EDF0E9;
+    --ink:#171A16; --ink-2:#3A4137; --muted:#6C7268;
+    --rule:#DBDFD4; --rule-2:#C2C8B7;
+    --accent:#1C5A3B; --accent-2:#2C7A52; --accent-soft:#E3EDE5;
+    --signal:#A2421B; --signal-soft:#F4E7DF;
+    --shadow:0 1px 2px rgba(23,26,22,.05), 0 8px 24px -18px rgba(23,26,22,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E110D; --surface:#151913; --sunk:#1A1F18;
+      --ink:#E6EAE2; --ink-2:#C2C9BC; --muted:#939A8E;
+      --rule:#282E24; --rule-2:#3A422F;
+      --accent:#6BC490; --accent-2:#8AD5A9; --accent-soft:#182A20;
+      --signal:#E08B63; --signal-soft:#2C1E17;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E110D; --surface:#151913; --sunk:#1A1F18;
+    --ink:#E6EAE2; --ink-2:#C2C9BC; --muted:#939A8E;
+    --rule:#282E24; --rule-2:#3A422F;
+    --accent:#6BC490; --accent-2:#8AD5A9; --accent-soft:#182A20;
+    --signal:#E08B63; --signal-soft:#2C1E17;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;
+    background:var(--ground);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{max-width:1040px;margin:0 auto;padding:0 28px 96px}
+  .prose{max-width:68ch}
+
+  /* ---------- typographic roles ---------- */
+  .serif{font-family:Georgia,"Noto Serif","Liberation Serif","Times New Roman",serif}
+  .mono,code,kbd,th,.tag,.eyebrow,.num{
+    font-family:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+  }
+  .eyebrow{
+    font-size:.7rem;text-transform:uppercase;letter-spacing:.16em;
+    color:var(--accent);display:flex;align-items:center;gap:12px;margin:0 0 14px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule);}
+
+  h1{
+    font-family:Georgia,"Noto Serif","Liberation Serif","Times New Roman",serif;
+    font-weight:400;
+    font-size:clamp(2.5rem,7vw,4rem);
+    line-height:1.04;
+    letter-spacing:-.015em;
+    text-wrap:balance;
+    margin:0 0 22px;
+  }
+  h2{
+    font-family:Georgia,"Noto Serif","Liberation Serif","Times New Roman",serif;
+    font-weight:400;
+    font-size:clamp(1.6rem,3.4vw,2.1rem);
+    line-height:1.2;
+    letter-spacing:-.01em;
+    text-wrap:balance;
+    margin:0 0 18px;
+  }
+  h3{
+    font-size:1.12rem;font-weight:700;letter-spacing:-.005em;
+    margin:34px 0 10px;text-wrap:balance;
+  }
+  p{margin:0 0 18px}
+  a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+  a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+  strong{font-weight:700}
+  code{
+    font-size:.86em;background:var(--sunk);padding:.12em .38em;border-radius:3px;
+    border:1px solid var(--rule);
+  }
+
+  section{padding:56px 0 0;border-top:1px solid var(--rule);margin-top:56px}
+  section:first-of-type{border-top:0;margin-top:0}
+
+  /* ---------- masthead ---------- */
+  header.masthead{padding:76px 0 8px}
+  .lede{
+    font-family:Georgia,"Noto Serif","Liberation Serif","Times New Roman",serif;
+    font-size:1.2rem;line-height:1.55;color:var(--ink-2);max-width:60ch;margin:0 0 34px;
+  }
+  .meta{
+    display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);
+    background:var(--surface);border-radius:4px;overflow:hidden;
+  }
+  .meta div{
+    flex:1 1 150px;padding:14px 18px;border-right:1px solid var(--rule);
+  }
+  .meta div:last-child{border-right:0}
+  .meta dt{
+    font-family:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    font-size:.66rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 4px;
+  }
+  .meta dd{margin:0;font-size:.95rem;font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* ---------- contents ---------- */
+  .toc{
+    margin:40px 0 0;padding:22px 24px;background:var(--sunk);
+    border:1px solid var(--rule);border-radius:4px;
+  }
+  .toc ol{
+    margin:0;padding:0;list-style:none;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 28px;
+  }
+  .toc a{
+    display:flex;gap:12px;padding:4px 0;color:var(--ink);text-decoration:none;
+    font-size:.94rem;border-bottom:1px solid transparent;
+  }
+  .toc a:hover{border-bottom-color:var(--rule-2)}
+  .toc .num{color:var(--accent);font-size:.76rem;padding-top:.28em;min-width:1.6em}
+
+  /* ---------- ladder (genuine sequence) ---------- */
+  .ladder{list-style:none;margin:0;padding:0;counter-reset:rung}
+  .ladder li{
+    counter-increment:rung;position:relative;
+    padding:0 0 26px 62px;border-left:1px solid var(--rule);margin-left:15px;
+  }
+  .ladder li:last-child{border-left-color:transparent;padding-bottom:0}
+  .ladder li::before{
+    content:counter(rung,decimal-leading-zero);
+    position:absolute;left:-15px;top:0;width:30px;height:30px;border-radius:50%;
+    background:var(--surface);border:1px solid var(--rule-2);color:var(--accent);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.7rem;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .ladder h3{margin:2px 0 6px}
+  .ladder p{margin:0 0 6px}
+  .ladder .tag{
+    font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  }
+
+  /* ---------- cards ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:16px;margin:26px 0 0}
+  .card{
+    background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+    padding:22px 22px 18px;box-shadow:var(--shadow);
+  }
+  .card h3{margin:0 0 8px;font-size:1.05rem}
+  .card p{font-size:.95rem;color:var(--ink-2);margin:0 0 14px}
+  .card dl{
+    margin:0;padding-top:12px;border-top:1px solid var(--rule);
+    display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:.82rem;
+  }
+  .card dt{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:.25em;
+  }
+  .card dd{margin:0;color:var(--ink-2)}
+
+  /* ---------- patterns ---------- */
+  .patterns{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:26px}
+  .pattern{
+    background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+    padding:20px 22px;display:flex;flex-direction:column;gap:12px;
+  }
+  .pattern svg{width:100%;height:auto;color:var(--accent);display:block}
+  .pattern h3{margin:0;font-size:1rem}
+  .pattern p{margin:0;font-size:.92rem;color:var(--ink-2)}
+  .pattern .use{
+    margin-top:auto;padding-top:12px;border-top:1px solid var(--rule);
+    font-size:.82rem;color:var(--muted);
+  }
+  .pattern .use b{color:var(--accent);font-weight:600}
+
+  /* ---------- tables ---------- */
+  .scroll{overflow-x:auto;margin:26px 0 0;border:1px solid var(--rule);border-radius:4px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:600px}
+  th{
+    text-align:left;font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--muted);font-weight:400;padding:13px 16px;background:var(--sunk);
+    border-bottom:1px solid var(--rule-2);white-space:nowrap;
+  }
+  td{padding:12px 16px;border-bottom:1px solid var(--rule);vertical-align:top;font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:0}
+  td code{background:transparent;border:0;padding:0;color:var(--accent);font-size:.88em}
+  .yes{color:var(--accent);font-weight:600}
+  .no{color:var(--muted)}
+
+  /* ---------- code block ---------- */
+  pre{
+    margin:22px 0 0;padding:20px 22px;background:var(--surface);color:var(--ink-2);
+    border:1px solid var(--rule);border-radius:4px;overflow-x:auto;
+    font-size:.83rem;line-height:1.62;
+    font-family:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+  }
+  pre code{background:transparent;border:0;padding:0;font-size:inherit}
+  pre .c{color:var(--muted)}
+  pre .k{color:var(--accent);font-weight:600}
+
+  /* ---------- callouts ---------- */
+  .note{
+    margin:26px 0 0;padding:18px 22px;border-radius:4px;
+    background:var(--accent-soft);border:1px solid var(--rule);
+    font-size:.95rem;
+  }
+  .note.warn{background:var(--signal-soft)}
+  .note .tag{
+    display:block;font-size:.66rem;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--accent);margin-bottom:6px;
+  }
+  .note.warn .tag{color:var(--signal)}
+  .note p{margin:0}
+  .note p + p{margin-top:10px}
+
+  /* ---------- rules list ---------- */
+  .rules{list-style:none;margin:26px 0 0;padding:0;display:grid;gap:2px}
+  .rules li{
+    display:grid;grid-template-columns:2.6em 1fr;gap:16px;align-items:baseline;
+    padding:14px 0;border-bottom:1px solid var(--rule);
+  }
+  .rules li:last-child{border-bottom:0}
+  .rules .num{color:var(--accent);font-size:.76rem;font-variant-numeric:tabular-nums}
+  .rules b{display:block;margin-bottom:2px}
+  .rules span{color:var(--ink-2);font-size:.95rem}
+
+  /* ---------- stat row ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:26px 0 0}
+  .stat{background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:20px 22px}
+  .stat .fig{
+    font-family:Georgia,"Noto Serif","Liberation Serif",serif;
+    font-size:2.3rem;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;
+  }
+  .stat .cap{margin-top:10px;font-size:.88rem;color:var(--ink-2)}
+
+  /* ---------- roster ---------- */
+  .dept{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.64rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);
+  }
+  tr.dept-row td{background:var(--sunk);padding-top:9px;padding-bottom:9px}
+
+  details{border-top:1px solid var(--rule);padding:14px 0}
+  details:last-of-type{border-bottom:1px solid var(--rule)}
+  summary{cursor:pointer;font-weight:600;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"+";color:var(--accent);margin-right:12px;font-family:ui-monospace,Menlo,monospace}
+  details[open] summary::before{content:"–"}
+  details p{margin:12px 0 0 28px;color:var(--ink-2);font-size:.95rem}
+
+  footer{margin-top:64px;padding-top:28px;border-top:1px solid var(--rule);font-size:.9rem;color:var(--muted)}
+  footer ol{padding-left:1.3em;margin:12px 0 0}
+  footer li{margin-bottom:6px}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media (max-width:640px){
+    body{font-size:16px}
+    .wrap{padding:0 20px 72px}
+    header.masthead{padding:48px 0 8px}
+    section{padding:40px 0 0;margin-top:40px}
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Руководство · август 2026</p>
+  <h1>Штатное расписание агентов</h1>
+  <p class="lede">Агент — это не «умный чат». Это роль с зоной ответственности, ограниченными правами и проверяемым результатом. Ниже — из чего такая роль состоит, какие роли бывают, как их описывать и какая команда закрывает операционку интернет-торговли.</p>
+  <dl class="meta">
+    <div><dt>Собрано агентов</dt><dd>11 + шаблон</dd></div>
+    <div><dt>Направления</dt><dd>4</dd></div>
+    <div><dt>Регулярный цикл</dt><dd>еженедельно</dd></div>
+    <div><dt>Готово к запуску</dt><dd>после CLAUDE.md</dd></div>
+  </dl>
+
+  <nav class="toc">
+    <ol>
+      <li><a href="#ladder"><span class="num">01</span><span>Прежде чем создавать агента</span></a></li>
+      <li><a href="#types"><span class="num">02</span><span>Шесть архетипов</span></a></li>
+      <li><a href="#patterns"><span class="num">03</span><span>Пять схем оркестрации</span></a></li>
+      <li><a href="#template"><span class="num">04</span><span>Анатомия агента</span></a></li>
+      <li><a href="#rules"><span class="num">05</span><span>Десять правил</span></a></li>
+      <li><a href="#cost"><span class="num">06</span><span>Цена и проверка качества</span></a></li>
+      <li><a href="#where"><span class="num">07</span><span>Где агенты живут</span></a></li>
+      <li><a href="#roster"><span class="num">08</span><span>Ваша команда</span></a></li>
+      <li><a href="#plan"><span class="num">09</span><span>План на четыре недели</span></a></li>
+    </ol>
+  </nav>
+</header>
+
+<section id="ladder">
+  <p class="eyebrow">Основа</p>
+  <h2>Прежде чем создавать агента</h2>
+  <div class="prose">
+    <p>Самая частая ошибка — начинать с агентов. Anthropic формулирует это прямо: начинайте с простого запроса, добавляйте многошаговые агентные системы только там, где простое решение перестало справляться. Лишний агент не бесплатен — он размывает границы соседних ролей, и оркестратор перестаёт понимать, кого звать.</p>
+    <p>Есть лестница от дешёвого к дорогому. Поднимайтесь по ней только когда нижняя ступень действительно не тянет.</p>
+  </div>
+
+  <ol class="ladder">
+    <li>
+      <h3>Факт → строка в <code>CLAUDE.md</code></h3>
+      <p>Комиссия площадки, порог маржи, тон бренда, реквизиты. Всё, что агент должен просто <em>знать</em>. Читается при каждом запуске, всеми агентами сразу.</p>
+      <p class="tag">Признак: вы третий раз повторяете одно и то же число</p>
+    </li>
+    <li>
+      <h3>Процедура → навык в <code>.claude/skills/</code></h3>
+      <p>Пошаговый порядок действий, который вы повторяете: как собрать недельный отчёт, как оформить КП. Тело навыка подгружается только в момент использования — длинная инструкция ничего не стоит, пока не понадобилась.</p>
+      <p class="tag">Признак: раздел в CLAUDE.md превратился в инструкцию</p>
+    </li>
+    <li>
+      <h3>Роль → агент в <code>.claude/agents/</code></h3>
+      <p>Отдельная зона ответственности, свой набор инструментов, много собственного контекста. Агент работает в <strong>изолированном окне</strong>: он не видит вашу переписку, зато его разбор десятка выгрузок не засоряет основной диалог.</p>
+      <p class="tag">Признак: задача требует своих прав и своего объёма данных</p>
+    </li>
+    <li>
+      <h3>Регулярность → Routine или расписание</h3>
+      <p>Тот же агент, но запускается сам: каждое утро, каждый понедельник, по событию в GitHub или по вызову из вашей системы. Работает в облаке — компьютер выключен, агент работает.</p>
+      <p class="tag">Признак: задача повторяется по календарю, а не по запросу</p>
+    </li>
+  </ol>
+
+  <div class="note warn">
+    <span class="tag">Когда агент не нужен вовсе</span>
+    <p>Если путь решения известен заранее и не меняется — это не агент, а последовательность шагов. Агент оправдан там, где <em>модель сама решает</em>, сколько шагов сделать и какие. Предсказуемый маршрут дешевле и надёжнее прописать явно.</p>
+  </div>
+</section>
+
+<section id="types">
+  <p class="eyebrow">Таксономия</p>
+  <h2>Шесть архетипов</h2>
+  <div class="prose">
+    <p>Агенты различаются не темой, а <em>типом работы</em>. Один и тот же «аналитик продаж» может быть исследователем или критиком — и это будут два разных файла с разными правами. Практически все рабочие роли сводятся к шести архетипам.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Исследователь</h3>
+      <p>Ищет и собирает: где лежат данные, что пишут конкуренты, что известно по вопросу. Отдаёт факты со ссылками, не выводы.</p>
+      <dl>
+        <dt>Права</dt><dd>только чтение, поиск, веб</dd>
+        <dt>Модель</dt><dd>sonnet</dd>
+        <dt>В команде</dt><dd>часть pricing-analyst</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Аналитик</h3>
+      <p>Превращает данные в решения: считает по формулам, сравнивает с порогами, ранжирует по деньгам. Главный тип в торговле.</p>
+      <dl>
+        <dt>Права</dt><dd>чтение + запись отчётов</dd>
+        <dt>Модель</dt><dd>sonnet / opus</dd>
+        <dt>В команде</dt><dd>sales, inventory, ads</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Исполнитель</h3>
+      <p>Производит артефакт: текст карточки, документ, презентацию, правку в коде. Результат можно взять и использовать.</p>
+      <dl>
+        <dt>Права</dt><dd>чтение + запись файлов</dd>
+        <dt>Модель</dt><dd>sonnet</dd>
+        <dt>В команде</dt><dd>listing-writer, doc-drafter</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Критик</h3>
+      <p>Проверяет чужую работу против критериев и ищет, где она сломается. Обязательно <strong>отдельный агент</strong>: автор не видит своих ошибок.</p>
+      <dl>
+        <dt>Права</dt><dd>только чтение</dd>
+        <dt>Модель</dt><dd>opus</dd>
+        <dt>В команде</dt><dd>code-reviewer</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Оркестратор</h3>
+      <p>Разбивает большую задачу, раздаёт её исполнителям и сводит результаты. Ищет противоречия между их ответами — в этом его ценность.</p>
+      <dl>
+        <dt>Права</dt><dd>вызов агентов</dd>
+        <dt>Модель</dt><dd>opus</dd>
+        <dt>В команде</dt><dd>навык /weekly-review</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Дежурный</h3>
+      <p>Работает по расписанию или по событию, без вашего участия. Молчит, когда всё в норме, и пишет, только когда есть что сказать.</p>
+      <dl>
+        <dt>Права</dt><dd>минимум, без действий наружу</dd>
+        <dt>Модель</dt><dd>sonnet</dd>
+        <dt>В команде</dt><dd>Routine на понедельник</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="note">
+    <span class="tag">Правило разделения</span>
+    <p>Исполнителя и критика никогда не совмещают в одном агенте. Тот, кто написал текст или код, оценивает его предвзято — это верно и для моделей. Разделение автора и проверяющего даёт больше прироста качества, чем любая настройка промпта.</p>
+  </div>
+</section>
+
+<section id="patterns">
+  <p class="eyebrow">Схемы</p>
+  <h2>Пять схем оркестрации</h2>
+  <div class="prose">
+    <p>Как агенты соединяются между собой. Схемы описаны Anthropic в «Building Effective Agents» и проверены на их собственных продуктах. Начинайте с первой, поднимайтесь выше только по необходимости.</p>
+  </div>
+
+  <div class="patterns">
+
+    <div class="pattern">
+      <svg viewBox="0 0 260 56" role="img" aria-label="Схема цепочки: три шага подряд с проверкой между ними">
+        <g fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="16" width="56" height="26" rx="3"/>
+          <rect x="102" y="16" width="56" height="26" rx="3"/>
+          <rect x="202" y="16" width="56" height="26" rx="3"/>
+          <path d="M58 29h16M84 29h18"/>
+          <path d="M158 29h44"/>
+          <path d="M79 24l5 5-5 5-5-5z"/>
+          <path d="M196 29l-6-4v8z" fill="currentColor" stroke="none"/>
+          <path d="M96 29l-6-4v8z" fill="currentColor" stroke="none"/>
+        </g>
+      </svg>
+      <h3>Цепочка</h3>
+      <p>Шаги идут подряд, между ними — проверка. Не прошла проверку — дальше не пускаем.</p>
+      <p class="use"><b>Когда:</b> задачу можно разбить на фиксированные этапы. Карточка → проверка фактов → перевод в формат площадки.</p>
+    </div>
+
+    <div class="pattern">
+      <svg viewBox="0 0 260 56" role="img" aria-label="Схема маршрутизации: один вход, три специализированных обработчика">
+        <g fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="16" width="56" height="26" rx="3"/>
+          <path d="M58 29h30M88 8v42M88 8h20M88 29h20M88 50h20"/>
+          <rect x="112" y="0" width="60" height="17" rx="3"/>
+          <rect x="112" y="20" width="60" height="17" rx="3"/>
+          <rect x="112" y="40" width="60" height="17" rx="3"/>
+        </g>
+      </svg>
+      <h3>Маршрутизация</h3>
+      <p>Входящее классифицируется и уходит специалисту. Каждый специалист заточен под свой случай.</p>
+      <p class="use"><b>Когда:</b> запросы разнородны. Отзыв → дефект товара, проблема доставки или вопрос по размеру.</p>
+    </div>
+
+    <div class="pattern">
+      <svg viewBox="0 0 260 56" role="img" aria-label="Схема параллельной работы: три агента работают одновременно и сводятся вместе">
+        <g fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M22 29h18M40 8v42M40 8h16M40 29h16M40 50h16"/>
+          <rect x="60" y="0" width="62" height="17" rx="3"/>
+          <rect x="60" y="20" width="62" height="17" rx="3"/>
+          <rect x="60" y="40" width="62" height="17" rx="3"/>
+          <path d="M122 8h18M122 29h18M122 50h18M140 8v42M140 29h20"/>
+          <rect x="164" y="16" width="60" height="26" rx="3"/>
+        </g>
+      </svg>
+      <h3>Параллель</h3>
+      <p>Независимые куски считаются одновременно, потом сводятся. Экономит время, а не токены.</p>
+      <p class="use"><b>Когда:</b> участки не зависят друг от друга. Недельный разбор: продажи, склад, реклама, отзывы сразу.</p>
+    </div>
+
+    <div class="pattern">
+      <svg viewBox="0 0 260 56" role="img" aria-label="Схема оркестратор и исполнители: центральный агент раздаёт задачи и собирает ответы">
+        <g fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="96" y="0" width="68" height="20" rx="3"/>
+          <path d="M130 20v10M40 30h180M40 30v8M130 30v8M220 30v8"/>
+          <rect x="10" y="38" width="60" height="18" rx="3"/>
+          <rect x="100" y="38" width="60" height="18" rx="3"/>
+          <rect x="190" y="38" width="60" height="18" rx="3"/>
+        </g>
+      </svg>
+      <h3>Оркестратор</h3>
+      <p>Ведущий агент сам решает, на какие подзадачи бить и сколько исполнителей запустить. Состав заранее не задан.</p>
+      <p class="use"><b>Когда:</b> объём работы неизвестен заранее. Разбор просевшей категории: сколько SKU копать — решает ведущий.</p>
+    </div>
+
+    <div class="pattern">
+      <svg viewBox="0 0 260 56" role="img" aria-label="Схема критик и исполнитель: два агента в цикле обратной связи">
+        <g fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="14" y="16" width="80" height="26" rx="3"/>
+          <rect x="166" y="16" width="80" height="26" rx="3"/>
+          <path d="M94 23h72M166 35H94"/>
+          <path d="M160 23l-7-3.5v7z" fill="currentColor" stroke="none"/>
+          <path d="M100 35l7-3.5v7z" fill="currentColor" stroke="none"/>
+        </g>
+      </svg>
+      <h3>Критик</h3>
+      <p>Один делает, второй оценивает по критериям, первый исправляет. Цикл повторяется до соответствия.</p>
+      <p class="use"><b>Когда:</b> критерии качества ясны и правки реально улучшают результат. Код → ревью → правка.</p>
+    </div>
+
+  </div>
+</section>
+
+<section id="template">
+  <p class="eyebrow">Шаблон</p>
+  <h2>Анатомия агента</h2>
+  <div class="prose">
+    <p>Агент — это один markdown-файл: служебная шапка и текст роли. Файл кладётся в <code>.claude/agents/</code> и коммитится в git, как код. Шапка задаёт права и стоимость, текст — поведение.</p>
+    <p>Самое важное поле — <code>description</code>. По нему принимается решение, звать агента или нет. Общая формулировка означает, что агент будет просто простаивать.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Поле</th><th>Обяз.</th><th>Что задаёт</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td class="yes">да</td><td>Идентификатор: строчные буквы и дефисы. Одна роль — одно имя.</td></tr>
+        <tr><td><code>description</code></td><td class="yes">да</td><td>Что делает + <strong>когда звать</strong> + триггерные фразы. Определяет вызов.</td></tr>
+        <tr><td><code>tools</code></td><td class="no">нет</td><td>Список инструментов. Без поля наследуются <em>все</em> — так делать не стоит.</td></tr>
+        <tr><td><code>disallowedTools</code></td><td class="no">нет</td><td>Точечный запрет поверх унаследованного набора.</td></tr>
+        <tr><td><code>model</code></td><td class="no">нет</td><td><code>haiku</code>, <code>sonnet</code>, <code>opus</code>, <code>fable</code> или <code>inherit</code>.</td></tr>
+        <tr><td><code>effort</code></td><td class="no">нет</td><td>Глубина рассуждения: <code>low</code> … <code>max</code>.</td></tr>
+        <tr><td><code>maxTurns</code></td><td class="no">нет</td><td>Предохранитель от зацикливания на дорогих агентах.</td></tr>
+        <tr><td><code>skills</code></td><td class="no">нет</td><td>Навыки, загружаемые целиком на старте: <code>xlsx</code>, <code>docx</code>, <code>pptx</code>, свои.</td></tr>
+        <tr><td><code>memory</code></td><td class="no">нет</td><td><code>project</code> — агент копит знания между запусками и делится ими с командой.</td></tr>
+        <tr><td><code>permissionMode</code></td><td class="no">нет</td><td>Насколько свободно агент действует без подтверждения.</td></tr>
+        <tr><td><code>isolation</code></td><td class="no">нет</td><td><code>worktree</code> — отдельная копия репозитория для параллельных правок.</td></tr>
+        <tr><td><code>hooks</code></td><td class="no">нет</td><td>Проверки до и после вызова инструментов — жёсткие ограничители.</td></tr>
+        <tr><td><code>color</code></td><td class="no">нет</td><td>Цвет в интерфейсе. Мелочь, которая помогает различать агентов в работе.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Скелет файла</h3>
+<pre><code><span class="c">---</span>
+<span class="k">name</span>: inventory-planner
+<span class="k">description</span>: &gt;-
+  Считает остатки, оборачиваемость и точку перезаказа, готовит заявку
+  на закупку. Вызывать при вопросах «что заказывать», «что скоро
+  кончится», «какой товар не продаётся», перед циклом закупки.
+<span class="k">tools</span>: Read, Glob, Grep, Bash, Write     <span class="c"># минимум из достаточного</span>
+<span class="k">model</span>: sonnet
+<span class="k">effort</span>: high
+<span class="k">skills</span>: [xlsx]
+<span class="k">memory</span>: project
+<span class="c">---</span>
+
+<span class="k"># Роль</span>          — за какой результат отвечает, одним предложением
+<span class="k"># Когда меня вызывают</span> — 3–5 конкретных ситуаций
+<span class="k"># Что я получаю на вход</span> — источники и что делать при нехватке данных
+<span class="k"># Как я работаю</span>  — нумерованная процедура с формулами и порогами
+<span class="k"># Формат результата</span> — жёсткая структура, иначе отчёты несравнимы
+<span class="k"># Границы</span>        — что агент НЕ делает
+<span class="k"># Самопроверка</span>   — чек-лист перед выдачей ответа</code></pre>
+
+  <div class="note">
+    <span class="tag">Почему девять разделов, а не «будь полезным»</span>
+    <p>Разделы «Границы» и «Самопроверка» дают самый заметный прирост качества. Без явных границ агент додумывает задачу и лезет в зону соседа. Без чек-листа он выдаёт первый правдоподобный ответ вместо проверенного.</p>
+    <p>Раздел «Как я работаю» — место вашей экспертизы. Разница между «проанализируй продажи» и «исключи возвраты, посчитай маржу с комиссией и логистикой, отклонения больше 15 % вынеси наверх» — это и есть разница между игрушкой и рабочим инструментом.</p>
+  </div>
+</section>
+
+<section id="rules">
+  <p class="eyebrow">Практика</p>
+  <h2>Десять правил</h2>
+
+  <ol class="rules">
+    <li><span class="num">01</span><span><b>Одна роль — один агент.</b> Пересечение зон ответственности сильнее всего ломает команду: оркестратор перестаёт понимать, кого звать, и зовёт не того.</span></li>
+    <li><span class="num">02</span><span><b>Пишите <code>description</code> как объявление о вакансии.</b> Что делает, когда звать, какими словами задачу обычно формулируют. Это поле читается чаще всего остального файла.</span></li>
+    <li><span class="num">03</span><span><b>Давайте минимум прав.</b> Читающему агенту не нужен <code>Write</code>, аналитику не нужен выход в сеть. Это и безопасность, и фокус.</span></li>
+    <li><span class="num">04</span><span><b>Подбирайте модель по цене ошибки.</b> <code>sonnet</code> — рабочая норма. <code>opus</code> — там, где ошибка стоит денег: цены, закупка, ревью. <code>haiku</code> — механика.</span></li>
+    <li><span class="num">05</span><span><b>Задавайте формат результата жёстко.</b> Свободная форма означает, что отчёты за разные недели нельзя сравнить между собой.</span></li>
+    <li><span class="num">06</span><span><b>Запрещайте выдумывать данные.</b> Отсутствующее значение — это вопрос человеку, а не повод поставить правдоподобное число. Пропущенная строка честнее выдуманной.</span></li>
+    <li><span class="num">07</span><span><b>Делегируйте подробно.</b> Расплывчатая постановка приводит к тому, что несколько агентов делают одно и то же и никто не делает нужное. Задавайте цель, формат, источники и границы.</span></li>
+    <li><span class="num">08</span><span><b>Держите действия наружу под ручным контролем.</b> Отправка писем, публикации, заказы поставщикам — только после подтверждения человеком. Черновик агент готовит сам.</span></li>
+    <li><span class="num">09</span><span><b>Меняйте по одному параметру.</b> Агент не вызывается — правьте <code>description</code>. Делает не то — правьте процедуру. Лезет не туда — правьте границы и <code>tools</code>.</span></li>
+    <li><span class="num">10</span><span><b>Держите агентов в git.</b> Файл в <code>.claude/agents/</code> версионируется, как код: видно, что менялось, и можно откатиться к работавшей версии.</span></li>
+  </ol>
+
+  <h3>Антипаттерны</h3>
+  <details>
+    <summary>Агент-универсал «ассистент»</summary>
+    <p>Забирает на себя всё, конфликтует с каждым специализированным агентом и не делает хорошо ничего. Если у роли нельзя назвать один конкретный результат на выходе — это не роль.</p>
+  </details>
+  <details>
+    <summary>Агент, который сам себя проверяет</summary>
+    <p>Автор не видит своих ошибок. Проверку выносят в отдельного агента с только читающими правами — иначе он «починит» проблему, вместо того чтобы о ней сообщить.</p>
+  </details>
+  <details>
+    <summary>Двадцать агентов на старте</summary>
+    <p>Команда, собранная «про запас», не работает: половина ролей ни разу не вызовется, а пересечения между ними будут мешать оставшимся. Начинайте с трёх, добавляйте по факту повторяющейся задачи.</p>
+  </details>
+  <details>
+    <summary>Все инструменты по умолчанию</summary>
+    <p>Опущенное поле <code>tools</code> означает, что агент унаследовал вообще всё, включая запись файлов и выход в сеть. Аналитик с правом записи однажды перезапишет исходную выгрузку.</p>
+  </details>
+  <details>
+    <summary>«Проанализируй и дай рекомендации»</summary>
+    <p>Инструкция без формул и порогов даёт разный результат при каждом запуске. Если вы не можете назвать формулу — сначала опишите её для себя, а уже потом перекладывайте в агента.</p>
+  </details>
+</section>
+
+<section id="cost">
+  <p class="eyebrow">Экономика</p>
+  <h2>Цена и проверка качества</h2>
+  <div class="prose">
+    <p>Многоагентные системы дороже одиночных, и это надо закладывать в расчёт. Цифры Anthropic по их собственному продукту:</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="fig">×4</div><div class="cap">Агент против обычного чата — расход токенов</div></div>
+    <div class="stat"><div class="fig">×15</div><div class="cap">Многоагентная система против чата</div></div>
+    <div class="stat"><div class="fig">+90 %</div><div class="cap">Прирост качества на исследовательских задачах при команде агентов</div></div>
+    <div class="stat"><div class="fig">80 %</div><div class="cap">Разброса результатов объясняется объёмом потраченных токенов</div></div>
+  </div>
+
+  <div class="prose">
+    <h3>Что из этого следует</h3>
+    <p>Команда агентов окупается на задачах, где ошибка или упущенная возможность стоит заметных денег: закупка, ценообразование, рекламный бюджет. На задачах вроде «переименовать файлы» она избыточна — там достаточно одного запроса.</p>
+    <p>Второе: параллельная работа даёт выигрыш там, где участки <strong>независимы</strong>. Когда агентам нужен общий контекст и они постоянно зависят друг от друга, команда работает хуже одного агента. Недельный разбор по четырём направлениям — хороший случай. Написание одного длинного документа вчетвером — плохой.</p>
+
+    <h3>Как понять, что агент работает хорошо</h3>
+    <p>Три способа проверки, по возрастанию усилий:</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Способ</th><th>Как</th><th>Что ловит</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Малая выборка</strong></td>
+          <td>20 типичных запросов, прогнать после каждой правки промпта</td>
+          <td>Эффект правок виден сразу — он крупный, статистика не нужна</td>
+        </tr>
+        <tr>
+          <td><strong>Проверка моделью</strong></td>
+          <td>Отдельный агент оценивает ответ по критериям: точность цифр, полнота, ссылки на источник, формат</td>
+          <td>Систематические провалы на объёме, который вручную не прочитать</td>
+        </tr>
+        <tr>
+          <td><strong>Ручная проверка</strong></td>
+          <td>Вы сами читаете десяток результатов целиком</td>
+          <td>Выдуманные данные, перекос в источниках, странные решения — то, что автоматика пропускает</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <span class="tag">Главный риск</span>
+    <p>Ошибки накапливаются. Длинная автономная работа означает, что неверный шаг в начале искажает всё последующее, и внешне результат выглядит убедительно. Отсюда два требования: агент показывает <em>источник каждого числа</em>, и любое действие наружу проходит через человека.</p>
+  </div>
+</section>
+
+<section id="where">
+  <p class="eyebrow">Площадки</p>
+  <h2>Где агенты живут</h2>
+  <div class="prose">
+    <p>Одни и те же файлы <code>.claude/agents/</code> работают в нескольких средах. Выбор среды определяется не типом агента, а тем, где лежат данные и нужен ли запуск без вашего участия.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Среда</th><th>Для чего</th><th>Локальные файлы</th><th>Работает без вас</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Claude Code</strong><br><span class="dept">терминал и веб</span></td>
+          <td>Основная среда. Агенты как файлы в репозитории, версионируются в git</td>
+          <td class="yes">да</td>
+          <td class="no">нет</td>
+        </tr>
+        <tr>
+          <td><strong>Cowork</strong><br><span class="dept">десктоп</span></td>
+          <td>Некодовые задачи без терминала: документы, таблицы, презентации из локальных папок</td>
+          <td class="yes">да</td>
+          <td class="no">нет</td>
+        </tr>
+        <tr>
+          <td><strong>Routines</strong><br><span class="dept">облако</span></td>
+          <td>Регулярный запуск: по расписанию, по HTTP-вызову из вашей системы, по событию GitHub</td>
+          <td class="no">нет, свежий клон репозитория</td>
+          <td class="yes">да</td>
+        </tr>
+        <tr>
+          <td><strong>Agent SDK</strong><br><span class="dept">Python / TypeScript</span></td>
+          <td>Агент встроен в ваш продукт или внутреннюю систему как библиотека</td>
+          <td class="yes">да</td>
+          <td class="yes">да</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Как сделать запуск регулярным</h3>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Способ</th><th>Где выполняется</th><th>Минимальный интервал</th><th>Когда выбирать</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Routine</strong></td><td>облако</td><td>1 час</td><td>Понедельничный разбор, ночная сводка. Компьютер выключен — работает</td></tr>
+        <tr><td><strong>Задача на десктопе</strong></td><td>ваша машина</td><td>1 минута</td><td>Нужен доступ к локальным файлам и программам</td></tr>
+        <tr><td><strong><code>/loop</code></strong></td><td>открытая сессия</td><td>1 минута</td><td>Дождаться сборки, проследить за выкладкой прямо сейчас</td></tr>
+        <tr><td><strong>GitHub Actions</strong></td><td>CI</td><td>по расписанию CI</td><td>Проверки на каждый PR и релиз</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <span class="tag">Про облачные запуски</span>
+    <p>Routine выполняется автономно, без запросов на подтверждение. Поэтому подключайте к нему только те коннекторы, которые нужны именно этой задаче, и держите правило «ничего наружу без человека» прямо в тексте агента, а не в голове.</p>
+    <p>Зелёный статус выполнения означает лишь, что сессия завершилась без сбоя инфраструктуры. Сделал ли агент то, что требовалось, видно только из самого отчёта — первые недели читайте их целиком.</p>
+  </div>
+</section>
+
+<section id="roster">
+  <p class="eyebrow">Состав</p>
+  <h2>Ваша команда</h2>
+  <div class="prose">
+    <p>Одиннадцать агентов собраны и лежат в ветке <code>claude/agent-configuration-kqfy4f</code>. Каждый — по шаблону из раздела выше, с явными границами и чек-листом самопроверки.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Агент</th><th>Отвечает за</th><th>Модель</th><th>Ритм</th></tr></thead>
+      <tbody>
+        <tr class="dept-row"><td colspan="4"><span class="dept">Аналитика и отчётность</span></td></tr>
+        <tr><td><code>sales-analyst</code></td><td>Выручка, маржа, ABC по марже, лидеры и аутсайдеры</td><td>sonnet</td><td>ежедневно / еженедельно</td></tr>
+        <tr><td><code>inventory-planner</code></td><td>Точка перезаказа, заявка на закупку, замороженные деньги</td><td>sonnet</td><td>еженедельно</td></tr>
+        <tr><td><code>pricing-analyst</code></td><td>Цена безубыточности, позиция против конкурентов, окупаемость скидок</td><td>opus</td><td>по запросу</td></tr>
+        <tr><td><code>ads-analyst</code></td><td>Окупаемость кампаний по марже, перераспределение бюджета</td><td>sonnet</td><td>еженедельно</td></tr>
+
+        <tr class="dept-row"><td colspan="4"><span class="dept">Контент и маркетинг</span></td></tr>
+        <tr><td><code>listing-writer</code></td><td>Карточки товара: заголовок, буллиты, описание, поисковые запросы</td><td>sonnet</td><td>по запросу</td></tr>
+        <tr><td><code>content-planner</code></td><td>Контент-план от товарного календаря и остатков, тексты</td><td>sonnet</td><td>ежемесячно</td></tr>
+        <tr><td><code>review-triage</code></td><td>Категории жалоб, системные дефекты, черновики ответов</td><td>sonnet</td><td>еженедельно</td></tr>
+
+        <tr class="dept-row"><td colspan="4"><span class="dept">Документы</span></td></tr>
+        <tr><td><code>doc-drafter</code></td><td>КП, договоры, спецификации, презентации, протоколы</td><td>sonnet</td><td>по запросу</td></tr>
+
+        <tr class="dept-row"><td colspan="4"><span class="dept">Разработка</span></td></tr>
+        <tr><td><code>code-reviewer</code></td><td>Ревью изменений: ошибки, безопасность, совместимость</td><td>opus</td><td>на каждое изменение</td></tr>
+        <tr><td><code>bug-fixer</code></td><td>Воспроизведение, причина, минимальная правка с тестом</td><td>opus</td><td>по инциденту</td></tr>
+
+        <tr class="dept-row"><td colspan="4"><span class="dept">Мета</span></td></tr>
+        <tr><td><code>agent-builder</code></td><td>Создание новых агентов и починка существующих</td><td>opus</td><td>по мере роста</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <h3>Что их связывает</h3>
+    <p><code>CLAUDE.md</code> в корне — общая память команды: экономика, пороги, где лежат данные и шесть правил, обязательных для всех. Его читает каждый агент при каждом запуске.</p>
+    <p>Навык <code>/weekly-review</code> — оркестратор недельного цикла. Он запускает четырёх аналитиков параллельно и сводит результаты, специально выискивая <strong>противоречия между ними</strong>: реклама разгоняет товар, который кончится раньше поставки; позиция в топе по выручке убыточна после рекламы; в заявке на закупку стоит товар, на который жалуются. Такое видно только при сведении — и ради этого сведение и делается.</p>
+  </div>
+</section>
+
+<section id="plan">
+  <p class="eyebrow">Внедрение</p>
+  <h2>План на четыре недели</h2>
+  <div class="prose">
+    <p>Порядок здесь важен: каждый шаг опирается на предыдущий. Запускать всех одиннадцать агентов сразу — верный способ не понять, кто из них работает.</p>
+  </div>
+
+  <ol class="ladder">
+    <li>
+      <h3>Неделя 1 — фундамент</h3>
+      <p>Заполнить <code>CLAUDE.md</code>: комиссии, логистику, порог маржи, целевой ДРР, страховой запас. Пока там стоят заглушки, аналитики будут останавливаться и спрашивать — это сделано намеренно, чтобы не считать по выдуманным числам.</p>
+      <p>Выгрузить в <code>data/</code> продажи и остатки хотя бы за два месяца.</p>
+      <p class="tag">Результат: агенты видят данные и знают правила</p>
+    </li>
+    <li>
+      <h3>Неделя 2 — три агента вживую</h3>
+      <p>Запустить <code>sales-analyst</code>, <code>inventory-planner</code>, <code>review-triage</code> вручную. Прочитать отчёты целиком, сверить цифры с тем, что знаете сами. Всё, что агент понял неправильно, — правка в его файл, а не устная поправка.</p>
+      <p class="tag">Результат: три отчёта, которым вы доверяете</p>
+    </li>
+    <li>
+      <h3>Неделя 3 — цикл целиком</h3>
+      <p>Добавить <code>ads-analyst</code> и запустить <code>/weekly-review</code> — четыре агента параллельно со сведением. Проверить главное: находит ли сведение противоречия между направлениями или просто склеивает четыре отчёта.</p>
+      <p class="tag">Результат: один документ с решениями вместо четырёх отчётов</p>
+    </li>
+    <li>
+      <h3>Неделя 4 — автономность</h3>
+      <p>Завести Routine на понедельничный запуск <code>/weekly-review</code> — сводка появляется сама, до начала рабочего дня. Первый месяц читать каждый запуск целиком: зелёный статус не означает, что задача выполнена верно.</p>
+      <p>Дальше команда растёт через <code>agent-builder</code>: он сначала проверит, не решается ли задача строкой в <code>CLAUDE.md</code> или навыком, и только потом создаст нового агента.</p>
+      <p class="tag">Результат: цикл работает без вашего участия</p>
+    </li>
+  </ol>
+
+  <div class="note">
+    <span class="tag">Признак, что всё получилось</span>
+    <p>В понедельник утром вы открываете один документ с семью решениями, отсортированными по деньгам, — вместо того чтобы полдня сводить выгрузки. А спорить есть о чём: агент показывает источник каждого числа, и вы проверяете вывод, а не арифметику.</p>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Источники.</strong> Официальная документация Claude Code и исследования Anthropic, август 2026.</p>
+  <ol>
+    <li><a href="https://code.claude.com/docs/en/sub-agents">Subagents</a> — формат файла, полная схема полей, приоритет расположения</li>
+    <li><a href="https://code.claude.com/docs/en/skills">Agent Skills</a> — навыки, отложенная загрузка контента, поля SKILL.md</li>
+    <li><a href="https://code.claude.com/docs/en/routines">Routines</a> — облачный запуск по расписанию, API и событиям GitHub</li>
+    <li><a href="https://code.claude.com/docs/en/scheduled-tasks">Scheduled tasks</a> — <code>/loop</code>, cron, сравнение способов планирования</li>
+    <li><a href="https://code.claude.com/docs/en/agent-sdk/overview">Agent SDK</a> — встраивание агентов в собственный продукт</li>
+    <li><a href="https://www.anthropic.com/research/building-effective-agents">Building Effective Agents</a> — пять схем оркестрации, агент против рабочего процесса</li>
+    <li><a href="https://www.anthropic.com/engineering/multi-agent-research-system">Multi-agent research system</a> — экономика токенов, делегирование, проверка качества, режимы отказа</li>
+  </ol>
+</footer>
+
+</div>
