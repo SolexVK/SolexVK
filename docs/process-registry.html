@@ -1,0 +1,517 @@
+<title>Реестр процессов AIDEMIKO</title>
+<style>
+  :root{
+    --ground:#F4F6F1; --surface:#FFFFFF; --sunk:#EDF0E9;
+    --ink:#171A16; --ink-2:#3A4137; --muted:#6C7268;
+    --rule:#DBDFD4; --rule-2:#C2C8B7;
+    --accent:#1C5A3B; --accent-2:#2C7A52; --accent-soft:#E3EDE5;
+    --signal:#A2421B; --signal-soft:#F4E7DF;
+    --amber:#8A6A12; --amber-soft:#F2EBD8;
+    --shadow:0 1px 2px rgba(23,26,22,.05), 0 8px 24px -18px rgba(23,26,22,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E110D; --surface:#151913; --sunk:#1A1F18;
+      --ink:#E6EAE2; --ink-2:#C2C9BC; --muted:#939A8E;
+      --rule:#282E24; --rule-2:#3A422F;
+      --accent:#6BC490; --accent-2:#8AD5A9; --accent-soft:#182A20;
+      --signal:#E08B63; --signal-soft:#2C1E17;
+      --amber:#D6B45C; --amber-soft:#282314;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E110D; --surface:#151913; --sunk:#1A1F18;
+    --ink:#E6EAE2; --ink-2:#C2C9BC; --muted:#939A8E;
+    --rule:#282E24; --rule-2:#3A422F;
+    --accent:#6BC490; --accent-2:#8AD5A9; --accent-soft:#182A20;
+    --signal:#E08B63; --signal-soft:#2C1E17;
+    --amber:#D6B45C; --amber-soft:#282314;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--ground);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px 96px}
+  .prose{max-width:66ch}
+
+  .mono,code,th,.tag,.eyebrow,.num,.chip,.dept{
+    font-family:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+  }
+  .eyebrow{
+    font-size:.7rem;text-transform:uppercase;letter-spacing:.16em;color:var(--accent);
+    display:flex;align-items:center;gap:12px;margin:0 0 14px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+
+  h1{
+    font-family:Georgia,"Noto Serif","Liberation Serif","Times New Roman",serif;font-weight:400;
+    font-size:clamp(2.4rem,6.5vw,3.7rem);line-height:1.05;letter-spacing:-.015em;
+    text-wrap:balance;margin:0 0 20px;
+  }
+  h2{
+    font-family:Georgia,"Noto Serif","Liberation Serif","Times New Roman",serif;font-weight:400;
+    font-size:clamp(1.55rem,3.2vw,2rem);line-height:1.2;letter-spacing:-.01em;
+    text-wrap:balance;margin:0 0 16px;
+  }
+  h3{font-size:1.1rem;font-weight:700;margin:32px 0 10px;text-wrap:balance}
+  p{margin:0 0 16px}
+  a{color:var(--accent);text-underline-offset:3px}
+  a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+  code{font-size:.86em;background:var(--sunk);padding:.12em .38em;border-radius:3px;border:1px solid var(--rule)}
+
+  section{padding:54px 0 0;border-top:1px solid var(--rule);margin-top:54px}
+  section:first-of-type{border-top:0;margin-top:0}
+
+  header.masthead{padding:74px 0 8px}
+  .lede{
+    font-family:Georgia,"Noto Serif","Liberation Serif",serif;
+    font-size:1.18rem;line-height:1.55;color:var(--ink-2);max-width:58ch;margin:0 0 32px;
+  }
+  .meta{display:flex;flex-wrap:wrap;border:1px solid var(--rule);background:var(--surface);border-radius:4px;overflow:hidden}
+  .meta div{flex:1 1 140px;padding:14px 18px;border-right:1px solid var(--rule)}
+  .meta div:last-child{border-right:0}
+  .meta dt{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.65rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 4px;
+  }
+  .meta dd{margin:0;font-size:1.35rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+  .meta dd small{display:block;font-size:.8rem;font-weight:400;color:var(--muted);letter-spacing:0}
+
+  /* findings */
+  .finding{
+    background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--rule-2);
+    border-radius:4px;padding:20px 24px;margin-bottom:14px;box-shadow:var(--shadow);
+  }
+  .finding.crit{border-left-color:var(--signal)}
+  .finding.warn{border-left-color:var(--amber)}
+  .finding.good{border-left-color:var(--accent)}
+  .finding .top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+  .finding .num{font-size:.72rem;color:var(--muted);letter-spacing:.1em}
+  .finding h3{margin:0;font-size:1.06rem;flex:1 1 260px}
+  .chip{
+    font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;padding:3px 9px;border-radius:99px;
+    background:var(--sunk);color:var(--muted);border:1px solid var(--rule);white-space:nowrap;
+  }
+  .chip.crit{background:var(--signal-soft);color:var(--signal);border-color:transparent}
+  .chip.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
+  .chip.good{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+  .finding p{margin:0 0 10px;font-size:.96rem;color:var(--ink-2)}
+  .finding p:last-child{margin-bottom:0}
+  .calc{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.82rem;
+    background:var(--sunk);border:1px solid var(--rule);border-radius:4px;
+    padding:12px 14px;margin:10px 0;overflow-x:auto;line-height:1.7;color:var(--ink);
+  }
+
+  /* tables */
+  .scroll{overflow-x:auto;margin:22px 0 0;border:1px solid var(--rule);border-radius:4px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:820px}
+  th{
+    text-align:left;font-size:.63rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+    font-weight:400;padding:12px 14px;background:var(--sunk);border-bottom:1px solid var(--rule-2);
+    white-space:nowrap;position:sticky;top:0;
+  }
+  td{padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top;font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:0}
+  td.id{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.78rem;color:var(--muted);white-space:nowrap}
+  tr.dept-row td{background:var(--sunk);padding:9px 14px}
+  .dept{font-size:.64rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+  .dept b{color:var(--muted);font-weight:400;margin-left:10px;letter-spacing:.06em}
+  .st{font-size:.63rem;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;font-family:ui-monospace,Menlo,monospace}
+  .st-ok{color:var(--accent)}
+  .st-weak{color:var(--amber)}
+  .st-none{color:var(--signal)}
+  .a3{color:var(--accent);font-weight:700}
+  .a2{color:var(--ink-2)}
+  .a1{color:var(--muted)}
+
+  pre{
+    margin:18px 0 0;padding:18px 20px;background:var(--surface);color:var(--ink-2);
+    border:1px solid var(--rule);border-radius:4px;overflow-x:auto;font-size:.82rem;line-height:1.65;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+  }
+  pre b{color:var(--accent);font-weight:600}
+  pre i{color:var(--muted);font-style:normal}
+
+  .note{margin:22px 0 0;padding:18px 22px;border-radius:4px;background:var(--accent-soft);border:1px solid var(--rule);font-size:.95rem}
+  .note.warn{background:var(--signal-soft)}
+  .note .tag{display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin-bottom:6px}
+  .note.warn .tag{color:var(--signal)}
+  .note p{margin:0}
+  .note p+p{margin-top:10px}
+
+  ul.tight{margin:0 0 16px;padding-left:1.25em}
+  ul.tight li{margin-bottom:7px;color:var(--ink-2)}
+  ol.tight{margin:0 0 16px;padding-left:1.35em}
+  ol.tight li{margin-bottom:9px;color:var(--ink-2)}
+
+  footer{margin-top:60px;padding-top:26px;border-top:1px solid var(--rule);font-size:.9rem;color:var(--muted)}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media (max-width:640px){
+    body{font-size:16px}
+    .wrap{padding:0 18px 72px}
+    header.masthead{padding:46px 0 8px}
+    section{padding:40px 0 0;margin-top:40px}
+    th{position:static}
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Разбор интервью · РОП · август 2026</p>
+  <h1>Реестр процессов AIDEMIKO&nbsp;/&nbsp;AIZEK</h1>
+  <p class="lede">76 процессов четырёх отделов, десять находок по итогам интервью и ответы на вопросы, которые вы задали в ответ. Основание для архитектуры автоматизации.</p>
+  <dl class="meta">
+    <div><dt>Процессов описано</dt><dd>76</dd></div>
+    <div><dt>Автоматизируются</dt><dd>40<small>53 % — высокий потенциал</small></dd></div>
+    <div><dt>Работают слабо</dt><dd>22<small>нерегулярно или без метода</small></dd></div>
+    <div><dt>Процесса нет</dt><dd>7<small>нужно создать</small></dd></div>
+    <div><dt>Находок</dt><dd>10<small>3 критические</small></dd></div>
+  </dl>
+</header>
+
+<section id="findings">
+  <p class="eyebrow">Что я увидел</p>
+  <h2>Десять находок</h2>
+  <div class="prose">
+    <p>Порядок — по деньгам, а не по разделам интервью. Первые три считаю критическими: они искажают решения, которые вы принимаете каждый день.</p>
+  </div>
+
+  <div class="finding crit">
+    <div class="top"><span class="num">01</span><h3>У вас два разных ДРР, и решения принимаются по неправильному</h3><span class="chip crit">проверить сегодня</span></div>
+    <p>Рекламный кабинет WB считает ДРР от <strong>суммы заказов</strong>. Ваша реальная выручка — это выкупы, а выкуп у вас 35–40 %. Значит кабинетный ДРР и фактический различаются примерно в три раза.</p>
+    <div class="calc">ДРР кабинета     8–10 %  (от заказов)
+Выкуп            35 %
+──────────────────────────────
+ДРР фактический  23–29 % (от выкупленной выручки)</div>
+    <p>Менеджер по рекламе крутит ставки ежедневно по кабинетной цифре. Финансовый директор раз в неделю показывает фактическую. Между этими двумя числами и лежит вопрос, окупается реклама или нет. При целевой марже 30 % фактический ДРР 25 % означает, что реклама забирает почти всю прибыль артикула.</p>
+    <p><strong>Что сделать сейчас:</strong> взять один артикул за прошлый месяц и посчитать обе цифры вручную. Если разрыв подтвердится — пересобрать пороги ДРР от маржи, а не от выручки (формула в разделе ответов).</p>
+  </div>
+
+  <div class="finding crit">
+    <div class="top"><span class="num">02</span><h3>Возвраты со всей страны стекаются в Москву, а вымываются региональные склады</h3><span class="chip crit">структурный перекос</span></div>
+    <p>Из ответа F10: все возвраты идут на ПВЗ, привязанные к московскому фулфилменту. Из C9: возвращается 60–65 % заказов. Значит по каждому SKU:</p>
+    <div class="calc">Региональный FF:  расход = 100 % заказов, приход = только подсорт
+Московский FF:    расход = 100 % заказов, приход = подсорт + возвраты со всех регионов</div>
+    <p>Если формула подсорта одинакова для всех семи складов, Москва системно затаривается, а Екатеринбург, Новосибирск и Краснодар системно недогружены. Это одновременно и замороженные деньги, о которых возмущается собственник, и аутстоки в регионах.</p>
+    <p><strong>Что сделать:</strong> в расчёт подсорта ввести отдельный член «возвратный приток» для московского склада и вычитать его из потребности. Возврат идёт 7–15 дней — это лаг, который тоже надо заложить.</p>
+  </div>
+
+  <div class="finding crit">
+    <div class="top"><span class="num">03</span><h3>Фулфилмент стоит вам больше, чем кажется: ~356 ₽ на проданную единицу</h3><span class="chip crit">17 % от цены</span></div>
+    <p>Вы считаете 57 ₽ за обработку и 104 ₽ за возврат. Но платите вы за <em>заказы</em>, а выручку получаете с <em>выкупов</em>. На 100 заказов при выкупе 35 %:</p>
+    <div class="calc">100 заказов × 57 ₽    =  5 700 ₽   первичная обработка
+ 65 возвратов × 104 ₽ =  6 760 ₽   забор, переупаковка, повторная отправка
+──────────────────────────────────
+итого                   12 460 ₽ на 35 проданных единиц
+на единицу                  356 ₽ = 17 % от средней цены 2 100 ₽</div>
+    <p>Это вторая по величине статья после комиссии WB (34,5 %). И это делает процент выкупа главным рычагом вашей экономики — сильнее цены и сильнее рекламы.</p>
+    <div class="calc">выкуп 35 % → 356 ₽/шт
+выкуп 45 % → 254 ₽/шт     +102 ₽ маржи на единицу
+выкуп 55 % → 190 ₽/шт     +166 ₽ маржи на единицу</div>
+    <p>Десять пунктов выкупа стоят примерно 100 ₽ на единицу — это 5 % маржи, которые не требуют ни повышения цены, ни снижения себестоимости. Работа с размерной сеткой, посадкой и слайдом с замерами окупается здесь, а не в конверсии.</p>
+  </div>
+
+  <div class="finding warn">
+    <div class="top"><span class="num">04</span><h3>Юнит-экономика обновляется раз в сезон, а все её входы плавают постоянно</h3><span class="chip warn">устаревшая база</span></div>
+    <p>Из D7: пересчёт раз в сезон. Из B5 и D1: себестоимость плавающая — ткань, фурнитура, работы, курс. Из D2: карго 28–34 ₽ в зависимости от города. Из C9: выкуп гуляет от 17 до 60 % по артикулам.</p>
+    <p>Получается, что решения о цене, об участии в акции и о пороге ДРР принимаются по числам, которым до полугода. При марже 30 % ошибка в себестоимости на 5 % съедает шестую часть прибыли, и вы её не увидите до финотчёта.</p>
+    <p><strong>Что сделать:</strong> юнит-экономика должна пересчитываться при каждом изменении любого входа, а не по календарю. Это первый кандидат на автоматизацию после РНП.</p>
+  </div>
+
+  <div class="finding warn">
+    <div class="top"><span class="num">05</span><h3>Лид-тайм 30–45 дней, срывы до 60, точки перезаказа нет</h3><span class="chip warn">причина обеих бед</span></div>
+    <div class="calc">пошив 14–45 дней  +  карго 14–20 дней  +  приёмка 2–3 дня  =  30–68 дней
+плюс ткань из Китая, если её нет на складе:                   +30 дней</div>
+    <p>При таком плече решение «на глаз» не может быть верным в принципе: вы принимаете его за полтора-два месяца до того, как увидите результат. Отсюда обе ваши противоположные боли одновременно — перезатарка (M1) и подсорты в авральном режиме (C5).</p>
+    <p>Формула точки перезаказа, которую вы просили, — в разделе ответов ниже. Она двухуровневая: отдельно сигнал «отгрузить с бишкекского склада» и отдельно «запускать в производство».</p>
+  </div>
+
+  <div class="finding warn">
+    <div class="top"><span class="num">06</span><h3>Упущенные продажи не попадают в план-факт</h3><span class="chip warn">искажение базы</span></div>
+    <p>Из C11: упущенную выручку видите в MPStats, но в финансовый план не заводите. Значит невыполнение плана выглядит одинаково в двух совершенно разных случаях: рынок не купил и вы не смогли поставить. А производство срывает сроки регулярно (E9).</p>
+    <p>Следствие серьёзнее, чем кажется: план следующего сезона вы строите от факта прошлого. Если факт занижен аутстоками, вы систематически недозаказываете и закрепляете дефицит.</p>
+  </div>
+
+  <div class="finding good">
+    <div class="top"><span class="num">07</span><h3>Концентрация 80–90 % выручки в топ-10 — это подарок для автоматизации</h3><span class="chip good">хорошая новость</span></div>
+    <p>15 активных артикулов, ~550–600 баркодов, топ-10 даёт почти всю выручку. Значит автоматизировать нужно ~400 SKU, а не абстрактные две тысячи. Это управляемый объём: ежедневный полный пересчёт по всем метрикам, по всем семи складам, до размера — вполне реален.</p>
+    <p>Обратная сторона: при такой концентрации сбой по одному артикулу — это минус несколько процентов оборота. Мониторинг топ-10 должен быть ежедневным и жёстким.</p>
+  </div>
+
+  <div class="finding warn">
+    <div class="top"><span class="num">08</span><h3>700–1000 ответов на отзывы в неделю руками</h3><span class="chip warn">самая тяжёлая механика</span></div>
+    <p>Из G12: больше сотни отзывов и вопросов в день, шаблоны на 4–5 звёзд, вручную на 1–3. Это самая крупная механическая нагрузка на категорийных менеджеров, и она отнимает время у работы, которую кроме них никто не сделает.</p>
+    <p>Причём ценность отзывов вы сейчас теряете дважды: отвечаете, но не извлекаете из них причины возвратов. А именно там лежит рычаг из находки 03.</p>
+  </div>
+
+  <div class="finding warn">
+    <div class="top"><span class="num">09</span><h3>Нет справочника товара — фундамент отсутствует</h3><span class="chip warn">блокирует всё</span></div>
+    <p>Из B4, B5, K7, K9: единого справочника нет, данные в разрозненных Google-таблицах, историю собрать сложно. Любая автоматизация, построенная поверх этого, будет рассыпаться при каждом изменении.</p>
+    <p>Хорошая новость: у вас 15 артикулов и понятная структура характеристик (форма воротника, манжет, карманы, тип кроя, ткань). Справочник собирается за один-два дня и дальше живёт сам.</p>
+  </div>
+
+  <div class="finding">
+    <div class="top"><span class="num">10</span><h3>Самовыкупы как штатный инструмент</h3><span class="chip">зона решения человека</span></div>
+    <p>Из G13: 20 выкупов на цвет при запуске и серии выкупов для перекрытия негатива. Отмечаю фактом: это ваше решение и ваш риск, площадка такие практики отслеживает. В архитектуре автоматизации я это оставлю за человеком — агент может считать, сколько отзывов нужно для целевого рейтинга, но не должен планировать выкупы как рутинную операцию.</p>
+  </div>
+</section>
+
+<section id="registry">
+  <p class="eyebrow">Реестр</p>
+  <h2>76 процессов по отделам</h2>
+  <div class="prose">
+    <p>Колонка «автоматизация» — предварительная оценка: <span class="a3">высокая</span> означает, что процесс можно закрыть почти целиком; <span class="a2">частичная</span> — агент готовит решение, человек утверждает; <span class="a1">ручная</span> — остаётся за людьми.</p>
+    <p>Статус: <span class="st st-ok">есть</span> — процесс работает, <span class="st st-weak">слабый</span> — работает нерегулярно или без метода, <span class="st st-none">нет</span> — процесса не существует, его нужно создать.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>ID</th><th>Процесс</th><th>Кто</th><th>Частота</th><th>Где живёт</th><th>Статус</th><th>Автоматизация</th></tr></thead>
+      <tbody>
+
+        <tr class="dept-row"><td colspan="7"><span class="dept">РОП / коммерческий директор<b>20 процессов</b></span></td></tr>
+        <tr><td class="id">РОП-01</td><td>Расчёт рангов сезонности, определение дат старта, пика и распродажи</td><td>РОП</td><td>раз в сезон</td><td>Google Sheets</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РОП-02</td><td>Построение плана продаж: выручка, штуки, маржа, декомпозиция до артикула и дня</td><td>РОП</td><td>раз в сезон</td><td>Google Sheets</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РОП-03</td><td>Перевод плана продаж в план производства</td><td>РОП → технолог</td><td>месяц / сезон</td><td>Google Sheets</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РОП-04</td><td>Утверждение цены по артикулу</td><td>РОП</td><td>постоянно</td><td>кабинет WB</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РОП-05</td><td>Решение об участии в акции WB с расчётом экономики</td><td>РОП</td><td>по календарю акций</td><td>Google Sheets, вручную</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РОП-06</td><td>Установка и контроль лимитов ДРР</td><td>РОП</td><td>постоянно</td><td>устно / чат</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РОП-07</td><td>Решение о запуске нового артикула и о выводе из ассортимента</td><td>РОП + технолог + собственник</td><td>по циклу</td><td>совещание</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РОП-08</td><td>Недельное совещание с категорийными и старшим логистом</td><td>РОП</td><td>еженедельно</td><td>созвон</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РОП-09</td><td>Недельное совещание с финдиректором и собственником</td><td>РОП</td><td>еженедельно</td><td>созвон, финотчёт WB + РАСК</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РОП-10</td><td>Ежедневные оперативные созвоны с категорийными, логистом, технологом, собственником</td><td>РОП</td><td>несколько раз в день</td><td>созвоны, Telegram</td><td class="st st-ok">есть</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">РОП-11</td><td>Подготовка отчётов собственнику: текст, таблицы, графики</td><td>РОП</td><td>по требованию</td><td>PDF вручную, 4–8 ч</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РОП-12</td><td>Постановка задач категорийным по итогам анализа</td><td>РОП</td><td>ежедневно</td><td>Telegram, Trello почти не используется</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РОП-13</td><td>Расчёт и поддержание юнит-экономики</td><td>РОП + категорийные</td><td>раз в сезон</td><td>Google Sheets</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РОП-14</td><td>ABC-анализ по выручке, марже и оборачиваемости</td><td>РОП</td><td>раз в 3 месяца</td><td>Google Sheets</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РОП-15</td><td>XYZ-анализ стабильности спроса</td><td>—</td><td>—</td><td>—</td><td class="st st-none">нет</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РОП-16</td><td>Ведение таблицы РНП: план-факт по ключевым метрикам</td><td>РОП</td><td>задумано ежедневно</td><td>заброшено</td><td class="st st-none">нет</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РОП-17</td><td>Оценка потенциала новой модели, прогноз продаж до запуска</td><td>РОП</td><td>перед запуском</td><td>MPStats, вручную</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РОП-18</td><td>Координация трендолога и разбор трендбука</td><td>РОП</td><td>раз в полгода</td><td>внешний подрядчик</td><td class="st st-ok">есть</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">РОП-19</td><td>Найм и замена специалистов</td><td>РОП + HR по необходимости</td><td>по потребности</td><td>внешний HR</td><td class="st st-weak">слабый</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">РОП-20</td><td>Учёт упущенных продаж и корректировка плана</td><td>—</td><td>—</td><td>—</td><td class="st st-none">нет</td><td class="a3">высокая</td></tr>
+
+        <tr class="dept-row"><td colspan="7"><span class="dept">Категорийный менеджер — продажи<b>2 человека · 13 процессов</b></span></td></tr>
+        <tr><td class="id">КМ-01</td><td>Ежедневный мониторинг CTR, конверсии в корзину и в заказ, процента выкупа по артикулу</td><td>категорийный</td><td>ежедневно</td><td>кабинет WB, MPStats</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-02</td><td>Проверка остатков, выявление выпавших размеров</td><td>категорийный</td><td>ежедневно</td><td>кабинет, таблица логиста</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-03</td><td>Проверка, находится ли цена в рынке</td><td>категорийный</td><td>ежедневно</td><td>вручную</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-04</td><td>Мониторинг цен конкурентов</td><td>категорийный</td><td>ежедневно, несколько часов</td><td>вручную, MPStats</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-05</td><td>Мониторинг позиций конкурентов в выдаче</td><td>категорийный</td><td>ежедневно</td><td>вручную</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-06</td><td>Мониторинг объёмов продаж конкурентов</td><td>категорийный</td><td>еженедельно</td><td>MPStats</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-07</td><td>Составление заявки на подсорт по складу и размеру</td><td>категорийный + логист</td><td>еженедельно</td><td>новый инструмент + Sheets</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-08</td><td>Повышение цены на дефицитные размеры и артикулы</td><td>категорийный</td><td>по ситуации</td><td>кабинет WB</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">КМ-09</td><td>Контроль сборки FBS-заказов фулфилментами</td><td>категорийный</td><td>ежедневно</td><td>Telegram, 7 групп</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">КМ-10</td><td>Подготовка цифр к недельному совещанию</td><td>категорийный</td><td>еженедельно</td><td>Google Sheets вручную</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-11</td><td>Предварительные расчёты по цене, акции, запуску, выводу артикула</td><td>категорийный</td><td>по запросу</td><td>Google Sheets</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-12</td><td>Ведение карточек Ozon: адаптация под схему «один размер — одна карточка»</td><td>категорийный</td><td>запуск</td><td>кабинет Ozon</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КМ-13</td><td>Отслеживание позиций собственных карточек по пулу ключевых запросов</td><td>категорийный + реклама</td><td>ежедневно</td><td>Бидер, виджеты</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+
+        <tr class="dept-row"><td colspan="7"><span class="dept">Контент<b>отдельного менеджера нет · 12 процессов</b></span></td></tr>
+        <tr><td class="id">КТ-01</td><td>Диагональное сканирование: конкурентный анализ визуальной воронки</td><td>категорийный</td><td>на новый артикул, к сезону</td><td>вручную</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">КТ-02</td><td>Составление ТЗ дизайнеру на визуальную воронку</td><td>категорийный</td><td>на артикул</td><td>Google Sheets</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КТ-03</td><td>Сбор семантического ядра по ключевым запросам</td><td>категорийный</td><td>на артикул</td><td>MPStats, Claude Code</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КТ-04</td><td>Написание названия и описания карточки</td><td>категорийный</td><td>на артикул</td><td>вручную с нуля</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КТ-05</td><td>Заполнение характеристик карточки</td><td>категорийный</td><td>на артикул</td><td>кабинет WB</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КТ-06</td><td>Перенос размерной таблицы от технолога в карточку и в ТЗ на слайд</td><td>категорийный</td><td>на артикул</td><td>вручную</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КТ-07</td><td>Публикация и обновление карточки</td><td>категорийный</td><td>на артикул, к сезону</td><td>кабинет WB</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">КТ-08</td><td>Организация A/B-теста обложек, оценка по CTR</td><td>категорийный + реклама</td><td>на артикул</td><td>Марпла, 1000 показов на вариант</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">КТ-09</td><td>Ответы на отзывы и вопросы: 700–1000 в неделю</td><td>категорийный / ассистент</td><td>1–2 раза в день</td><td>кабинет WB, вручную</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КТ-10</td><td>Извлечение из отзывов причин возвратов и дефектов</td><td>—</td><td>—</td><td>—</td><td class="st st-none">нет</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">КТ-11</td><td>Управление рейтингом карточки, отработка негатива</td><td>категорийный</td><td>по ситуации</td><td>самовыкупы</td><td class="st st-weak">слабый</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">КТ-12</td><td>Решение о переработке карточки при падении конверсий</td><td>категорийный</td><td>по ситуации</td><td>без формального порога</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+
+        <tr class="dept-row"><td colspan="7"><span class="dept">Дизайн<b>штатный в отпуске, аутсорс приостановлен · 7 процессов</b></span></td></tr>
+        <tr><td class="id">ДЗ-01</td><td>Разработка визуальной воронки по ТЗ: 15–25 слайдов</td><td>дизайнер</td><td>на артикул</td><td>2–7 дней</td><td class="st st-weak">слабый</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">ДЗ-02</td><td>Создание макета инфографики с нуля для нового артикула</td><td>дизайнер</td><td>на артикул</td><td>2–7 дней</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">ДЗ-03</td><td>Адаптация макета под вариации расцветок</td><td>дизайнер</td><td>на цвет</td><td>шаблон</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">ДЗ-04</td><td>Подготовка дополнительных слайдов под A/B-тест</td><td>дизайнер</td><td>на артикул</td><td>—</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">ДЗ-05</td><td>Генерация изображений нейросетями вместо съёмки</td><td>дизайнер</td><td>растущая доля</td><td>—</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">ДЗ-06</td><td>Организация фотосъёмки: студия, модели, 20–30 кадров на артикул</td><td>дизайнер + категорийный</td><td>раз в сезон, на новинку</td><td>аренда</td><td class="st st-ok">есть</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">ДЗ-07</td><td>Ведение брендбука и гайдлайнов по инфографике</td><td>—</td><td>—</td><td>—</td><td class="st st-none">нет</td><td class="a2">частичная</td></tr>
+
+        <tr class="dept-row"><td colspan="7"><span class="dept">Реклама<b>1 человек · 10 процессов</b></span></td></tr>
+        <tr><td class="id">РК-01</td><td>Корректировка ставок в кампаниях</td><td>менеджер по рекламе</td><td>несколько раз в день</td><td>Бидер, вручную</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РК-02</td><td>Мониторинг позиций по ключевым запросам</td><td>менеджер по рекламе</td><td>ежедневно</td><td>Бидер, полуручной</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РК-03</td><td>Выбор комбинации типов кампаний под стадию жизненного цикла артикула</td><td>менеджер по рекламе</td><td>по ситуации</td><td>экспертно</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РК-04</td><td>Запуск и остановка кампаний</td><td>менеджер по рекламе</td><td>по ситуации</td><td>без формального порога</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РК-05</td><td>Контроль ДРР в границах 8–10 % и 30–35 % для новинок</td><td>менеджер по рекламе</td><td>ежедневно</td><td>кабинет WB</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РК-06</td><td>Проверка связки «реклама ↔ остаток» перед разгоном</td><td>менеджер по рекламе</td><td>перед разгоном</td><td>вручную</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РК-07</td><td>Открутка показов под A/B-тест</td><td>менеджер по рекламе</td><td>на тест</td><td>1000 показов на вариант</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РК-08</td><td>Внешний трафик: подбор площадок, анализ аудитории, расчёт окупаемости</td><td>ассистент, сейчас в отпуске</td><td>по кампаниям</td><td>вручную</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">РК-09</td><td>Регулярная отчётность по рекламе</td><td>—</td><td>—</td><td>только недельный финотчёт</td><td class="st st-none">нет</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">РК-10</td><td>Учёт ассоциированных продаж в склейке при оценке убыточных кампаний</td><td>—</td><td>—</td><td>—</td><td class="st st-none">нет</td><td class="a2">частичная</td></tr>
+
+        <tr class="dept-row"><td colspan="7"><span class="dept">Логистика — интерфейс с продажами<b>2 человека · 7 процессов</b></span></td></tr>
+        <tr><td class="id">ЛГ-01</td><td>Ведение сводного остатка: производство, в пути, фулфилменты, WB</td><td>логист</td><td>постоянно</td><td>Google Sheets</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">ЛГ-02</td><td>Понедельный расчёт подсорта по каждому фулфилменту до размера</td><td>логист + категорийный</td><td>еженедельно</td><td>новый инструмент</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">ЛГ-03</td><td>Формирование карго-отправок: 2–4 тыс. штук в неделю</td><td>логист</td><td>еженедельно</td><td>Red Express</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">ЛГ-04</td><td>Взаимодействие с семью фулфилмент-складами</td><td>логист + категорийный</td><td>ежедневно</td><td>Telegram, 7 групп</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">ЛГ-05</td><td>Контроль приёмки на фулфилменте</td><td>логист</td><td>по поставке</td><td>Telegram</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">ЛГ-06</td><td>Обработка возвратов через московский фулфилмент</td><td>логист + FF</td><td>постоянно</td><td>FF</td><td class="st st-ok">есть</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">ЛГ-07</td><td>Присвоение и контроль баркодов</td><td>логист</td><td>по партии</td><td>вручную</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+
+        <tr class="dept-row"><td colspan="7"><span class="dept">Производство — интерфейс с продажами<b>7 процессов</b></span></td></tr>
+        <tr><td class="id">ПР-01</td><td>Разработка модели: идея, эскиз, лекало, образец, примерка, техописание</td><td>главный технолог</td><td>2–3 недели на модель</td><td>—</td><td class="st st-ok">есть</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">ПР-02</td><td>Адаптация модели под освоенные лекала и типы кроя</td><td>главный технолог</td><td>на модель</td><td>—</td><td class="st st-ok">есть</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">ПР-03</td><td>Ведение табеля размеров и передача категорийному</td><td>главный технолог</td><td>на модель</td><td>таблица</td><td class="st st-ok">есть</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">ПР-04</td><td>Расчёт раскроя по цветам и размерам</td><td>технолог + РОП</td><td>на партию</td><td>исторические данные, данные конкурентов</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+        <tr><td class="id">ПР-05</td><td>Планирование загрузки цеха под план производства</td><td>главный технолог</td><td>месяц</td><td>сырая CRM + Sheets</td><td class="st st-weak">слабый</td><td class="a2">частичная</td></tr>
+        <tr><td class="id">ПР-06</td><td>Привлечение аутсорс-цехов под пики спроса</td><td>собственник</td><td>по потребности</td><td>переговоры</td><td class="st st-ok">есть</td><td class="a1">ручная</td></tr>
+        <tr><td class="id">ПР-07</td><td>Учёт остатка ткани и незавершённого производства</td><td>технолог</td><td>постоянно</td><td>Google Sheets, путаются</td><td class="st st-weak">слабый</td><td class="a3">высокая</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="answers">
+  <p class="eyebrow">Ответы</p>
+  <h2>На то, что вы спросили в ответ</h2>
+
+  <h3>E4. Формула точки перезаказа для вашей схемы</h3>
+  <div class="prose">
+    <p>У вас два разных плеча, поэтому и точек перезаказа должно быть две. Считаются независимо, по каждому SKU до размера.</p>
+  </div>
+<pre><b>Уровень 1 — отгрузить с бишкекского склада на фулфилмент</b>
+   v_ff     скорость <i>заказов</i> на этом FF, шт/день, среднее за 14 дней
+            с поправкой на ранг сезонности следующего периода
+   L_ff     карго 14–20 дней + приёмка 2–3 дня = <b>17–23 дня</b>
+   B_ff     буфер: 90-й перцентиль фактического отклонения срока карго
+   SS_ff    страховой запас = v_ff × 7 дней
+
+   ROP_ff = v_ff × (L_ff + B_ff) + SS_ff
+
+   Сигнал: остаток на этом FF &lt; ROP_ff  →  включить в недельный подсорт
+   Объём:  (v_ff × горизонт_подсорта + SS_ff) − остаток − в_пути
+
+<b>Уровень 2 — запускать в производство</b>
+   V        суммарная скорость заказов по всем семи FF, шт/день
+   L_prod   ткань на складе:  пошив 14–45 + карго 14–20 + приёмка 2–3 = <b>30–68</b>
+            ткань из Китая:   + 30 дней = <b>60–98</b>
+   B_prod   буфер на срыв сроков производства — по вашему факту это <b>+14–30 дней</b>
+   SS_tot   страховой запас = V × 14 дней
+
+   ROP_prod = V × (L_prod + B_prod) + SS_tot
+
+   Сигнал: (остаток Бишкек + в пути + все FF) &lt; ROP_prod  →  в план производства
+
+<b>Поправка на возвраты — то, чего сейчас нет</b>
+   Склад вымывается заказами, а пополняется подсортом <i>и возвратами</i>.
+   Возвраты приходят только в Москву, с лагом 7–15 дней.
+
+   Москва:   потребность = v × горизонт − остаток − в_пути − <b>R</b>
+             где R = ожидаемый возвратный приток
+                   = заказы_всех_FF за (горизонт − лаг) × (1 − выкуп) × доля_годных
+   Регионы:  потребность = v × горизонт − остаток − в_пути
+             без вычета возвратов
+
+<i>Без этой поправки Москва системно затаривается, а регионы стоят в дефиците.</i></pre>
+
+  <h3>I5. Как считать окупаемость рекламы</h3>
+  <div class="prose">
+    <p>Вы правы, что по марже. Но ключевое не это, а знаменатель: считать надо от выкупленной выручки, а не от заказов.</p>
+  </div>
+<pre><b>Маржа до рекламы, на одну проданную единицу</b>
+   M = Ц − Ц×0,345 − FF − K − C − Н
+
+   Ц    цена со скидкой продавца, без СПП
+   Ц×0,345   комиссия WB
+   FF   фулфилмент на проданную единицу
+        = (57 + (1/выкуп − 1) × 104) — см. находку 03
+   K    карго Бишкек → FF, 28–34 ₽
+   C    себестоимость производства  ← <b>этого числа у меня нет</b>
+   Н    налог 1–2 %
+
+<b>Предельный ДРР — граница, где реклама съедает всю маржу</b>
+   ДРР_max = M / Ц   (от выкупленной выручки)
+
+<b>Целевой ДРР при плановой марже 30 %</b>
+   ДРР_цель = (M − 0,30 × Ц) / Ц
+
+<b>Пересчёт кабинетной цифры в фактическую</b>
+   ДРР_факт = ДРР_кабинета / выкуп
+
+   при выкупе 35 %:  кабинетные 10 %  →  фактические 28,6 %
+   при выкупе 55 %:  кабинетные 10 %  →  фактические 18,2 %
+
+<i>Порог «отключать» ставьте по ДРР_факт, а не по кабинетному.
+Для новинок допустим ДРР_факт выше предельного — но тогда это
+осознанная инвестиция в разгон с назначенным сроком и потолком.</i></pre>
+
+  <h3>I7. Пороги, при которых решение об отключении вообще можно принимать</h3>
+  <div class="prose">
+    <p>Вопрос вы оставили пустым — предлагаю правило. Ниже этих объёмов данных решение не принимается ни в какую сторону, кампания просто продолжает работать под наблюдением:</p>
+    <ul class="tight">
+      <li><strong>Минимум 100 кликов</strong> по связке кампания × SKU, иначе конверсия статистически неотличима от шума.</li>
+      <li><strong>Минимум 10 заказов</strong> для суждения о ДРР.</li>
+      <li><strong>Минимум 14 дней</strong> с учётом вашего горизонта атрибуции 7–10 дней — иначе выкупы по последним заказам ещё не состоялись, и ДРР_факт посчитан на неполной базе.</li>
+      <li>Отключение только при <strong>двух подряд</strong> недельных периодах выше предельного ДРР — единичная неделя может быть сезонным шумом.</li>
+    </ul>
+  </div>
+
+  <h3>K8. Данные, которых вам не хватает для решений</h3>
+  <div class="prose">
+    <p>Вы просили список — вот он, по приоритету. Отмечено, что берётся из API, что нужно завести руками один раз, а что должно накапливаться само.</p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Данные</th><th>Зачем</th><th>Откуда взять</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Себестоимость производства по SKU, в рублях</strong></td><td>Без неё не считается ни маржа, ни предельный ДРР, ни точка безубыточности</td><td>завести руками, обновлять при смене ткани или тарифов</td></tr>
+        <tr><td>Процент выкупа по SKU до размера и до цвета</td><td>Главный множитель экономики. Сейчас видите усреднённо по артикулу</td><td>API WB, отчёт о продажах</td></tr>
+        <tr><td>Скорость заказов по каждому FF до размера</td><td>Точка перезаказа и подсорт</td><td>API WB + таблица логиста</td></tr>
+        <tr><td>Возвратный приток по дням, с привязкой к исходному складу</td><td>Поправка из находки 02</td><td>API WB, отчёт о возвратах</td></tr>
+        <tr><td>Фактический лид-тайм по каждой партии: план и факт по этапам</td><td>Буфер в точке перезаказа считается по факту, а не по обещанию</td><td>накапливать: дата запуска, выхода из цеха, отправки, приёмки</td></tr>
+        <tr><td>Упущенные продажи в штуках и рублях</td><td>Корректировка плана, отделение «не купили» от «не поставили»</td><td>расчёт: дни аутстока × скорость до аутстока</td></tr>
+        <tr><td>ДРР по SKU от выкупленной выручки</td><td>Реальная окупаемость рекламы</td><td>API WB: реклама + продажи, связать</td></tr>
+        <tr><td>Причины возвратов в разрезе SKU и размера</td><td>Рычаг выкупа. Сейчас отзывы читаются, но не агрегируются</td><td>разбор отзывов + отчёт о возвратах</td></tr>
+        <tr><td>Замороженные деньги: склад, в пути, на FF</td><td>Оборачиваемость, о которой спрашивает собственник</td><td>остатки × себестоимость</td></tr>
+        <tr><td>Цены и позиции конкурентов, с историей</td><td>Сейчас смотрится вручную и нигде не накапливается</td><td>MPStats API, сохранять ежедневный срез</td></tr>
+        <tr><td>История собственных цен и реакции спроса</td><td>Эластичность считается только по накопленной истории</td><td>накапливать ежедневный срез цены и заказов</td></tr>
+        <tr><td>Единый справочник SKU</td><td>Ключ, по которому связываются все остальные данные</td><td>завести руками один раз</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>H6. Брендбук</h3>
+  <div class="prose">
+    <p>Помогу, но это отдельная работа и делать её сейчас рано. Брендбук имеет смысл после того, как заработает A/B-тестирование с накопленной историей: тогда гайдлайн будет описывать то, что у вас <em>действительно</em> даёт CTR, а не то, что нам кажется красивым. Вернёмся к этому, когда наберётся статистика по тестам.</p>
+  </div>
+</section>
+
+<section id="gap">
+  <p class="eyebrow">Блокер</p>
+  <h2>Одно число, без которого дальше нельзя</h2>
+  <div class="prose">
+    <p>В ответе D1 вы сказали, что себестоимость считается в деньгах, но самих чисел не привели. Без себестоимости единицы нельзя посчитать ни маржу, ни предельный ДРР, ни точку безубыточности, ни экономику акции — то есть ровно то, ради чего всё и затевается.</p>
+    <p>Нужно по каждому активному артикулу, в рублях на единицу:</p>
+    <ul class="tight">
+      <li>ткань — расход в метрах × цена метра</li>
+      <li>фурнитура</li>
+      <li>крой, пошив, ВТО, упаковка — сдельно или через ФОТ на единицу</li>
+      <li>амортизация и накладные, разнесённые на единицу</li>
+      <li>заложенный брак 5 %</li>
+    </ul>
+    <p>Достаточно по десяти артикулам, дающим 80–90 % выручки. Остальные подтянутся.</p>
+  </div>
+
+  <div class="note">
+    <span class="tag">Что дальше</span>
+    <p>Реестр закрыт: 76 процессов. Из них 40 имеют высокий потенциал автоматизации, 22 сегодня работают нерегулярно или без метода, а 7 не существуют как процесс и их нужно создать с нуля. Следующий шаг — архитектура автоматизации: какие процессы объединяются в одного агента, какие остаются навыками, что требует единой базы данных, а что можно закрыть уже сейчас поверх Google-таблиц и API WB.</p>
+    <p>По вашим приоритетам из M5 и M7 первым кандидатом идёт РНП с готовыми решениями по проблемным точкам — она же закрывает разом РОП-16, КМ-01, КМ-02, КМ-03 и РК-05.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Составлено по интервью от 17 августа 2026. Исходные ответы — <code>docs/interview/01-answers-raw.md</code>, вопросы — <code>docs/interview/01-sales-content-design-ads.md</code>.</p>
+  <p>Числа в находках 01–03 рассчитаны по данным ваших ответов: комиссия 34,5 % (D4), фулфилмент 57 и 104 ₽ (D3), карго 28–34 ₽ (D2), выкуп 35–40 % (C9), средняя цена 2 100 ₽ (B9), ДРР 8–10 % (I4). Себестоимость производства в расчёты не входит — она не была названа.</p>
+</footer>
+
+</div>
