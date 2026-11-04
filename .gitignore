@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 trader/
 *.token
+service/config.json

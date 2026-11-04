@@ -1,0 +1,18 @@
+{
+  "project_dir": ".",
+  "pack_dir": "trader-skill",
+  "telegram": {
+    "allowed_user_ids": [],
+    "chat_id": null
+  },
+  "timezone_offset_hours": 3,
+  "market_hours": {"open": "10:00", "close": "18:50", "days": [0, 1, 2, 3, 4]},
+  "max_daily_loss_pct": 3,
+  "jobs": [
+    {"name": "quotes",   "every_min": 15, "market_hours_only": true},
+    {"name": "alerts",   "every_min": 5,  "market_hours_only": true},
+    {"name": "guard",    "every_min": 10, "market_hours_only": true},
+    {"name": "snapshot", "at": "09:55", "days": [0, 1, 2, 3, 4]},
+    {"name": "digest",   "at": "18:55", "days": [0, 1, 2, 3, 4]}
+  ]
+}

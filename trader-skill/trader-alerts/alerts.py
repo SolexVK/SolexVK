@@ -253,8 +253,29 @@ def fetch(url, timeout=20):
         raise AlertError("could not reach %s: %s" % (url.split("/")[2], e.reason))
 
 
-def get_quotes(symbols, source="yahoo", offline=None, pause=PAUSE):
+def quotes_from_file(symbols, path):
+    """Quotes from trader/prices.json (written by trader-tinvest quote or alerts quote). No network."""
+    doc = _read(path, None)
+    if not doc or not doc.get("prices"):
+        return {}, ["no prices in %s (run tinvest.py quote --write first)" % path]
+    quotes, errors = {}, []
+    for sym in symbols:
+        sym = sym.upper()
+        p = doc["prices"].get(sym)
+        if p is None:
+            errors.append("no price for %s in %s" % (sym, path))
+            continue
+        d = (doc.get("detail") or {}).get(sym) or {}
+        quotes[sym] = {"symbol": sym, "price": float(p), "open": None, "high": None, "low": None,
+                       "prev_close": d.get("prev_close"), "time": d.get("time") or doc.get("as_of"),
+                       "source": "file"}
+    return quotes, errors
+
+
+def get_quotes(symbols, source="yahoo", offline=None, pause=PAUSE, prices_file="trader/prices.json"):
     """{SYM: quote} and [errors]. One request per ticker, with a pause between."""
+    if source == "file":
+        return quotes_from_file(symbols, prices_file)
     quotes, errors = {}, []
     for i, sym in enumerate(symbols):
         sym = sym.upper()
@@ -457,12 +478,12 @@ def cmd_check(a):
     now = parse_now(a.now)
     status = market_status(now)
     syms = _dedupe([str(r.get("symbol", "")).upper() for r in rules if r.get("type") != "opening_bell"])
-    quotes, errors = (get_quotes(syms, a.source, a.offline) if syms else ({}, []))
+    quotes, errors = (get_quotes(syms, a.source, a.offline, prices_file=a.prices_out) if syms else ({}, []))
     state = _read(a.state, {})
     rings, state = evaluate(rules, quotes, status, state, now)
     if not a.no_write:
         _write(a.state, state)
-        if quotes:
+        if quotes and a.source != "file":
             write_prices(a.prices_out, quotes, now, a.source)
     if a.json:
         print(json.dumps({"market": status, "rings": rings, "errors": errors,
@@ -548,7 +569,8 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd")
 
     def net(p):
-        p.add_argument("--source", default="yahoo", choices=["yahoo", "stooq"])
+        p.add_argument("--source", default="yahoo", choices=["yahoo", "stooq", "file"],
+                       help="file: prices from trader/prices.json (MOEX via trader-tinvest), no network")
         p.add_argument("--offline", metavar="DIR", help="read <source>-<TICKER>.json|csv files, no network")
         p.add_argument("--now", help="pretend it is this time (ISO; no offset = New York time)")
         p.add_argument("--json", action="store_true")

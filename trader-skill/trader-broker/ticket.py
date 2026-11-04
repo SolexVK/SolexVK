@@ -392,6 +392,8 @@ def cmd_approve(a):
            "symbol": str(order.get("symbol", "")).upper(), "side": order.get("side"),
            "plain": plain(order), "status": "approved", "reply": a.reply,
            "paper": bool(cfg.get("paper", True)), "broker": cfg.get("broker", "alpaca")}
+    if a.via:
+        rec["via"] = a.via  # which channel carried the yes, e.g. telegram:<user id>:<callback id>
     state.setdefault("orders", []).append(rec)
     write_json(a.state, state)
     print("Recorded your yes for order %d: %s." % (a.index, plain(order)))
@@ -489,6 +491,7 @@ def main(argv=None):
     common(p)
     p.add_argument("--index", type=int, required=True)
     p.add_argument("--reply", required=True, help="the user's reply, word for word")
+    p.add_argument("--via", help="channel of the yes, recorded as is (chat, telegram:<user>:<callback>)")
     p = sub.add_parser("decline", help="record a no")
     common(p)
     p.add_argument("--index", type=int, required=True)
