@@ -55,13 +55,27 @@ class _SameListRedirects(urllib.request.HTTPRedirectHandler):
             self, req, fp, code, msg, headers, newurl)
 
 
-def proxy_handler():
-    """Direct connections by default: the hosts we talk to (T-Bank, SEC, Telegram)
-    need no proxy, and a system or VPN proxy with a password answers 407 to urllib.
-    To go through a proxy on purpose: TRADER_PROXY=http://user:pass@host:port
-    (used for https). TRADER_PROXY=system uses what the OS / HTTPS_PROXY says."""
-    p = os.environ.get("TRADER_PROXY", "").strip()
-    if not p:
+PROXY_VARS = (  # (hosts, environment variable), first match wins; TRADER_PROXY is the fallback
+    (TELEGRAM_HOSTS, "TELEGRAM_PROXY"),
+    (TINVEST_HOSTS, "TINVEST_PROXY"),
+)
+
+
+def proxy_setting(host):
+    """The proxy setting for this host: "" (direct), "system", or a proxy URL.
+    TELEGRAM_PROXY covers api.telegram.org, TINVEST_PROXY covers T-Bank, TRADER_PROXY
+    covers everything else. Direct by default: T-Bank needs no proxy from Russia, and a
+    system proxy with a password answers 407 to urllib. Telegram from Russia usually
+    needs one: TELEGRAM_PROXY=http://user:pass@host:port, or "system"."""
+    for hosts, var in PROXY_VARS:
+        if host in hosts and os.environ.get(var, "").strip():
+            return os.environ[var].strip()
+    return os.environ.get("TRADER_PROXY", "").strip()
+
+
+def proxy_handler(host=""):
+    p = proxy_setting(host)
+    if not p or p.lower() == "direct":
         return urllib.request.ProxyHandler({})
     if p.lower() == "system":
         return urllib.request.ProxyHandler()
@@ -73,6 +87,6 @@ def open_url(req, timeout=60, allowed=ALL_HOSTS):
     Returns the response (use it as a context manager). Raises NetError for a
     disallowed host, and urllib's HTTPError / URLError as usual."""
     url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
-    check_url(url, allowed)
-    opener = urllib.request.build_opener(proxy_handler(), _SameListRedirects(allowed))
+    p = check_url(url, allowed)
+    opener = urllib.request.build_opener(proxy_handler((p.hostname or "").lower()), _SameListRedirects(allowed))
     return opener.open(req, timeout=timeout)

@@ -138,6 +138,15 @@ class Network(unittest.TestCase):
             self.assertIn("https", net.proxy_handler().proxies)
             os.environ["TRADER_PROXY"] = "http://me:pw@proxy.local:8080"
             self.assertEqual(net.proxy_handler().proxies["https"], "http://me:pw@proxy.local:8080")
+            # per host: Telegram through its own proxy, T-Bank stays direct
+            os.environ.pop("TRADER_PROXY", None)
+            os.environ["TELEGRAM_PROXY"] = "http://me:pw@tg.local:1080"
+            self.assertEqual(net.proxy_handler("api.telegram.org").proxies["https"], "http://me:pw@tg.local:1080")
+            self.assertEqual(net.proxy_handler("invest-public-api.tbank.ru").proxies, {})
+            os.environ["TINVEST_PROXY"] = "direct"
+            os.environ["TRADER_PROXY"] = "system"
+            self.assertEqual(net.proxy_handler("invest-public-api.tbank.ru").proxies, {})
+            self.assertIn("https", net.proxy_handler("www.sec.gov").proxies)
         finally:
             os.environ.clear()
             os.environ.update(old)

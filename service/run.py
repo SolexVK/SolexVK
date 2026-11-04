@@ -48,8 +48,14 @@ def main(argv=None):
     cfg = load_config(a.config)
     project = os.path.join(ROOT, cfg.get("project_dir", "."))
     pack = Pack(project, os.path.join(ROOT, cfg.get("pack_dir", "trader-skill")))
-    tg = Telegram()
-    me = tg.get_me()
+    try:
+        tg = Telegram()
+        me = tg.get_me()
+    except TgError as exc:
+        print("telegram: %s" % exc, file=sys.stderr)
+        print("Telegram is not reachable directly from some networks. Set TELEGRAM_PROXY "
+              "(docs/windows-start.md, section about proxies) and try again.", file=sys.stderr)
+        return 2
     print("bot: @%s, project: %s" % (me.get("username"), pack.project))
     code, out, err = pack.whoami()
     print(out.strip() or err.strip())
