@@ -1,6 +1,7 @@
 """The audit items fixed on top of the upstream pack, pinned."""
 import json
 import os
+import ssl
 import unittest
 import urllib.request
 
@@ -114,6 +115,26 @@ class PtrDocIds(unittest.TestCase):
                b'<DocID>20099999</DocID></Member></FinancialDisclosure>')
         rows = ptr.parse_index(xml, 2026) if hasattr(ptr, "parse_index") else ptr.index_rows(xml, 2026)
         self.assertEqual([r["doc_id"] for r in rows], ["20099999"])
+
+
+class RussianRoot(unittest.TestCase):
+    def test_bundled_root_matches_the_documented_fingerprint(self):
+        import hashlib
+        import ssl
+        pem = open(net.RUSSIAN_ROOT_PEM, encoding="ascii").read()
+        der = ssl.PEM_cert_to_DER_cert(pem)
+        self.assertEqual(hashlib.sha256(der).hexdigest(), net.RUSSIAN_ROOT_SHA256)
+
+    def test_root_is_added_for_tbank_only(self):
+        net._CTX.clear()
+        tb = net.ssl_context("invest-public-api.tbank.ru")
+        other = net.ssl_context("api.telegram.org")
+        self.assertIsNot(tb, other)
+        names = [c.get("subject", ()) for c in tb.get_ca_certs()]
+        self.assertTrue(any(("commonName", "Russian Trusted Root CA") in sum(s, ()) for s in names))
+        names = [c.get("subject", ()) for c in other.get_ca_certs()]
+        self.assertFalse(any(("commonName", "Russian Trusted Root CA") in sum(s, ()) for s in names))
+        self.assertEqual(tb.verify_mode, ssl.CERT_REQUIRED)
 
 
 class Network(unittest.TestCase):

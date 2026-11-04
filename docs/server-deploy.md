@@ -19,8 +19,22 @@ curl -sS -m 15 -o /dev/null -w 'telegram HTTP %{http_code}\n' https://api.telegr
 ```
 
 Хорошо: `tbank HTTP 401` (сервер отвечает, просто без токена) и
-`telegram HTTP 200` или `404`. Плохо: `000`, таймаут или `403`. Если Т-Банк
-с сервера недоступен, иностранный адрес сервера, и это решается отдельно.
+`telegram HTTP 200`, `302` или `404`. Плохо: `000`, таймаут или `403`.
+
+Если curl к Т-Банку пишет `SSL certificate problem: self-signed certificate
+in certificate chain`, это не блокировка: сертификаты Т-Банка выданы через
+«Russian Trusted Root CA» Минцифры, которого нет в Linux. Сервис доверяет
+этому корню только для хостов Т-Банка (файл
+`trader-skill/common/russian_trusted_root_ca.pem`, отпечаток SHA-256
+`D2:6D:2D:02:31:B7:C3:9F:92:CC:73:85:12:BA:54:10:35:19:E4:40:5D:68:B5:BD:70:3E:97:88:CA:8E:CF:31`,
+источник gu-st.ru). В системное хранилище сервера его ставить не нужно.
+Проверка с этим корнем, из папки с кодом:
+
+```bash
+curl -sS -m 15 --cacert trader-skill/common/russian_trusted_root_ca.pem -o /dev/null -w 'tbank HTTP %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{}' https://sandbox-invest-public-api.tbank.ru/rest/tinkoff.public.invest.api.contract.v1.SandboxService/GetSandboxAccounts
+```
+
+Ожидается `tbank HTTP 401`.
 
 Ещё проверьте версии:
 

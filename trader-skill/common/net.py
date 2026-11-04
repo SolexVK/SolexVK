@@ -14,9 +14,18 @@ Every script that goes online calls open_url() instead of urllib.request.urlopen
 """
 
 import os
+import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+# T-Bank's certificates chain up to the Russian Trusted Root CA (Ministry of Digital
+# Development), which Linux trust stores do not carry. We trust it for T-Bank hosts
+# ONLY, on top of the system roots, never system-wide. Source: gu-st.ru (Gosuslugi),
+# SHA-256 D2:6D:2D:02:31:B7:C3:9F:92:CC:73:85:12:BA:54:10:35:19:E4:40:5D:68:B5:BD:70:3E:97:88:CA:8E:CF:31
+RUSSIAN_ROOT_PEM = os.path.join(HERE, "russian_trusted_root_ca.pem")
+RUSSIAN_ROOT_SHA256 = "d26d2d0231b7c39f92cc738512ba54103519e4405d68b5bd703e9788ca8ecf31"
 
 SEC_HOSTS = frozenset({"www.sec.gov", "data.sec.gov", "efts.sec.gov"})
 HOUSE_HOSTS = frozenset({"disclosures-clerk.house.gov"})
@@ -82,11 +91,30 @@ def proxy_handler(host=""):
     return urllib.request.ProxyHandler({"https": p, "http": p})
 
 
+_CTX = {}
+
+
+def ssl_context(host):
+    """System roots for everyone; for T-Bank hosts also the Russian Trusted Root CA
+    (bundled, or the file in TINVEST_CA_BUNDLE). Verification stays on."""
+    key = "tinvest" if host in TINVEST_HOSTS else "default"
+    if key not in _CTX:
+        ctx = ssl.create_default_context()
+        if key == "tinvest":
+            extra = os.environ.get("TINVEST_CA_BUNDLE", "").strip() or RUSSIAN_ROOT_PEM
+            if os.path.isfile(extra):
+                ctx.load_verify_locations(cafile=extra)
+        _CTX[key] = ctx
+    return _CTX[key]
+
+
 def open_url(req, timeout=60, allowed=ALL_HOSTS):
     """urlopen with the allow list. `req` is a urllib Request or a URL string.
     Returns the response (use it as a context manager). Raises NetError for a
     disallowed host, and urllib's HTTPError / URLError as usual."""
     url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
     p = check_url(url, allowed)
-    opener = urllib.request.build_opener(proxy_handler((p.hostname or "").lower()), _SameListRedirects(allowed))
+    host = (p.hostname or "").lower()
+    opener = urllib.request.build_opener(proxy_handler(host), _SameListRedirects(allowed),
+                                         urllib.request.HTTPSHandler(context=ssl_context(host)))
     return opener.open(req, timeout=timeout)
