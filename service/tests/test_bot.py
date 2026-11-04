@@ -7,7 +7,7 @@ import unittest
 import _path  # noqa: F401
 from service.bot import Bot
 from service.pack import Pack
-from service.tg import html
+from service.tg import html, Telegram
 
 ROOT = _path.ROOT
 TODAY = "2026-11-04"
@@ -151,6 +151,30 @@ class BotFlow(unittest.TestCase):
 
     def test_html_escape(self):
         self.assertEqual(html("a<b>&"), "a&lt;b&gt;&amp;")
+
+
+class Relay(unittest.TestCase):
+    def test_default_and_relay_base(self):
+        tg = Telegram(token="1:x", transport=lambda m, p, t: {"ok": True, "result": {}})
+        self.assertEqual(tg.url("getMe"), "https://api.telegram.org/bot1:x/getMe")
+        self.assertFalse(tg.relayed)
+        self.assertEqual(sorted(tg.allowed), ["api.telegram.org"])
+        tg = Telegram(token="1:x", base="https://tg-relay.me.workers.dev/", relay_key="k",
+                      transport=lambda m, p, t: {"ok": True, "result": {}})
+        self.assertEqual(tg.url("getMe"), "https://tg-relay.me.workers.dev/bot1:x/getMe")
+        self.assertTrue(tg.relayed)
+        self.assertIn("tg-relay.me.workers.dev", tg.allowed)
+        from service.tg import TgError
+        with self.assertRaises(TgError):
+            Telegram(token="1:x", base="http://plain.example", transport=lambda m, p, t: {})
+
+    def test_token_never_in_errors(self):
+        from service.tg import TgError
+        tg = Telegram(token="1:secret", transport=lambda m, p, t: {"ok": False, "description": "bad 1:secret"})
+        try:
+            tg.get_me()
+        except TgError as exc:
+            self.assertNotIn("secret", str(exc))
 
 
 if __name__ == "__main__":

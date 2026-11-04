@@ -1,7 +1,12 @@
 """Telegram Bot API client. Standard library only, long polling, no webhooks.
 
 The bot token comes from TELEGRAM_BOT_TOKEN and is never printed. Every request
-goes through common/net.py (https, api.telegram.org only).
+goes through common/net.py (https, api.telegram.org only, or your own relay).
+
+Where api.telegram.org is unreachable, TELEGRAM_API_BASE points at your own
+relay (a Cloudflare Worker that forwards to api.telegram.org, see
+docs/telegram-relay.md) and TELEGRAM_RELAY_KEY is sent as X-Relay-Key so
+nobody else can use it. The relay sees the bot token, so it must be yours.
 """
 
 import json
@@ -26,21 +31,36 @@ def html(text):
     return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+DEFAULT_BASE = "https://api.telegram.org"
+
+
 class Telegram(object):
-    def __init__(self, token=None, transport=None):
+    def __init__(self, token=None, transport=None, base=None, relay_key=None):
         self.token = token or os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
         if not self.token:
             raise TgError("no bot token: set TELEGRAM_BOT_TOKEN (docs/telegram-setup.md)")
+        self.base = (base or os.environ.get("TELEGRAM_API_BASE", "").strip() or DEFAULT_BASE).rstrip("/")
+        self.relay_key = relay_key if relay_key is not None else os.environ.get("TELEGRAM_RELAY_KEY", "").strip()
+        host = (urllib.parse.urlparse(self.base).hostname or "").lower()
+        if not host or urllib.parse.urlparse(self.base).scheme != "https":
+            raise TgError("TELEGRAM_API_BASE must be an https URL, got %r" % self.base)
+        self.allowed = TELEGRAM_HOSTS | {host}
+        self.relayed = host not in TELEGRAM_HOSTS
         self.transport = transport or self._post
         self.offset = None
 
+    def url(self, method):
+        return "%s/bot%s/%s" % (self.base, self.token, method)
+
     # ------------------------------------------------------------ transport
     def _post(self, method, payload, timeout):
-        url = "https://api.telegram.org/bot%s/%s" % (self.token, method)
-        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), method="POST",
-                                     headers={"Content-Type": "application/json"})
+        headers = {"Content-Type": "application/json"}
+        if self.relayed and self.relay_key:
+            headers["X-Relay-Key"] = self.relay_key
+        req = urllib.request.Request(self.url(method), data=json.dumps(payload).encode("utf-8"), method="POST",
+                                     headers=headers)
         try:
-            with open_url(req, timeout=timeout, allowed=TELEGRAM_HOSTS) as resp:
+            with open_url(req, timeout=timeout, allowed=self.allowed) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
         except NetError as exc:
             raise TgError(str(exc))
@@ -51,7 +71,7 @@ class Telegram(object):
             except ValueError:
                 raise TgError("%s: HTTP %d" % (method, exc.code))
         except urllib.error.URLError as exc:
-            raise TgError("could not reach api.telegram.org: %s" % exc.reason)
+            raise TgError("could not reach %s: %s" % (urllib.parse.urlparse(self.base).hostname, exc.reason))
         return body
 
     def call(self, method, timeout=30, **payload):
@@ -65,7 +85,9 @@ class Telegram(object):
     def get_me(self):
         return self.call("getMe")
 
-    def updates(self, timeout=50):
+    def updates(self, timeout=None):
+        if timeout is None:
+            timeout = 20 if self.relayed else 50  # a relay has its own limits on long requests
         payload = {"timeout": timeout, "allowed_updates": ["message", "callback_query"]}
         if self.offset is not None:
             payload["offset"] = self.offset

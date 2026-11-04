@@ -53,10 +53,11 @@ def main(argv=None):
         me = tg.get_me()
     except TgError as exc:
         print("telegram: %s" % exc, file=sys.stderr)
-        print("Telegram is not reachable directly from some networks. Set TELEGRAM_PROXY "
-              "(docs/windows-start.md, section about proxies) and try again.", file=sys.stderr)
+        print("Telegram is not reachable directly from some networks. Set TELEGRAM_PROXY, or your own "
+              "relay with TELEGRAM_API_BASE (docs/telegram-relay.md), and try again.", file=sys.stderr)
         return 2
-    print("bot: @%s, project: %s" % (me.get("username"), pack.project))
+    print("bot: @%s, project: %s%s" % (me.get("username"), pack.project,
+                                        (", via relay " + tg.base) if tg.relayed else ""))
     code, out, err = pack.whoami()
     print(out.strip() or err.strip())
     if a.check:
