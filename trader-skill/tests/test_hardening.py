@@ -54,6 +54,17 @@ class RiskLimits(unittest.TestCase):
         res = check.check([buy("AAPL", 100)], cfg(max_orders_per_day=10), None, PRICES, state, TODAY)
         self.assertIn("daily limit", " ".join(res["results"][0]["reasons"]))
 
+    def test_broker_flags_block_before_the_yes(self):
+        detail = {"TMOS": {"api_trade": False}, "AAPL": {"qual_only": True}, "KO": {"api_trade": True}}
+        res = check.check([buy("TMOS", 100), buy("AAPL", 100), buy("KO", 100)], cfg(),
+                          None, dict(PRICES, TMOS=6.15), None, TODAY, detail=detail)
+        self.assertEqual(check.verdicts(res) if hasattr(check, "verdicts") else
+                         [r["verdict"] for r in res["results"]], ["BLOCK", "BLOCK", "PASS"])
+        self.assertIn("not tradable through the API", res["results"][0]["reasons"][0])
+        self.assertIn("qualified investors", res["results"][1]["reasons"][0])
+        res = check.check([buy("AAPL", 100)], cfg(allow_qual_only=True), None, PRICES, None, TODAY, detail=detail)
+        self.assertEqual(res["results"][0]["verdict"], "PASS")
+
     def test_moex_tickers_pass_the_format_check(self):
         for sym in ("SBER", "X5", "LKOH", "T", "YDEX", "BRK.B"):
             self.assertTrue(check.TICKER.match(sym), sym)

@@ -157,10 +157,12 @@ def _lim(c, key):
     return float(v)
 
 
-def check(orders, cfg, portfolio=None, prices=None, state=None, today=None):
-    """Pure function. Returns {"results": [...], "pass": n, "block": n, "warnings": [...]}."""
+def check(orders, cfg, portfolio=None, prices=None, state=None, today=None, detail=None):
+    """Pure function. Returns {"results": [...], "pass": n, "block": n, "warnings": [...]}.
+    `detail` is prices.json's per-ticker detail (trader-tinvest writes api_trade / qual_only)."""
     c = dict(DEFAULTS)
     c.update(cfg or {})
+    detail = {str(k).upper(): v for k, v in (detail or {}).items() if isinstance(v, dict)}
     prices = {str(k).upper(): float(v) for k, v in (prices or {}).items() if _f(v)}
     today = today or datetime.date.today().isoformat()
     acct, top_warn = account(c, portfolio, prices)
@@ -227,6 +229,13 @@ def check(orders, cfg, portfolio=None, prices=None, state=None, today=None):
         # blocked list
         if sym in blocked:
             reasons.append("blocked: %s is on your blocked list" % sym)
+
+        # what the broker said about the instrument (trader-tinvest quote --write)
+        d = detail.get(sym) or {}
+        if d.get("api_trade") is False:
+            reasons.append("asset: the broker marks %s as not tradable through the API" % sym)
+        if d.get("qual_only") and not c.get("allow_qual_only"):
+            reasons.append("asset: %s is for qualified investors only (\"allow_qual_only\": true to override)" % sym)
 
         # dollar value of the order
         ref = None
@@ -390,7 +399,8 @@ def main(argv=None):
         pdoc = read_json(a.prices, "prices", required=False) or {}
         prices = pdoc.get("prices", pdoc) if isinstance(pdoc, dict) else {}
         state = read_json(a.state, "broker state", required=False)
-        res = check(orders, cfg, portfolio, prices, state, a.today)
+        res = check(orders, cfg, portfolio, prices, state, a.today,
+                    detail=pdoc.get("detail") if isinstance(pdoc, dict) else None)
         if pdoc.get("as_of"):
             res["prices_as_of"] = pdoc["as_of"]
         if not a.no_write:

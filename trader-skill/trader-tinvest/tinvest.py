@@ -417,11 +417,15 @@ def cmd_quote(a):
             continue
         prices[t] = round(q2f(lp.get("price")), 6)
         detail[t] = {"lot": insts[t].get("lot"), "currency": insts[t].get("currency"), "time": lp.get("time"),
-                     "uid": insts[t].get("uid"), "class_code": insts[t].get("classCode")}
+                     "uid": insts[t].get("uid"), "class_code": insts[t].get("classCode"),
+                     "api_trade": bool(insts[t].get("apiTradeAvailableFlag", True)),
+                     "qual_only": bool(insts[t].get("forQualInvestorFlag", False)),
+                     "name": insts[t].get("name")}
     missing = [t for t in tickers if t not in prices]
     for t in tickers:
         if t in prices:
-            print("%-8s %12s  lot %s" % (t, money(prices[t], detail[t]["currency"] or "RUB"), detail[t]["lot"]))
+            flags = ("" if detail[t]["api_trade"] else "  NOT TRADABLE VIA API") + ("  QUAL ONLY" if detail[t]["qual_only"] else "")
+            print("%-8s %12s  lot %s%s" % (t, money(prices[t], detail[t]["currency"] or "RUB"), detail[t]["lot"], flags))
     if missing:
         print("no price for: %s" % ", ".join(missing))
     if a.write:
@@ -518,21 +522,33 @@ def cmd_order(a):
     acc = pick_account(api, cfg)
     account_ok_for_orders(acc)
 
+    def failed(exc):
+        """Your yes was recorded, then something refused: write it down so the ticket is not stuck."""
+        if not a.dry_run:
+            state["orders"].append({"at": now_iso(), "date": today, "index": a.index, "fingerprint": fp,
+                                    "symbol": rec["symbol"], "side": rec["side"], "plain": rec["plain"],
+                                    "status": "failed", "note": str(exc)[:300], "env": api.env})
+            ticket.write_json(a.state, state)
+
     class_code = cfg.get("class_code") or DEFAULT_CLASS
-    inst = api.instrument(order["symbol"], class_code)
-    if not inst.get("uid"):
-        raise TinvestError("no instrument %s on %s" % (order["symbol"], class_code))
-    if not inst.get("apiTradeAvailableFlag", True):
-        raise TinvestError("%s cannot be traded through the API" % order["symbol"])
-    if inst.get("forQualInvestorFlag") and not cfg.get("allow_qual_only"):
-        raise TinvestError("%s is for qualified investors only (\"allow_qual_only\": true to override)" % order["symbol"])
-    price = None
-    if order.get("notional") is not None or a.dry_run:
-        lps = api.last_prices([inst["uid"]])
-        price = q2f(lps[0].get("price")) if lps else None
-    lots, lot = lots_for(order, inst, price)
-    idem = str(uuid.uuid5(uuid.NAMESPACE_URL, "trader-tinvest:%s:%s:%s:%d" % (acc["id"], fp, today, a.index)))
-    body = order_body(order, inst, acc["id"], lots, idem)
+    try:
+        inst = api.instrument(order["symbol"], class_code)
+        if not inst.get("uid"):
+            raise TinvestError("no instrument %s on %s" % (order["symbol"], class_code))
+        if not inst.get("apiTradeAvailableFlag", True):
+            raise TinvestError("%s cannot be traded through the API" % order["symbol"])
+        if inst.get("forQualInvestorFlag") and not cfg.get("allow_qual_only"):
+            raise TinvestError("%s is for qualified investors only (\"allow_qual_only\": true to override)" % order["symbol"])
+        price = None
+        if order.get("notional") is not None or a.dry_run:
+            lps = api.last_prices([inst["uid"]])
+            price = q2f(lps[0].get("price")) if lps else None
+        lots, lot = lots_for(order, inst, price)
+        idem = str(uuid.uuid5(uuid.NAMESPACE_URL, "trader-tinvest:%s:%s:%s:%d" % (acc["id"], fp, today, a.index)))
+        body = order_body(order, inst, acc["id"], lots, idem)
+    except TinvestError as exc:
+        failed(exc)
+        raise
     est = (price or float(order.get("limit_price") or 0)) * lots * lot
     print("%s %d lot%s of %s (%d share%s)%s, %s, %s account %s"
           % (order["side"].upper(), lots, "" if lots == 1 else "s", inst.get("ticker", order["symbol"]),
@@ -547,10 +563,7 @@ def cmd_order(a):
     try:
         resp = api.post_order(body)
     except TinvestError as exc:
-        state["orders"].append({"at": now_iso(), "date": today, "index": a.index, "fingerprint": fp,
-                                "symbol": rec["symbol"], "side": rec["side"], "plain": rec["plain"],
-                                "status": "failed", "note": str(exc)[:300], "env": api.env})
-        ticket.write_json(a.state, state)
+        failed(exc)
         raise
     executed = int(resp.get("lotsExecuted") or 0)
     exec_price = q2f(resp.get("executedOrderPrice"))

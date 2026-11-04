@@ -240,6 +240,24 @@ class Flow(unittest.TestCase):
         self.assertIn('"broker": "tinvest"', err)
         self.assertEqual(self.fake.calls, [])
 
+    def test_refusal_after_the_yes_is_recorded_as_failed(self):
+        self.risk_and_yes()
+        self.fake.answers["InstrumentsService/GetInstrumentBy"] = {"instrument": dict(SBER, apiTradeAvailableFlag=False)}
+        code, out, err = run(["order", "--index", "1", "--today", TODAY])
+        self.assertEqual(code, 1)
+        self.assertIn("cannot be traded", err)
+        last = self.read("trader/state/broker.json")["orders"][-1]
+        self.assertEqual(last["status"], "failed")
+        self.assertIn("cannot be traded", last["note"])
+        self.assertFalse(any("PostSandboxOrder" in c[1] for c in self.fake.calls))
+        # and the quote marks it, so the next risk check blocks it before any yes
+        code, out, err = run(["quote", "SBER", "--write"])
+        self.assertIn("NOT TRADABLE VIA API", out)
+        self.assertIs(self.read("trader/prices.json")["detail"]["SBER"]["api_trade"], False)
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            check.main(["--today", TODAY])
+        self.assertEqual(self.read("trader/state/risk.json")["results"][0]["verdict"], "BLOCK")
+
     def test_read_only_token_cannot_place(self):
         self.risk_and_yes()
         self.fake.answers["SandboxService/GetSandboxAccounts"]["accounts"][0]["accessLevel"] = "ACCOUNT_ACCESS_LEVEL_READ_ONLY"
