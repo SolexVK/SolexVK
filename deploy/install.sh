@@ -18,14 +18,18 @@ command -v git >/dev/null || { echo "git is missing: apt-get install -y git"; ex
 # 1. a user of its own, no login shell, no home we care about
 id trader >/dev/null 2>&1 || useradd --system --home /opt/trader --shell /usr/sbin/nologin trader
 mkdir -p /opt/trader
+chown trader:trader /opt/trader
+chmod 755 /opt/trader   # code and docs readable by everyone; secrets and data are locked below
 
-# 2. the code: clone once, then fast-forward
+# 2. the code, as the trader user (git refuses a repo owned by someone else)
+as_trader() { runuser -u trader -- "$@"; }
 if [ ! -d "$APP/.git" ]; then
-  git clone --branch "$BRANCH" "$REPO_URL" "$APP"
+  as_trader git clone --branch "$BRANCH" "$REPO_URL" "$APP"
 else
-  git -C "$APP" fetch origin "$BRANCH"
-  git -C "$APP" checkout -q "$BRANCH"
-  git -C "$APP" merge -q --ff-only "origin/$BRANCH"
+  chown -R trader:trader "$APP/.git"
+  as_trader git -C "$APP" fetch origin "$BRANCH"
+  as_trader git -C "$APP" checkout -q "$BRANCH"
+  as_trader git -C "$APP" merge -q --ff-only "origin/$BRANCH"
 fi
 
 # 3. data folder and configs (kept across updates, never overwritten)
@@ -43,7 +47,7 @@ for u in $READERS; do
   if id "$u" >/dev/null 2>&1; then usermod -aG trader "$u"; echo "user $u may read trader/ and write trader/inbox/"; fi
 done
 chown -R trader:trader /opt/trader
-chmod 750 /opt/trader
+chmod 755 /opt/trader
 chmod 600 "$ENVFILE"
 chmod 755 "$APP"            # code readable by everyone, no secrets in it
 chmod 750 "$APP/trader"     # data: trader writes, the trader group reads
@@ -57,7 +61,10 @@ systemctl daemon-reload
 systemctl enable trader >/dev/null
 
 echo
-echo "Installed. Next:"
+echo "Installed. Users added to the trader group see it only in NEW sessions;"
+echo "until then they can read the data with:  sg trader -c 'cat /opt/trader/app/trader/portfolio.json'"
+echo
+echo "Next:"
 echo "  nano $ENVFILE                      # tokens"
 echo "  nano $APP/trader/config.json       # account_id"
 echo "  nano $APP/service/config.json      # allowed_user_ids"

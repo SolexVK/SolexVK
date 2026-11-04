@@ -24,6 +24,21 @@
 Код сервиса и скиллов лежит рядом в `/opt/trader/app/trader-skill` и
 `/opt/trader/app/service`, его можно читать, чтобы понимать правила.
 
+Если на файл в `trader/` система отвечает «Permission denied», твой процесс
+запущен раньше, чем тебя добавили в группу `trader`. Пока тебя не
+перезапустили, читай и пиши через `sg`, она включает группу сразу:
+
+```bash
+sg trader -c 'cat /opt/trader/app/trader/portfolio.json'
+```
+
+```bash
+sg trader -c 'cp /tmp/targets.json /opt/trader/app/trader/inbox/targets.json'
+```
+
+Если и это не помогает, сообщи владельцу: нужен `sudo bash
+/opt/trader/app/deploy/install.sh` и перезапуск твоего процесса.
+
 ## Что ты делаешь
 
 1. По запросу владельца («предложи цели», «посмотри портфель») читаешь
