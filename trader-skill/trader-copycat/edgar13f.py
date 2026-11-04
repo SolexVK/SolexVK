@@ -53,6 +53,13 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+
+# every request goes through common/net.py: https only, allow-listed hosts, no redirect elsewhere
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+try:
+    from common.net import open_url, NetError, SEC_HOSTS, FIGI_HOSTS  # noqa: E402
+except ImportError:  # pragma: no cover
+    raise SystemExit("edgar13f.py: common/net.py not found; keep this script inside the trader-skill folder")
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -153,11 +160,13 @@ class Fetcher(object):
     def _open(self, req, url):
         self._wait()
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with open_url(req, timeout=60, allowed=SEC_HOSTS | FIGI_HOSTS) as resp:
                 data = resp.read()
                 if resp.headers.get("Content-Encoding") == "gzip":
                     data = gzip.decompress(data)
                 return data
+        except NetError as exc:
+            raise EdgarError(str(exc))
         except urllib.error.HTTPError as exc:
             if exc.code == 403 and "sec.gov" in url:
                 raise EdgarError("SEC said 403 Forbidden for %s. Usually a missing or "

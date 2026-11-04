@@ -40,6 +40,13 @@ import sys
 import time
 import urllib.error
 import urllib.request
+
+# every request goes through common/net.py: https only, allow-listed hosts, no redirect elsewhere
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+try:
+    from common.net import open_url, NetError, SEC_HOSTS, QUOTE_HOSTS  # noqa: E402
+except ImportError:  # pragma: no cover
+    raise SystemExit("news.py: common/net.py not found; keep this script inside the trader-skill folder")
 import xml.etree.ElementTree as ET
 
 YAHOO = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%s&region=US&lang=en-US"
@@ -136,11 +143,13 @@ class Fetcher(object):
         headers = {"User-Agent": self.sec_ua if sec else BROWSER_UA, "Accept-Encoding": "gzip"}
         req = urllib.request.Request(url, headers=headers)
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with open_url(req, timeout=30, allowed=SEC_HOSTS | QUOTE_HOSTS) as resp:
                 data = resp.read()
                 if resp.headers.get("Content-Encoding") == "gzip":
                     data = gzip.decompress(data)
                 return data
+        except NetError as exc:
+            raise NewsError(str(exc))
         except urllib.error.HTTPError as exc:
             raise NewsError("HTTP %s for %s" % (exc.code, url))
         except urllib.error.URLError as exc:

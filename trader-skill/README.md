@@ -65,6 +65,7 @@ environment variable.
 | `/trader-tax` | Tax Optimizer | Tracks cost-basis lots, gains and losses, tax-loss harvesting candidates and wash sales. |
 | `/trader-alerts` | Price Alerts | Rings when a price target, a stop or the opening bell hits, with the real NYSE calendar. |
 | `/trader-rebalance` | Rebalancer | Brings the portfolio back to its target weights when it drifts past your band. |
+| `/trader-tinvest` | T-Invest Broker | Connects the pack to a T-Bank (T-Invest API) account on the Moscow Exchange: sandbox by default, prices and portfolio into the pack's files, lots instead of shares, one approved order at a time. Added in this fork. |
 
 ## How to use it
 
@@ -134,6 +135,21 @@ The tests run offline, on small fixtures cut from the real filings: Berkshire's
 Q1 and Q2 2026 information tables, the House Clerk's 2026 index, real PTR text,
 real XBRL facts and feeds.
 
+## This fork: Moscow Exchange through T-Invest
+
+This copy (SolexVK/SolexVK, branch «Трейдинг-с-ИИ») adds a broker adapter for
+T-Bank's T-Invest API, so the same chain runs on the Moscow Exchange in roubles:
+
+```
+tinvest quote --write -> budget -> risk -> broker (your yes) -> tinvest order --index N
+```
+
+Set `trader/config.json` from `trader-tinvest/config.example.json` (`"broker":
+"tinvest"`, `"currency": "RUB"`, `"paper": true` for the sandbox), put the
+sandbox token in `TINVEST_SANDBOX_TOKEN`, and read `trader-tinvest/SKILL.md`.
+How to get the tokens: `docs/tbank-setup.md` in the repository root. The
+changes against the upstream pack are listed in `UPSTREAM.md`.
+
 ## Fine print
 
 **Not financial advice.** This is software that reads public data and does
@@ -182,6 +198,8 @@ trader-broker/     SKILL.md, ticket.py, claude_desktop_config.example.json
 trader-tax/        SKILL.md, lots.py, portfolio.example.json
 trader-alerts/     SKILL.md, alerts.py, alerts.example.json
 trader-rebalance/  SKILL.md, rebalance.py
+trader-tinvest/    SKILL.md, tinvest.py, config.example.json   (this fork)
+common/            net.py: the one network door, https + host allow list (this fork)
 tests/             unittest suite + offline fixtures
 ```
 

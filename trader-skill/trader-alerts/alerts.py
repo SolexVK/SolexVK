@@ -46,6 +46,13 @@ import time
 import urllib.error
 import urllib.request
 
+# every request goes through common/net.py: https only, allow-listed hosts, no redirect elsewhere
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+try:
+    from common.net import open_url, NetError, QUOTE_HOSTS  # noqa: E402
+except ImportError:  # pragma: no cover
+    raise SystemExit("alerts.py: common/net.py not found; keep this script inside the trader-skill folder")
+
 UA = "Mozilla/5.0 (compatible; trader-skill/1.0; +https://github.com/Jakeschincariol/trader-skill)"
 PAUSE = 0.5  # seconds between requests: be polite to free endpoints
 
@@ -236,8 +243,10 @@ def parse_yahoo(text, sym):
 def fetch(url, timeout=20):
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with open_url(req, timeout=timeout, allowed=QUOTE_HOSTS) as r:
             return r.read().decode("utf-8", "replace")
+    except NetError as e:
+        raise AlertError(str(e))
     except urllib.error.HTTPError as e:
         raise AlertError("%s answered HTTP %d" % (url.split("?")[0], e.code))
     except urllib.error.URLError as e:

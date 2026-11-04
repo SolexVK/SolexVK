@@ -43,10 +43,24 @@ STRING_FIELDS = ("qty", "notional", "limit_price", "stop_price", "trail_price", 
                  "take_profit_limit_price", "stop_loss_stop_price", "stop_loss_limit_price")
 TIF_WORDS = {"day": "good for today", "gtc": "good until canceled", "opg": "at the open",
              "cls": "at the close", "ioc": "immediate or cancel", "fok": "fill or kill"}
-YES_WORDS = ("yes", "y")
-BATCH_WORDS = {"all", "every", "everything", "rest", "remaining", "them", "both", "batch", "each"}
+YES_WORDS = ("yes", "y", "да")
+BATCH_WORDS = {"all", "every", "everything", "rest", "remaining", "them", "both", "batch", "each",
+               "все", "всё", "всех", "каждый", "каждую", "оба", "обе", "остальные", "пачку"}
 DOUBT_WORDS = {"no", "not", "dont", "don't", "wait", "cancel", "stop", "but", "maybe", "later",
-               "hold", "unless", "if"}
+               "hold", "unless", "if",
+               "нет", "не", "подожди", "подождите", "стоп", "отмена", "отмени", "но", "может",
+               "возможно", "позже", "потом", "если", "только"}
+# words that look like a ticker when typed in capitals but are not one
+NOT_TICKERS = {"YES", "Y", "OK", "BUY", "SELL", "I", "A", "USD", "RUB", "EUR", "ДА"}
+TICKER_TOKEN = re.compile(r"(?<![A-Za-z0-9])[A-Z][A-Z0-9]{0,5}(?:[.\-][A-Z]{1,2})?(?![A-Za-z0-9])")
+CURRENCY = {"code": "USD", "symbol": "$", "suffix": False}
+
+
+def set_currency(code):
+    """How amounts are printed: $1,250 for USD, 1,250 ₽ for RUB."""
+    code = str(code or "USD").upper()
+    sym = {"USD": "$", "RUB": " ₽", "EUR": "€", "KZT": " ₸"}.get(code, " " + code)
+    CURRENCY.update({"code": code, "symbol": sym, "suffix": code != "USD" and code != "EUR"})
 
 
 class TicketError(Exception):
@@ -118,7 +132,8 @@ def tool_input(order):
 def _money(v):
     f = float(v)
     s = "{:,.2f}".format(f)
-    return "$" + (s[:-3] if s.endswith(".00") else s)
+    s = s[:-3] if s.endswith(".00") else s
+    return s + CURRENCY["symbol"] if CURRENCY["suffix"] else CURRENCY["symbol"] + s
 
 
 def plain(order):
@@ -161,7 +176,7 @@ def parse_yes(reply, order, batch_symbols=()):
         return False, "the reply is empty"
     if "?" in raw:
         return False, "the reply is a question, not a yes"
-    words = re.findall(r"[a-z']+", raw.lower())
+    words = re.findall(r"[a-zа-яё']+", raw.lower())
     if not words or words[0] not in YES_WORDS:
         return False, "only a reply that starts with \"yes\" counts (not ok, sure, go, do it)"
     if BATCH_WORDS & set(words):
@@ -174,6 +189,10 @@ def parse_yes(reply, order, batch_symbols=()):
     named = tokens & others
     if named:
         return False, "the reply names %s, but this order is for %s" % (", ".join(sorted(named)), sym)
+    # a ticker typed in capitals that is not this order's symbol, even one outside the batch
+    foreign = {t for t in TICKER_TOKEN.findall(raw) if t not in NOT_TICKERS and t != sym}
+    if foreign:
+        return False, "the reply names %s, but this order is for %s" % (", ".join(sorted(foreign)), sym)
     nums = [float(n.replace(",", "")) for n in re.findall(r"\d[\d,]*(?:\.\d+)?", raw)]
     if nums:
         want = amount_numbers(order)
@@ -232,8 +251,12 @@ def render(order, idx, total, cfg, risk, state, today):
     ready, label, rv = status_of(order, risk, state, today)
     broker = str(cfg.get("broker", "alpaca")).lower()
     paper = cfg.get("paper", True)
-    acct = "PAPER account" if paper else "LIVE ACCOUNT, REAL MONEY"
-    lines = ["ORDER %d of %d, %s, %s" % (idx, total, acct, "Interactive Brokers" if broker == "ibkr" else "Alpaca"),
+    if broker == "tinvest":
+        acct = "SANDBOX (песочница)" if paper else "LIVE ACCOUNT, REAL MONEY"
+    else:
+        acct = "PAPER account" if paper else "LIVE ACCOUNT, REAL MONEY"
+    names = {"ibkr": "Interactive Brokers", "tinvest": "T-Invest (Т-Банк)"}
+    lines = ["ORDER %d of %d, %s, %s" % (idx, total, acct, names.get(broker, "Alpaca")),
              "  " + plain(order)]
     if order.get("why"):
         lines.append("  why: " + order["why"])
@@ -243,13 +266,18 @@ def render(order, idx, total, cfg, risk, state, today):
     if broker == "ibkr":
         lines.append("  Claude drafts this with the Interactive Brokers connector. IBKR sends it to your")
         lines.append("  IBKR account, and it only goes to the market after you approve it there.")
+    elif broker == "tinvest":
+        lines.append("  After your yes, Claude runs: python3 trader-tinvest/tinvest.py order --index %d" % idx)
+        lines.append("  (T-Invest trades in lots; the script shows the lot count before it sends).")
     else:
         lines.append("  Claude will call place_stock_order with exactly:")
         for l in json.dumps(tool_input(order), indent=2).splitlines():
             lines.append("    " + l)
     if ready:
         lines.append("  Reply \"yes\" to place this one order, or \"no\" to skip it.")
-        if broker != "ibkr":
+        if broker == "tinvest":
+            lines.append("  Claude Code's own permission prompt for that command is the second check.")
+        elif broker != "ibkr":
             lines.append("  Claude's own card then asks again: Allow once places it, Deny stops it.")
     return "\n".join(lines), ready
 
@@ -317,6 +345,7 @@ def _load(a):
     if not isinstance(orders, list) or not orders:
         raise TicketError("no orders in %s" % a.orders)
     cfg = read_json(a.config, "config", required=False) or {}
+    set_currency(cfg.get("currency"))
     risk = read_json(a.risk, "risk check", required=False)
     state = load_state(a.state)
     today = a.today or datetime.date.today().isoformat()
@@ -368,6 +397,9 @@ def cmd_approve(a):
     print("Recorded your yes for order %d: %s." % (a.index, plain(order)))
     if str(cfg.get("broker", "alpaca")).lower() == "ibkr":
         print("Now draft it with the Interactive Brokers connector; approve it in your IBKR account.")
+    elif str(cfg.get("broker", "alpaca")).lower() == "tinvest":
+        print("Now run: python3 trader-tinvest/tinvest.py order --index %d" % a.index)
+        print("It places this one order (sandbox or live per trader/config.json) and records the result.")
     else:
         print("Now call place_stock_order with exactly:")
         print(json.dumps(tool_input(order), indent=2))

@@ -42,6 +42,13 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+
+# every request goes through common/net.py: https only, allow-listed hosts, no redirect elsewhere
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+try:
+    from common.net import open_url, NetError, HOUSE_HOSTS  # noqa: E402
+except ImportError:  # pragma: no cover
+    raise SystemExit("ptr.py: common/net.py not found; keep this script inside the trader-skill folder")
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -82,8 +89,10 @@ def iso(mdy):
 def download(url, timeout=60):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with open_url(req, timeout=timeout, allowed=HOUSE_HOSTS) as resp:
             return resp.read()
+    except NetError as exc:
+        raise PtrError(str(exc))
     except urllib.error.HTTPError as exc:
         raise PtrError("HTTP %s for %s" % (exc.code, url))
     except urllib.error.URLError as exc:
@@ -111,6 +120,8 @@ def parse_index(xml_bytes, year):
     for m in root.iter("Member"):
         f = {c.tag: (c.text or "").strip() for c in m}
         doc = f.get("DocID", "")
+        if not valid_doc_id(doc):
+            continue  # a malformed index row never becomes a URL or a file name
         kind = f.get("FilingType", "")
         y = int(f.get("Year") or year)
         url = (PTR_URL if kind == "P" else FD_URL) % (y, doc)
@@ -455,7 +466,17 @@ def _parser():
     return ap
 
 
+DOC_ID = re.compile(r"^[0-9]{1,12}$")
+
+
+def valid_doc_id(doc_id):
+    """A House Clerk DocID is a number. Anything else never reaches a URL or a file name."""
+    return bool(DOC_ID.match(str(doc_id or "")))
+
+
 def _fetch_and_read(doc_id, year, pdf_dir, filed=None):
+    if not valid_doc_id(doc_id):
+        raise PtrError("doc id %r is not a House Clerk document number (digits only)" % (doc_id,))
     os.makedirs(pdf_dir, exist_ok=True)
     path = os.path.join(pdf_dir, "%s.pdf" % doc_id)
     if not os.path.isfile(path):

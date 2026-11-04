@@ -50,6 +50,13 @@ import time
 import urllib.error
 import urllib.request
 
+# every request goes through common/net.py: https only, allow-listed hosts, no redirect elsewhere
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+try:
+    from common.net import open_url, NetError, SEC_HOSTS  # noqa: E402
+except ImportError:  # pragma: no cover
+    raise SystemExit("facts.py: common/net.py not found; keep this script inside the trader-skill folder")
+
 TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK%s.json"
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK%s.json"
@@ -109,10 +116,12 @@ class Fetcher(object):
         req = urllib.request.Request(url, headers={"User-Agent": self.ua,
                                                    "Accept-Encoding": "gzip"})
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with open_url(req, timeout=60, allowed=SEC_HOSTS) as resp:
                 data = resp.read()
                 if resp.headers.get("Content-Encoding") == "gzip":
                     data = gzip.decompress(data)
+        except NetError as exc:
+            raise FactsError(str(exc))
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
                 raise FactsError("SEC has no data at %s (no XBRL filings for this CIK?)" % url)

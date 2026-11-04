@@ -52,7 +52,7 @@ ALPACA_FIELDS = ("symbol", "side", "qty", "notional", "type", "time_in_force", "
 TYPES = {"market", "limit", "stop", "stop_limit", "trailing_stop"}
 TIFS = {"day", "gtc", "opg", "cls", "ioc", "fok"}
 OCC = re.compile(r"^[A-Z]{1,6}\d{6}[CP]\d{8}$")
-TICKER = re.compile(r"^[A-Z]{1,5}([.\-][A-Z]{1,2})?$")
+TICKER = re.compile(r"^[A-Z][A-Z0-9]{0,5}([.\-][A-Z]{1,2})?$")  # US and MOEX tickers (SBER, X5, BRK.B)
 CENT = 0.005
 
 
@@ -121,13 +121,26 @@ def account(cfg, portfolio, prices):
     return {"cash": cash, "shares": shares, "values": values}, warnings
 
 
+COUNTS_AS_SENT = ("placed", "approved")
+
+
 def placed_today(state, today):
-    """Orders recorded as placed today by trader-broker."""
+    """Orders that count as sent today: placed, and approved (your yes is recorded,
+    the broker call may already have happened even if its result was never written)."""
     out = []
     for rec in (state or {}).get("orders", []):
-        if rec.get("status") == "placed" and str(rec.get("date") or str(rec.get("at", ""))[:10]) == today:
+        if rec.get("status") in COUNTS_AS_SENT and str(rec.get("date") or str(rec.get("at", ""))[:10]) == today:
             out.append(rec)
     return out
+
+
+def _lim(c, key):
+    """A limit from the config as a float, or None when the user set it to null.
+    0 means 0 (every order over 0 is blocked), never "no limit"."""
+    v = c.get(key)
+    if v is None or v == "":
+        return None
+    return float(v)
 
 
 def check(orders, cfg, portfolio=None, prices=None, state=None, today=None):
@@ -140,7 +153,7 @@ def check(orders, cfg, portfolio=None, prices=None, state=None, today=None):
     blocked = {str(b).upper() for b in c.get("blocked") or []}
     done_today = placed_today(state, today)
     count_today = len(done_today)
-    placed_keys = {(str(r.get("symbol", "")).upper(), r.get("side")) for r in done_today}
+    placed_keys = {(str(r.get("symbol", "")).upper(), str(r.get("side", "")).lower()) for r in done_today}
     seen = set()
     results = []
     if not c.get("paper", True):
@@ -194,7 +207,7 @@ def check(orders, cfg, portfolio=None, prices=None, state=None, today=None):
             else:
                 warns.append("option order: options can lose 100%% of what you pay")
         elif sym and ("/" in sym or not TICKER.match(sym)):
-            reasons.append("asset: %s does not look like a US stock or ETF ticker; "
+            reasons.append("asset: %s does not look like a stock or ETF ticker; "
                            "this pack trades stocks and ETFs only" % sym)
 
         # blocked list
@@ -223,9 +236,10 @@ def check(orders, cfg, portfolio=None, prices=None, state=None, today=None):
             if value < float(c.get("min_order_usd") or 0) - CENT:
                 reasons.append("size: %s is under your %s minimum order"
                                % (money(value), money(c["min_order_usd"])))
-            if c.get("max_order_usd") and value > float(c["max_order_usd"]) + CENT:
+            max_order = _lim(c, "max_order_usd")
+            if max_order is not None and value > max_order + CENT:
                 reasons.append("size: %s is over your %s max order"
-                               % (money(value), money(c["max_order_usd"])))
+                               % (money(value), money(max_order)))
 
         # account effects, simulated in order
         cash = acct["cash"]
@@ -242,7 +256,8 @@ def check(orders, cfg, portfolio=None, prices=None, state=None, today=None):
                 reasons.append("cash: leaves %s cash, under your %s%% buffer of %s"
                                % (money(max(after_cash, 0)), _pct(c["cash_buffer_pct"]), money(buffer_usd)))
             pos_after = held_value + value
-            limit = total * float(c.get("max_position_pct") or 100) / 100.0
+            max_pct = _lim(c, "max_position_pct")
+            limit = total * (100.0 if max_pct is None else max_pct) / 100.0
             if total > 0 and pos_after > limit + CENT:
                 reasons.append("position: %s would be %s, %.1f%% of the %s account, over your %s%% cap"
                                % (sym, money(pos_after), 100.0 * pos_after / total, money(total),
@@ -265,10 +280,10 @@ def check(orders, cfg, portfolio=None, prices=None, state=None, today=None):
         if key in placed_keys:
             reasons.append("duplicate: a %s %s was already placed today" % (side, sym))
         passed_so_far = sum(1 for r in results if r["verdict"] == "PASS")
-        cap_n = int(c.get("max_orders_per_day") or 0)
-        if cap_n and count_today + passed_so_far >= cap_n:
-            reasons.append("daily limit: %d placed today plus %d passed earlier in this batch, "
-                           "your limit is %d a day" % (count_today, passed_so_far, cap_n))
+        cap = _lim(c, "max_orders_per_day")
+        if cap is not None and count_today + passed_so_far >= cap:
+            reasons.append("daily limit: %d placed or approved today plus %d passed earlier in this batch, "
+                           "your limit is %d a day" % (count_today, passed_so_far, int(cap)))
         seen.add(key)
 
         verdict = "BLOCK" if reasons else "PASS"
