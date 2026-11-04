@@ -1,6 +1,8 @@
 """Scheduled jobs. They read, refresh and notify. They never place an order.
 
 Jobs (service/config.json "jobs"):
+  schedule  trading days and hours from the exchange (tinvest schedule --write); with it
+            market_open() follows the real calendar (holidays, short days), else the config hours
   quotes    refresh trader/prices.json for the portfolio tickers (tinvest quote --write)
   alerts    evaluate trader/alerts.json against trader/prices.json, ring in Telegram
   snapshot  record the portfolio value at the start of the day (trader/state/day.json)
@@ -43,8 +45,23 @@ class Scheduler(object):
         n = self.clock()
         return n if n.tzinfo else n.replace(tzinfo=self.tz)
 
+    def schedule_for(self, now):
+        """Today's entry from trader/state/schedule.json, or None."""
+        doc = self.pack.read("trader/state/schedule.json", None) or {}
+        return (doc.get("days") or {}).get(now.date().isoformat())
+
     def market_open(self, now=None):
         now = now or self.now()
+        day = self.schedule_for(now)
+        if day is not None:
+            if not day.get("trading"):
+                return False
+            try:
+                start = datetime.datetime.fromisoformat(str(day["start"]).replace("Z", "+00:00"))
+                end = datetime.datetime.fromisoformat(str(day["end"]).replace("Z", "+00:00"))
+                return start <= now.astimezone(datetime.timezone.utc) < end
+            except (KeyError, TypeError, ValueError):
+                pass  # odd entry: fall back to the config hours
         mh = self.cfg.get("market_hours") or {}
         days = mh.get("days", [0, 1, 2, 3, 4])
         if now.weekday() not in days:
@@ -58,7 +75,14 @@ class Scheduler(object):
     def due(self, now=None):
         now = now or self.now()
         out = []
+        # the calendar first: if today's entry is missing, fetch it (at most once an hour)
+        if any(j["name"] == "schedule" for j in self.jobs) and self.schedule_for(now) is None:
+            last = None if "schedule" in self.skipped else self.last.get("schedule")
+            if last is None or (now - last).total_seconds() >= 3600:
+                out.append("schedule")
         for j in self.jobs:
+            if j["name"] in out:
+                continue
             name, last = j["name"], self.last.get(j["name"])
             if j.get("market_hours_only") and not self.market_open(now):
                 continue
@@ -110,6 +134,15 @@ class Scheduler(object):
         self.notify("⚠ " + html(text))
 
     # ------------------------------------------------------------ jobs
+    def job_schedule(self, now):
+        code, out, err = self.pack.schedule()
+        if code != 0:
+            raise RuntimeError("schedule: " + (err or out).strip()[:300])
+        day = self.schedule_for(now)
+        if day is None:
+            return "получено, сегодня в календаре нет"
+        return "сегодня %s" % ("торговый день" if day.get("trading") else "биржа закрыта")
+
     def job_quotes(self, now):
         code, out, err = self.pack.quote()
         if code != 0:
@@ -157,8 +190,16 @@ class Scheduler(object):
         text, total = self._total()
         code, out, err = self.pack.log_today()
         halted = self.pack.halted()
-        msg = ["<b>Итог дня</b> %s" % now.date().isoformat(), text, "<b>Решения</b>",
-               "<pre>%s</pre>" % html(out.strip()[:1500] or "нет")]
+        day = self.pack.read("trader/state/day.json", {}) or {}
+        result = ""
+        if day.get("date") == now.date().isoformat() and day.get("start_total"):
+            start = float(day["start_total"])
+            diff = total - start
+            result = "Результат дня: <b>%s%s ₽ (%+.2f%%)</b> от %s ₽ на старте" % (
+                "+" if diff >= 0 else "", "{:,.0f}".format(diff).replace(",", " "),
+                100.0 * diff / start if start else 0.0, "{:,.0f}".format(start).replace(",", " "))
+        msg = ["<b>Итог дня</b> %s" % now.date().isoformat()] + ([result] if result else []) + [
+               text, "<b>Решения</b>", "<pre>%s</pre>" % html(out.strip()[:1500] or "нет")]
         if halted:
             msg.append("⛔ Стоп-кран включён: %s" % html(halted.get("reason", "")))
         self.notify("\n".join(msg))

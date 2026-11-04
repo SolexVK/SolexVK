@@ -127,7 +127,13 @@ class Flow(unittest.TestCase):
                 {"instrumentUid": "u-sber", "price": {"units": "310", "nano": 500000000}, "time": "2026-11-04T10:00:00Z"}]},
             "SandboxService/PostSandboxOrder": {"orderId": "ord-1", "executionReportStatus": "EXECUTION_REPORT_STATUS_FILL",
                                                 "lotsRequested": "3", "lotsExecuted": "3",
-                                                "executedOrderPrice": {"currency": "rub", "units": "310", "nano": 400000000}},
+                                                "executedOrderPrice": {"currency": "rub", "units": "310", "nano": 400000000},
+                                                "executedCommission": {"currency": "rub", "units": "4", "nano": 660000000}},
+            "InstrumentsService/TradingSchedules": {"exchanges": [{"exchange": "MOEX", "days": [
+                {"date": "2026-11-04T00:00:00Z", "isTradingDay": False},
+                {"date": "2026-11-05T00:00:00Z", "isTradingDay": True, "startTime": "2026-11-05T06:59:00Z",
+                 "endTime": "2026-11-05T15:50:00Z", "eveningStartTime": "2026-11-05T16:05:00Z",
+                 "eveningEndTime": "2026-11-05T20:50:00Z"}]}]},
             "SandboxService/GetSandboxPortfolio": {"totalAmountPortfolio": {"currency": "rub", "units": "100000", "nano": 0},
                                                    "totalAmountCurrencies": {"currency": "rub", "units": "90685", "nano": 0},
                                                    "positions": [
@@ -197,7 +203,10 @@ class Flow(unittest.TestCase):
         pf = self.read("trader/portfolio.json")
         self.assertEqual(pf["positions"][0]["ticker"], "SBER")
         self.assertEqual(pf["positions"][0]["shares"], 30.0)
-        self.assertAlmostEqual(pf["cash"], 100000 - 30 * 310.4, places=2)
+        self.assertAlmostEqual(pf["cash"], 100000 - 30 * 310.4 - 4.66, places=2)  # commission included
+        self.assertAlmostEqual(pf["positions"][0]["lots"][0]["cost"], 30 * 310.4 + 4.66, places=2)
+        self.assertEqual(last["fee"], 4.66)
+        self.assertIn("commission 4.66 RUB", out)
         # the same yes cannot be sent twice
         code, out, err = run(["order", "--index", "1", "--today", TODAY])
         self.assertEqual(code, 1)
@@ -284,6 +293,19 @@ class Flow(unittest.TestCase):
         self.assertEqual(pf["positions"][0]["shares"], 30.0)
         self.assertAlmostEqual(pf["positions"][0]["lots"][0]["cost"], 30 * 310.4, places=2)
         self.assertIn("90,685 RUB", out)
+
+    def test_schedule_writes_the_calendar(self):
+        code, out, err = run(["schedule", "--write", "--days", "3"])
+        self.assertEqual(code, 0, err)
+        self.assertIn("2026-11-04  closed", out)
+        self.assertIn("2026-11-05  trading  06:59 .. 15:50 UTC", out)
+        doc = self.read("trader/state/schedule.json")
+        self.assertEqual(doc["exchange"], "MOEX")
+        self.assertFalse(doc["days"]["2026-11-04"]["trading"])
+        self.assertEqual(doc["days"]["2026-11-05"]["end"], "2026-11-05T15:50:00Z")
+        body = [c for c in self.fake.calls if c[1].endswith("TradingSchedules")][0][2]
+        self.assertEqual(body["exchange"], "MOEX")
+        self.assertTrue(body["from"].endswith("T00:00:00Z"))
 
     def test_whoami_and_sandbox_payin(self):
         self.fake.answers["SandboxService/SandboxPayIn"] = {"balance": {"currency": "rub", "units": "100000", "nano": 0}}

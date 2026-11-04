@@ -41,6 +41,13 @@ class FakePack(object):
         self.calls.append("alerts")
         return {"rings": list(self.rings), "errors": []}
 
+    def schedule(self):
+        self.calls.append("schedule")
+        self.files["trader/state/schedule.json"] = {"exchange": "MOEX", "days": {
+            "2026-11-04": {"trading": False},
+            "2026-11-05": {"trading": True, "start": "2026-11-05T06:59:00Z", "end": "2026-11-05T15:50:00Z"}}}
+        return 0, "ok", ""
+
     def log_today(self):
         return 0, "1 placed today.", ""
 
@@ -56,7 +63,8 @@ class FakePack(object):
 
 CFG = {"timezone_offset_hours": 3, "max_daily_loss_pct": 3,
        "market_hours": {"open": "10:00", "close": "18:50", "days": [0, 1, 2, 3, 4]},
-       "jobs": [{"name": "quotes", "every_min": 15, "market_hours_only": True},
+       "jobs": [{"name": "schedule", "at": "09:30"},
+                {"name": "quotes", "every_min": 15, "market_hours_only": True},
                 {"name": "alerts", "every_min": 5, "market_hours_only": True},
                 {"name": "guard", "every_min": 10, "market_hours_only": True},
                 {"name": "snapshot", "at": "09:55", "days": [0, 1, 2, 3, 4]},
@@ -85,66 +93,86 @@ class SchedulerTests(unittest.TestCase):
         self.assertFalse(s.market_open(at(4, "18:50")))
         self.assertFalse(s.market_open(at(7, "12:00")))  # Saturday
 
+    def test_calendar_from_the_exchange(self):
+        s = self.make(at(4, "12:00"))
+        self.assertTrue(s.market_open(at(4, "12:00")))      # no calendar yet: config hours say open
+        self.assertEqual(s.tick(), ["schedule", "quotes", "alerts", "guard"])
+        self.assertFalse(s.market_open(at(4, "12:00")))     # calendar: Nov 4 is a holiday
+        self.assertTrue(s.market_open(at(5, "10:00")))      # 07:00 UTC is inside 06:59..15:50
+        self.assertFalse(s.market_open(at(5, "18:51")))     # 15:51 UTC is after the close
+        s.clock.t = at(4, "12:30")
+        self.assertEqual(s.tick(), [])                      # closed by the calendar: nothing runs
+        self.assertEqual(self.pack.calls.count("schedule"), 1)
+
     def test_nothing_fires_outside_market_hours_except_at_jobs(self):
         s = self.make(at(4, "08:00"))
+        self.pack.schedule()  # calendar present so the config hours are not consulted
         self.assertEqual(s.due(), [])
         s.clock.t = at(4, "09:55")
-        self.assertEqual(s.tick(), ["snapshot"])
+        self.assertEqual(sorted(s.tick()), ["schedule", "snapshot"])  # the 09:30 calendar job and the snapshot
         self.assertEqual(self.pack.files["trader/state/day.json"]["start_total"], 10000.0)
         s.clock.t = at(4, "09:56")
         self.assertEqual(s.tick(), [])  # once a day
 
     def test_at_job_already_passed_does_not_fire_at_startup(self):
         s = self.make(at(4, "19:30"))
+        self.pack.schedule()
         self.assertEqual(s.due(), [])
         self.assertEqual(self.notes, [])
 
     def test_every_jobs_and_cadence(self):
-        s = self.make(at(4, "10:00"))
+        s = self.make(at(5, "10:00"))
+        self.pack.schedule()
         self.assertEqual(sorted(s.tick()), ["alerts", "guard", "quotes"])
         self.assertIn("quote", self.pack.calls)
-        s.clock.t = at(4, "10:05")
+        s.clock.t = at(5, "10:05")
         self.assertEqual(s.tick(), ["alerts"])
-        s.clock.t = at(4, "10:10")
+        s.clock.t = at(5, "10:10")
         self.assertEqual(sorted(s.tick()), ["alerts", "guard"])
-        s.clock.t = at(4, "10:15")
+        s.clock.t = at(5, "10:15")
         self.assertEqual(sorted(s.tick()), ["alerts", "quotes"])
 
     def test_alert_rings_are_sent(self):
-        s = self.make(at(4, "10:00"))
+        s = self.make(at(5, "10:00"))
+        self.pack.schedule()
         self.pack.rings = [{"id": "x", "symbol": "SBER", "message": "SBER is at 320"}]
         s.tick()
         self.assertTrue(any("SBER is at 320" in n for n in self.notes))
 
     def test_guard_pulls_the_kill_switch(self):
-        s = self.make(at(4, "10:00"))
+        s = self.make(at(5, "10:00"))
+        self.pack.schedule()
         s.tick()  # guard with no snapshot takes one
         self.assertEqual(self.pack.files["trader/state/day.json"]["start_total"], 10000.0)
         self.pack.files["trader/prices.json"]["prices"]["SBER"] = 289.0  # 30 shares: 9670 total, -3.3%
-        s.clock.t = at(4, "10:10")
+        s.clock.t = at(5, "10:10")
         s.tick()
         self.assertTrue(self.pack.halted())
         self.assertIn("дневной убыток", self.pack.halted()["reason"])
         self.assertTrue(any("Стоп-кран" in n for n in self.notes))
         self.assertEqual(len([n for n in self.notes if "Стоп-кран" in n]), 1)
-        s.clock.t = at(4, "10:20")
+        s.clock.t = at(5, "10:20")
         s.tick()  # already halted: no second message
         self.assertEqual(len([n for n in self.notes if "Стоп-кран" in n]), 1)
 
     def test_guard_quiet_within_the_limit(self):
-        s = self.make(at(4, "10:00"))
+        s = self.make(at(5, "10:00"))
+        self.pack.schedule()
         s.tick()
         self.pack.files["trader/prices.json"]["prices"]["SBER"] = 295.0  # -1.5%
-        s.clock.t = at(4, "10:10")
+        s.clock.t = at(5, "10:10")
         s.tick()
         self.assertFalse(self.pack.halted())
         self.assertEqual(self.notes, [])
 
     def test_digest_and_errors_throttled(self):
         s = self.make(at(4, "18:40"))
+        self.pack.schedule()
+        self.pack.files["trader/state/day.json"] = {"date": "2026-11-04", "start_total": 9800.0}
         s.clock.t = at(4, "18:55")
         self.assertEqual(s.tick(), ["digest"])
         self.assertIn("Итог дня", self.notes[-1])
+        self.assertIn("Результат дня: <b>+200 ₽ (+2.04%)</b>", self.notes[-1])
         self.pack.quote = lambda tickers=(): (1, "", "boom")
         s.clock.t = at(5, "10:00")
         s.tick()

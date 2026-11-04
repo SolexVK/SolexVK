@@ -119,6 +119,10 @@ class Pack(object):
     def active_orders(self):
         return self.run("trader-tinvest", "tinvest.py", "orders")
 
+    def schedule(self):
+        """trader-tinvest: trading days and hours from the exchange -> trader/state/schedule.json."""
+        return self.run("trader-tinvest", "tinvest.py", "schedule", "--write")
+
     def alerts_check(self):
         code, out, err = self.run("trader-alerts", "alerts.py", "check", "--source", "file", "--json")
         try:

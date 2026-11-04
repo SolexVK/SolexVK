@@ -9,6 +9,7 @@
   "market_hours": {"open": "10:00", "close": "18:50", "days": [0, 1, 2, 3, 4]},
   "max_daily_loss_pct": 3,
   "jobs": [
+    {"name": "schedule", "at": "09:30"},
     {"name": "quotes",   "every_min": 15, "market_hours_only": true},
     {"name": "alerts",   "every_min": 5,  "market_hours_only": true},
     {"name": "guard",    "every_min": 10, "market_hours_only": true},

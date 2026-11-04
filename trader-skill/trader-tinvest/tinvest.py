@@ -20,6 +20,7 @@ logged or written anywhere.
     python3 tinvest.py order --index 1 [--dry-run] # place ONE approved order
     python3 tinvest.py orders                      # active orders
     python3 tinvest.py order-state --id <orderId>
+    python3 tinvest.py schedule --write            # trading days and hours -> trader/state/schedule.json
 
 `order` is the only command that can move money. It refuses unless, for that
 exact order (matched by fingerprint): trader-risk passed it today, ticket.py
@@ -180,6 +181,10 @@ class Api(object):
 
     def order_state(self, account_id, order_id):
         return call(self.env, self._m("order_state"), {"accountId": account_id, "orderId": order_id}, self.token)
+
+    def schedules(self, exchange, start, end):
+        body = {"exchange": exchange, "from": start, "to": end}
+        return call(self.env, "InstrumentsService/TradingSchedules", body, self.token).get("exchanges", [])
 
     def sandbox_open(self, name=None):
         if self.env != "sandbox":
@@ -567,23 +572,52 @@ def cmd_order(a):
         raise
     executed = int(resp.get("lotsExecuted") or 0)
     exec_price = q2f(resp.get("executedOrderPrice"))
+    fee = q2f(resp.get("executedCommission")) or q2f(resp.get("initialCommission"))
     new = {"at": now_iso(), "date": today, "index": a.index, "fingerprint": fp, "symbol": rec["symbol"],
            "side": rec["side"], "plain": rec["plain"], "status": "placed", "env": api.env,
            "broker_order_id": resp.get("orderId"), "report": resp.get("executionReportStatus"),
            "lots": lots, "lot_size": lot, "lots_executed": executed,
-           "executed_price": exec_price or None, "idempotency_id": idem}
+           "executed_price": exec_price or None, "fee": round(fee, 2), "idempotency_id": idem}
     state["orders"].append(new)
     ticket.write_json(a.state, state)
     print("Placed. Broker order id %s, status %s, executed %d of %d lots%s."
           % (resp.get("orderId"), (resp.get("executionReportStatus") or "").replace("EXECUTION_REPORT_STATUS_", ""),
              executed, lots, (" at " + money(exec_price)) if exec_price else ""))
     if executed and exec_price:
-        ticket.apply_fill(a.portfolio, cfg, rec["symbol"], rec["side"], executed * lot, exec_price, today)
-        print("Recorded the fill (%d shares at %s) in %s." % (executed * lot, money(exec_price), a.portfolio))
+        ticket.apply_fill(a.portfolio, cfg, rec["symbol"], rec["side"], executed * lot, exec_price, today, fee)
+        print("Recorded the fill (%d shares at %s%s) in %s." % (
+            executed * lot, money(exec_price), (", commission " + money(fee)) if fee else "", a.portfolio))
     elif executed:
         print("Filled %d lots but no price in the answer; check: tinvest.py order-state --id %s" % (executed, resp.get("orderId")))
     else:
         print("Not filled yet; check later: tinvest.py order-state --id %s, then ticket.py fill ..." % resp.get("orderId"))
+    return 0
+
+
+def cmd_schedule(a):
+    cfg = read_json(a.config, "config", required=False) or {}
+    api = _api(a, cfg)
+    exchange = a.exchange or cfg.get("exchange") or "MOEX"
+    start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + datetime.timedelta(days=a.days)
+    iso = lambda d: d.isoformat().replace("+00:00", "Z")
+    rows = api.schedules(exchange, iso(start), iso(end))
+    if not rows:
+        raise TinvestError("no schedule for exchange %r (try --exchange MOEX)" % exchange)
+    days = {}
+    for d in rows[0].get("days", []):
+        date = str(d.get("date", ""))[:10]
+        if not date:
+            continue
+        days[date] = {"trading": bool(d.get("isTradingDay")), "start": d.get("startTime"), "end": d.get("endTime"),
+                      "evening_start": d.get("eveningStartTime"), "evening_end": d.get("eveningEndTime")}
+    for date in sorted(days):
+        x = days[date]
+        print("%s  %s%s" % (date, "trading" if x["trading"] else "closed ",
+                            ("  %s .. %s UTC" % (str(x["start"])[11:16], str(x["end"])[11:16])) if x["trading"] and x["start"] else ""))
+    if a.write:
+        write_json(a.out, {"exchange": rows[0].get("exchange", exchange), "fetched_at": now_iso(), "days": days})
+        print("wrote %s" % a.out)
     return 0
 
 
@@ -649,6 +683,11 @@ def main(argv=None):
     p.add_argument("--portfolio", default="trader/portfolio.json")
     p.add_argument("--today")
     p.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("schedule", help="trading days and hours -> trader/state/schedule.json"); common(p)
+    p.add_argument("--exchange", help="default: config \"exchange\" or MOEX")
+    p.add_argument("--days", type=int, default=14)
+    p.add_argument("--write", action="store_true")
+    p.add_argument("--out", default="trader/state/schedule.json")
     p = sub.add_parser("orders", help="active orders"); common(p)
     p = sub.add_parser("order-state", help="one order by id"); common(p)
     p.add_argument("--id", required=True)
@@ -662,7 +701,7 @@ def main(argv=None):
     try:
         return {"whoami": cmd_whoami, "sandbox": cmd_sandbox, "find": cmd_find, "quote": cmd_quote,
                 "portfolio": cmd_portfolio, "order": cmd_order, "orders": cmd_orders,
-                "order-state": cmd_order_state}[a.cmd](a)
+                "order-state": cmd_order_state, "schedule": cmd_schedule}[a.cmd](a)
     except TinvestError as e:
         print("tinvest.py: %s" % e, file=sys.stderr)
         return 1

@@ -292,8 +292,9 @@ def ticket_json(order, idx, cfg, risk, state, today):
 
 # ---------------------------------------------------------------- fills -> lots
 
-def apply_fill(portfolio_path, cfg, symbol, side, qty, price, date):
-    """Record a filled order in trader/portfolio.json (a lot for a buy, FIFO for a sell)."""
+def apply_fill(portfolio_path, cfg, symbol, side, qty, price, date, fee=0.0):
+    """Record a filled order in trader/portfolio.json (a lot for a buy, FIFO for a sell).
+    The broker's commission (fee) is part of a buy's cost basis and reduces a sell's proceeds."""
     pf = read_json(portfolio_path, "portfolio", required=False)
     if pf is None:
         budget = cfg.get("budget")
@@ -301,8 +302,8 @@ def apply_fill(portfolio_path, cfg, symbol, side, qty, price, date):
             raise TicketError("no %s yet and no budget in the config to start it from" % portfolio_path)
         pf = {"cash": float(budget), "positions": []}
     symbol = symbol.upper()
-    qty, price = float(qty), float(price)
-    cost = round(qty * price, 2)
+    qty, price, fee = float(qty), float(price), float(fee or 0)
+    cost = round(qty * price + fee, 2) if side == "buy" else round(qty * price - fee, 2)
     pos = None
     for p in pf.setdefault("positions", []):
         if str(p.get("ticker", "")).upper() == symbol:
@@ -439,7 +440,7 @@ def cmd_result(a):
     write_json(a.state, state)
     print("Recorded order %d as %s." % (a.index, a.status))
     if a.status == "placed" and a.filled_qty and a.filled_price:
-        apply_fill(a.portfolio, cfg, rec["symbol"], rec["side"], a.filled_qty, a.filled_price, today)
+        apply_fill(a.portfolio, cfg, rec["symbol"], rec["side"], a.filled_qty, a.filled_price, today, a.fee)
         print("Added the fill to %s." % a.portfolio)
     elif a.status == "placed":
         print("When it fills, record it for trader-tax: ticket.py fill --symbol %s --side %s --qty Q --price P"
@@ -450,7 +451,7 @@ def cmd_result(a):
 def cmd_fill(a):
     cfg = read_json(a.config, "config", required=False) or {}
     date = a.date or datetime.date.today().isoformat()
-    pf = apply_fill(a.portfolio, cfg, a.symbol, a.side, a.qty, a.price, date)
+    pf = apply_fill(a.portfolio, cfg, a.symbol, a.side, a.qty, a.price, date, a.fee)
     print("Recorded %s %s %s at %s on %s. Cash now %s." % (a.side, a.qty, a.symbol.upper(),
                                                           _money(a.price), date, _money(pf["cash"])))
     return 0
@@ -504,12 +505,14 @@ def main(argv=None):
     p.add_argument("--note")
     p.add_argument("--filled-qty")
     p.add_argument("--filled-price")
+    p.add_argument("--fee", default=0, help="broker commission for this fill")
     p.add_argument("--portfolio", default="trader/portfolio.json")
     p = sub.add_parser("fill", help="add a filled order to trader/portfolio.json")
     p.add_argument("--symbol", required=True)
     p.add_argument("--side", required=True, choices=["buy", "sell"])
     p.add_argument("--qty", required=True)
     p.add_argument("--price", required=True)
+    p.add_argument("--fee", default=0, help="broker commission for this fill")
     p.add_argument("--date")
     p.add_argument("--portfolio", default="trader/portfolio.json")
     p.add_argument("--config", default="trader/config.json")
