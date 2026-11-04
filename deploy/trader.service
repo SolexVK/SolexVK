@@ -14,6 +14,8 @@ WorkingDirectory=/opt/trader/app
 # tokens live here, readable by trader only (chmod 600, chown trader)
 EnvironmentFile=/opt/trader/env
 Environment=PYTHONIOENCODING=utf-8 PYTHONUNBUFFERED=1
+# files the service writes are readable by the trader group (the analyst), not by others
+UMask=0027
 ExecStart=/usr/bin/python3 /opt/trader/app/service/run.py --config /opt/trader/app/service/config.json
 Restart=always
 RestartSec=15

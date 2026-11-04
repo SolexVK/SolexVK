@@ -141,6 +141,24 @@ class BotFlow(unittest.TestCase):
         self.assertFalse(self.pack.halted())
         self.assertEqual(self.bot.handle(click("go:1:" + fp)), "placed")
 
+    def test_propose_takes_targets_from_inbox(self):
+        os.makedirs(os.path.join(self.dir, "trader", "inbox"))
+        self.w("trader/targets.json", {"weights": {"SBER": 100}})
+        self.w("trader/inbox/targets.json", {"weights": {"SBER": 50, "LKOH": 50}, "source": "sirius",
+                                              "why": "две бумаги вместо одной"})
+        self.bot.handle(msg("/propose"))
+        text = self.tg.sent[-1][1]
+        self.assertIn("Взяты новые цели из inbox (sirius)", text)
+        self.assertIn("две бумаги вместо одной", text)
+        self.assertIn("LKOH", text)
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "trader/inbox/targets.json")))
+        self.assertEqual(self.r("trader/targets.prev.json")["weights"], {"SBER": 100})
+        self.assertEqual(self.r("trader/targets.json")["source"], "sirius")
+        # a bad inbox file is reported, not swallowed
+        self.w("trader/inbox/targets.json", {"oops": 1})
+        self.bot.handle(msg("/propose"))
+        self.assertIn("is not a targets file", self.tg.sent[-1][1])
+
     def test_status_and_unknown_command(self):
         self.bot.handle(msg("/status"))
         self.assertIn("песочница", self.tg.sent[-1][1])

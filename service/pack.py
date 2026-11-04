@@ -126,6 +126,26 @@ class Pack(object):
         except ValueError:
             return {"rings": [], "errors": [(err or out).strip()[:300] or "alerts.py failed"]}
 
+    INBOX = "trader/inbox/targets.json"
+
+    def take_inbox_targets(self):
+        """A targets.json dropped into trader/inbox/ by the analyst becomes trader/targets.json.
+        The previous one is kept as targets.prev.json. Returns the source note or None."""
+        src = self.path(self.INBOX)
+        if not os.path.isfile(src):
+            return None
+        doc = self.read(self.INBOX)
+        if not isinstance(doc, dict) or "weights" not in doc:
+            raise PackError("%s is not a targets file (needs \"weights\")" % self.INBOX)
+        dst = self.path("trader/targets.json")
+        if os.path.exists(dst):
+            os.replace(dst, self.path("trader/targets.prev.json"))
+        doc.setdefault("source", "inbox")
+        doc["taken_at"] = datetime.datetime.now().replace(microsecond=0).isoformat()
+        self.write("trader/targets.json", doc)
+        os.remove(src)
+        return str(doc.get("source", "inbox"))
+
     def size(self, budget=None):
         args = ["--write"] + (["--budget", budget] if budget else [])
         if os.path.exists(self.path("trader/prices.json")):

@@ -165,9 +165,14 @@ class Bot(object):
 
     def cmd_propose(self, chat, args, user):
         budget = args[0] if args and re.match(r"^\d+(\.\d+)?$", args[0]) else None
+        taken = self.pack.take_inbox_targets()
+        note = ("Взяты новые цели из inbox (%s).\n" % html(taken)) if taken else ""
+        targets = self.pack.read("trader/targets.json", {}) or {}
+        if targets.get("why"):
+            note += "<i>%s</i>\n" % html(str(targets["why"])[:600])
         code, out, err = self.pack.size(budget)
-        self.tg.send(chat, "<b>trader-budget</b>\n<pre>%s</pre>\n%s" % (
-            html((out + err).strip()[:3000]), "Дальше: /risk" if code == 0 else "Ошибка, см. выше."))
+        self.tg.send(chat, "%s<b>trader-budget</b>\n<pre>%s</pre>\n%s" % (
+            note, html((out + err).strip()[:3000]), "Дальше: /risk" if code == 0 else "Ошибка, см. выше."))
 
     def cmd_rebalance(self, chat, args, user):
         band = args[0] if args and re.match(r"^\d+(\.\d+)?$", args[0]) else None

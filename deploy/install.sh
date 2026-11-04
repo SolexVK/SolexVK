@@ -8,6 +8,8 @@ APP=/opt/trader/app
 ENVFILE=/opt/trader/env
 REPO_URL="${REPO_URL:-https://github.com/SolexVK/SolexVK.git}"
 BRANCH="${BRANCH:-Трейдинг-с-ИИ}"
+# users who may READ the data folder and WRITE to inbox/ (the analyst agent), never the tokens
+READERS="${READERS:-deploy}"
 
 if [ "$(id -u)" -ne 0 ]; then echo "run as root: sudo bash $0"; exit 1; fi
 command -v python3 >/dev/null || { echo "python3 is missing: apt-get install -y python3"; exit 1; }
@@ -34,11 +36,20 @@ if [ ! -f "$ENVFILE" ]; then
   cp "$APP/deploy/env.example" "$ENVFILE"
   echo "NOTE: put the real tokens into $ENVFILE (nano $ENVFILE)"
 fi
+# 3b. the analyst's door: inbox/ is where another user (Sirius) drops targets.json;
+#     the data folder is readable by the trader group, the tokens by trader only
+mkdir -p "$APP/trader/inbox"
+for u in $READERS; do
+  if id "$u" >/dev/null 2>&1; then usermod -aG trader "$u"; echo "user $u may read trader/ and write trader/inbox/"; fi
+done
 chown -R trader:trader /opt/trader
-chmod 700 /opt/trader
+chmod 750 /opt/trader
 chmod 600 "$ENVFILE"
-chmod 755 "$APP"   # code readable, data folder below stays trader-only
-chmod 700 "$APP/trader"
+chmod 755 "$APP"            # code readable by everyone, no secrets in it
+chmod 750 "$APP/trader"     # data: trader writes, the trader group reads
+chmod 2770 "$APP/trader/inbox"   # inbox: the group writes too; new files inherit the group
+find "$APP/trader" -type f -exec chmod 640 {} +
+find "$APP/trader" -type d -not -path "$APP/trader/inbox" -exec chmod 750 {} +
 
 # 4. the service
 cp "$APP/deploy/trader.service" /etc/systemd/system/trader.service
