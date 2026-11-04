@@ -1,0 +1,32 @@
+# systemd unit for the trading service: Telegram bot + scheduler.
+# Installed by deploy/install.sh to /etc/systemd/system/trader.service
+
+[Unit]
+Description=Trader bot and scheduler (SolexVK)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=trader
+Group=trader
+WorkingDirectory=/opt/trader/app
+# tokens live here, readable by trader only (chmod 600, chown trader)
+EnvironmentFile=/opt/trader/env
+Environment=PYTHONIOENCODING=utf-8 PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /opt/trader/app/service/run.py --config /opt/trader/app/service/config.json
+Restart=always
+RestartSec=15
+# hardening: no new privileges, private /tmp, read-only system, writable only where it must write
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/trader/app/trader
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

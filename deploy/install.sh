@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Install or update the trading service on a Linux server (Debian/Ubuntu, systemd).
+# Run as root:  sudo bash deploy/install.sh
+# Idempotent: safe to run again after `git pull` to update the code.
+set -euo pipefail
+
+APP=/opt/trader/app
+ENVFILE=/opt/trader/env
+REPO_URL="${REPO_URL:-https://github.com/SolexVK/SolexVK.git}"
+BRANCH="${BRANCH:-Трейдинг-с-ИИ}"
+
+if [ "$(id -u)" -ne 0 ]; then echo "run as root: sudo bash $0"; exit 1; fi
+command -v python3 >/dev/null || { echo "python3 is missing: apt-get install -y python3"; exit 1; }
+command -v git >/dev/null || { echo "git is missing: apt-get install -y git"; exit 1; }
+
+# 1. a user of its own, no login shell, no home we care about
+id trader >/dev/null 2>&1 || useradd --system --home /opt/trader --shell /usr/sbin/nologin trader
+mkdir -p /opt/trader
+
+# 2. the code: clone once, then fast-forward
+if [ ! -d "$APP/.git" ]; then
+  git clone --branch "$BRANCH" "$REPO_URL" "$APP"
+else
+  git -C "$APP" fetch origin "$BRANCH"
+  git -C "$APP" checkout -q "$BRANCH"
+  git -C "$APP" merge -q --ff-only "origin/$BRANCH"
+fi
+
+# 3. data folder and configs (kept across updates, never overwritten)
+mkdir -p "$APP/trader/state"
+[ -f "$APP/trader/config.json" ] || cp "$APP/trader-skill/trader-tinvest/config.example.json" "$APP/trader/config.json"
+[ -f "$APP/service/config.json" ] || cp "$APP/service/config.example.json" "$APP/service/config.json"
+if [ ! -f "$ENVFILE" ]; then
+  cp "$APP/deploy/env.example" "$ENVFILE"
+  echo "NOTE: put the real tokens into $ENVFILE (nano $ENVFILE)"
+fi
+chown -R trader:trader /opt/trader
+chmod 700 /opt/trader
+chmod 600 "$ENVFILE"
+chmod 755 "$APP"   # code readable, data folder below stays trader-only
+chmod 700 "$APP/trader"
+
+# 4. the service
+cp "$APP/deploy/trader.service" /etc/systemd/system/trader.service
+systemctl daemon-reload
+systemctl enable trader >/dev/null
+
+echo
+echo "Installed. Next:"
+echo "  nano $ENVFILE                      # tokens"
+echo "  nano $APP/trader/config.json       # account_id"
+echo "  nano $APP/service/config.json      # allowed_user_ids"
+echo "  sudo -u trader bash -c 'set -a; . $ENVFILE; set +a; cd $APP && python3 service/run.py --check'"
+echo "  systemctl restart trader && journalctl -u trader -f"
