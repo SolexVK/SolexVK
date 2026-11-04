@@ -74,8 +74,8 @@ class Telegram(object):
             raise TgError("could not reach %s: %s" % (urllib.parse.urlparse(self.base).hostname, exc.reason))
         return body
 
-    def call(self, method, timeout=30, **payload):
-        body = self.transport(method, payload, timeout)
+    def call(self, method, payload=None, timeout=30):
+        body = self.transport(method, payload or {}, timeout)
         if not body.get("ok"):
             desc = body.get("description", "unknown error")
             raise TgError("%s: %s" % (method, desc.replace(self.token, "<token>")))
@@ -91,7 +91,7 @@ class Telegram(object):
         payload = {"timeout": timeout, "allowed_updates": ["message", "callback_query"]}
         if self.offset is not None:
             payload["offset"] = self.offset
-        res = self.call("getUpdates", timeout=timeout + 10, **payload) or []
+        res = self.call("getUpdates", payload, timeout=timeout + 10) or []
         for u in res:
             self.offset = max(self.offset or 0, u["update_id"] + 1)
         return res
@@ -101,14 +101,14 @@ class Telegram(object):
                    "disable_web_page_preview": True, "disable_notification": silent}
         if buttons:
             payload["reply_markup"] = {"inline_keyboard": buttons}
-        return self.call("sendMessage", **payload)
+        return self.call("sendMessage", payload)
 
     def edit(self, chat_id, message_id, text, buttons=None):
         payload = {"chat_id": chat_id, "message_id": message_id, "text": text[:4000], "parse_mode": "HTML",
                    "disable_web_page_preview": True}
         payload["reply_markup"] = {"inline_keyboard": buttons or []}
         try:
-            return self.call("editMessageText", **payload)
+            return self.call("editMessageText", payload)
         except TgError as exc:
             if "message is not modified" in str(exc):
                 return None
@@ -120,12 +120,12 @@ class Telegram(object):
             payload["text"] = text[:200]
             payload["show_alert"] = alert
         try:
-            return self.call("answerCallbackQuery", **payload)
+            return self.call("answerCallbackQuery", payload)
         except TgError:
             return None  # an old callback; nothing to do
 
     def set_commands(self, commands):
-        return self.call("setMyCommands", commands=[{"command": c, "description": d} for c, d in commands])
+        return self.call("setMyCommands", {"commands": [{"command": c, "description": d} for c, d in commands]})
 
 
 def button(text, data):

@@ -168,6 +168,30 @@ class Relay(unittest.TestCase):
         with self.assertRaises(TgError):
             Telegram(token="1:x", base="http://plain.example", transport=lambda m, p, t: {})
 
+    def test_every_method_builds_its_payload(self):
+        calls = []
+
+        def transport(method, payload, timeout):
+            calls.append((method, payload, timeout))
+            return {"ok": True, "result": [{"update_id": 7, "message": {}}] if method == "getUpdates" else {}}
+        tg = Telegram(token="1:x", transport=transport)
+        self.assertEqual(len(tg.updates()), 1)
+        self.assertEqual(tg.offset, 8)
+        self.assertEqual(calls[-1][1]["timeout"], 50)
+        self.assertEqual(calls[-1][2], 60)
+        tg.updates(timeout=5)
+        self.assertEqual(calls[-1][1]["offset"], 8)
+        tg.send(1, "hi", [[{"text": "b", "callback_data": "d"}]])
+        self.assertEqual(calls[-1][1]["reply_markup"]["inline_keyboard"][0][0]["callback_data"], "d")
+        tg.edit(1, 2, "x")
+        self.assertEqual(calls[-1][0], "editMessageText")
+        tg.answer("cb", "ok")
+        self.assertEqual(calls[-1][1]["callback_query_id"], "cb")
+        tg.set_commands([("help", "h")])
+        self.assertEqual(calls[-1][1]["commands"][0]["command"], "help")
+        tg.get_me()
+        self.assertEqual(calls[-1][1], {})
+
     def test_token_never_in_errors(self):
         from service.tg import TgError
         tg = Telegram(token="1:secret", transport=lambda m, p, t: {"ok": False, "description": "bad 1:secret"})
