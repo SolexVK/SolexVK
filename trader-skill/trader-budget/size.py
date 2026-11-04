@@ -386,11 +386,25 @@ def write_orders(path, orders, result, cfg, source=""):
 
 # ---------------------------------------------------------------- report
 
+CURRENCY = {"symbol": "$", "suffix": False}
+
+
+def set_currency(code):
+    """$1,250 for USD; 1,250 ₽ for RUB; 1,250 XXX for anything else."""
+    code = str(code or "USD").upper()
+    sym = {"USD": "$", "EUR": "€", "RUB": " ₽", "KZT": " ₸"}.get(code, " " + code)
+    CURRENCY.update({"symbol": sym, "suffix": code not in ("USD", "EUR")})
+
+
+def _cur(s):
+    return s + CURRENCY["symbol"] if CURRENCY["suffix"] else CURRENCY["symbol"] + s
+
+
 def money(x):
     x = float(x)
     if abs(x - round(x)) < 0.005:
-        return "$" + "{:,.0f}".format(round(x))
-    return "$" + "{:,.2f}".format(x)
+        return _cur("{:,.0f}".format(round(x)))
+    return _cur("{:,.2f}".format(x))
 
 
 def report(result, orders, source=""):
@@ -451,6 +465,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     try:
         cfg = load_config(a.config)
+        set_currency(cfg.get("currency"))
         source = ""
         if a.weights:
             rows = parse_weights(weights_from_arg(a.weights))

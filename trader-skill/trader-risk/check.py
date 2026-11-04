@@ -86,8 +86,22 @@ def _f(x):
         return None
 
 
+CURRENCY = {"symbol": "$", "suffix": False}
+
+
+def set_currency(code):
+    """$1,250 for USD; 1,250 ₽ for RUB; 1,250 XXX for anything else."""
+    code = str(code or "USD").upper()
+    sym = {"USD": "$", "EUR": "€", "RUB": " ₽", "KZT": " ₸"}.get(code, " " + code)
+    CURRENCY.update({"symbol": sym, "suffix": code not in ("USD", "EUR")})
+
+
+def _cur(s):
+    return s + CURRENCY["symbol"] if CURRENCY["suffix"] else CURRENCY["symbol"] + s
+
+
 def money(x):
-    return "$" + "{:,.2f}".format(float(x)).replace(".00", "")
+    return _cur("{:,.2f}".format(float(x)).replace(".00", ""))
 
 
 def account(cfg, portfolio, prices):
@@ -371,6 +385,7 @@ def main(argv=None):
         if not isinstance(orders, list) or not orders:
             raise RiskError("no orders in %s" % a.orders)
         cfg = read_json(a.config, "config", required=False) or {}
+        set_currency(cfg.get("currency"))
         portfolio = read_json(a.portfolio, "portfolio", required=False)
         pdoc = read_json(a.prices, "prices", required=False) or {}
         prices = pdoc.get("prices", pdoc) if isinstance(pdoc, dict) else {}

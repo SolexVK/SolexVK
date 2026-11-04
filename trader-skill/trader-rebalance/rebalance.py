@@ -58,11 +58,25 @@ def read_json(path, what, required=True):
         raise RebalanceError("%s is not valid JSON: %s" % (path, e))
 
 
+CURRENCY = {"symbol": "$", "suffix": False}
+
+
+def set_currency(code):
+    """$1,250 for USD; 1,250 ₽ for RUB; 1,250 XXX for anything else."""
+    code = str(code or "USD").upper()
+    sym = {"USD": "$", "EUR": "€", "RUB": " ₽", "KZT": " ₸"}.get(code, " " + code)
+    CURRENCY.update({"symbol": sym, "suffix": code not in ("USD", "EUR")})
+
+
+def _cur(s):
+    return s + CURRENCY["symbol"] if CURRENCY["suffix"] else CURRENCY["symbol"] + s
+
+
 def money(x):
     x = float(x)
     sign = "-" if x < -0.004 else ""
     s = "{:,.2f}".format(abs(x))
-    return sign + "$" + (s[:-3] if s.endswith(".00") else s)
+    return sign + _cur(s[:-3] if s.endswith(".00") else s)
 
 
 def fmt_qty(x):
@@ -283,6 +297,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     try:
         cfg = read_json(a.config, "config", required=False) or {}
+        set_currency(cfg.get("currency"))
         portfolio = read_json(a.portfolio, "portfolio (your holdings and cash)")
         pdoc = read_json(a.prices, "prices (trader-alerts: alerts.py quote --holdings --write)")
         prices = {str(k).upper(): float(v) for k, v in (pdoc.get("prices", pdoc) or {}).items()

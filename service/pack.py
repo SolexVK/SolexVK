@@ -128,6 +128,8 @@ class Pack(object):
 
     def size(self, budget=None):
         args = ["--write"] + (["--budget", budget] if budget else [])
+        if os.path.exists(self.path("trader/prices.json")):
+            args += ["--prices", "trader/prices.json"]  # whole shares need prices
         return self.run("trader-budget", "size.py", *args)
 
     def rebalance(self, band=None):

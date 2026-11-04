@@ -30,9 +30,12 @@ class Scheduler(object):
         self.last_result = {}  # name -> short text
         self.errors_said = {}  # error text -> when it was last sent (throttle)
         now = self.clock()
+        self.skipped = set()
         for j in self.jobs:  # an "at" job whose time already passed today does not fire at start-up
             if j.get("at") and self._at_passed(j, now):
                 self.last[j["name"]] = now
+                self.skipped.add(j["name"])
+                self.last_result[j["name"]] = "время уже прошло при запуске, ждёт следующего дня"
         self.stop = threading.Event()
 
     # ------------------------------------------------------------ time
@@ -73,6 +76,7 @@ class Scheduler(object):
         ran = []
         for name in self.due(now):
             self.last[name] = now
+            self.skipped.discard(name)
             fn = getattr(self, "job_" + name, None)
             if not fn:
                 self.last_result[name] = "неизвестная задача"
@@ -165,7 +169,7 @@ class Scheduler(object):
         parts = []
         for j in self.jobs:
             last = self.last.get(j["name"])
-            parts.append("%s %s" % (j["name"], last.strftime("%H:%M") if last else "–"))
+            parts.append("%s %s" % (j["name"], "–" if (last is None or j["name"] in self.skipped) else last.strftime("%H:%M")))
         return ", ".join(parts) + (", рынок открыт" if self.market_open() else ", рынок закрыт")
 
     def status_text(self):
@@ -175,6 +179,8 @@ class Scheduler(object):
             if j.get("market_hours_only"):
                 when += ", в торговые часы"
             last = self.last.get(j["name"])
+            if j["name"] in self.skipped:
+                last = None
             lines.append("• %s: %s. Последний запуск %s. %s" % (
                 j["name"], when, last.strftime("%d.%m %H:%M") if last else "ещё не было",
                 html(self.last_result.get(j["name"], ""))))
