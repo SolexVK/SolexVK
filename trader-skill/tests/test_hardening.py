@@ -128,6 +128,20 @@ class Network(unittest.TestCase):
         with self.assertRaises(net.NetError):
             net.open_url("https://evil.example/", allowed=net.ALL_HOSTS)
 
+    def test_proxy_is_off_unless_asked(self):
+        old = dict(os.environ)
+        try:
+            os.environ["HTTPS_PROXY"] = "http://user:pw@corp-proxy:3128"
+            os.environ.pop("TRADER_PROXY", None)
+            self.assertEqual(net.proxy_handler().proxies, {})
+            os.environ["TRADER_PROXY"] = "system"
+            self.assertIn("https", net.proxy_handler().proxies)
+            os.environ["TRADER_PROXY"] = "http://me:pw@proxy.local:8080"
+            self.assertEqual(net.proxy_handler().proxies["https"], "http://me:pw@proxy.local:8080")
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+
     def test_redirect_to_another_host_is_refused(self):
         h = net._SameListRedirects(net.SEC_HOSTS)
         req = urllib.request.Request("https://www.sec.gov/a")

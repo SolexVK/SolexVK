@@ -13,6 +13,7 @@ Every script that goes online calls open_url() instead of urllib.request.urlopen
         data = resp.read()
 """
 
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -54,11 +55,24 @@ class _SameListRedirects(urllib.request.HTTPRedirectHandler):
             self, req, fp, code, msg, headers, newurl)
 
 
+def proxy_handler():
+    """Direct connections by default: the hosts we talk to (T-Bank, SEC, Telegram)
+    need no proxy, and a system or VPN proxy with a password answers 407 to urllib.
+    To go through a proxy on purpose: TRADER_PROXY=http://user:pass@host:port
+    (used for https). TRADER_PROXY=system uses what the OS / HTTPS_PROXY says."""
+    p = os.environ.get("TRADER_PROXY", "").strip()
+    if not p:
+        return urllib.request.ProxyHandler({})
+    if p.lower() == "system":
+        return urllib.request.ProxyHandler()
+    return urllib.request.ProxyHandler({"https": p, "http": p})
+
+
 def open_url(req, timeout=60, allowed=ALL_HOSTS):
     """urlopen with the allow list. `req` is a urllib Request or a URL string.
     Returns the response (use it as a context manager). Raises NetError for a
     disallowed host, and urllib's HTTPError / URLError as usual."""
     url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
     check_url(url, allowed)
-    opener = urllib.request.build_opener(_SameListRedirects(allowed))
+    opener = urllib.request.build_opener(proxy_handler(), _SameListRedirects(allowed))
     return opener.open(req, timeout=timeout)

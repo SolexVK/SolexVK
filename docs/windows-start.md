@@ -259,6 +259,18 @@ notepad trader\targets.json
 
 **Что прислать мне:** текст сообщений бота про ордер и `/log`.
 
+## Прокси и VPN
+
+Скрипты ходят к Т-Банку и Telegram напрямую и не используют системный прокси
+или VPN. Если на компьютере настроен прокси с паролем, это убирает ошибку
+`407 Proxy Authentication Required`. Если вам, наоборот, нужен прокси:
+
+```powershell
+[Environment]::SetEnvironmentVariable("TRADER_PROXY", "http://логин:пароль@хост:порт", "User")
+```
+
+или `TRADER_PROXY` со значением `system`, чтобы брать настройки Windows.
+
 ## Если что-то пошло не так
 
 - `python: command not found` или открывается Store: шаг 1.
@@ -267,4 +279,5 @@ notepad trader\targets.json
   новый на tbank.ru/invest/settings, обновите переменную, новое окно.
 - `no bot token`: шаг 6, пункт 3 и 4.
 - Бот молчит: ваш id не в `allowed_user_ids`, или сервис не запущен.
+- `407 Proxy Authentication Required`: обновите код (`git pull`), это исправлено.
 - Любая другая ошибка: скопируйте весь текст из окна и пришлите.
