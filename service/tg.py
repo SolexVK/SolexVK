@@ -136,6 +136,11 @@ class Telegram(object):
         except TgError:
             return None  # an old callback; nothing to do
 
+    def set_menu_button(self, chat_id, text, url):
+        """A persistent "open the panel" button next to the input field (Telegram Mini App; https only)."""
+        return self.call("setChatMenuButton", {"chat_id": chat_id,
+                                               "menu_button": {"type": "web_app", "text": text, "web_app": {"url": url}}})
+
     def set_commands(self, commands):
         return self.call("setMyCommands", {"commands": [{"command": c, "description": d} for c, d in commands]})
 

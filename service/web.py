@@ -81,6 +81,14 @@ class Panel(object):
         base = self.public_url or ("http://%s:%d" % (self.host, self.port))
         return "%s/d/%s" % (base, self.secret)
 
+    def masked_url(self):
+        """For logs: the secret never goes to the journal."""
+        base = self.public_url or ("http://%s:%d" % (self.host, self.port))
+        return "%s/d/%s..." % (base, self.secret[:3])
+
+    def https(self):
+        return self.public_url.startswith("https://")
+
     def start(self):
         self.thread = threading.Thread(target=self.server.serve_forever, name="panel", daemon=True)
         self.thread.start()

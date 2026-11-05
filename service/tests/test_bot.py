@@ -198,6 +198,17 @@ class BotFlow(unittest.TestCase):
         self.bot.handle(msg("привет"))
         self.assertIn("команды", self.tg.sent[-1][1])
 
+    def test_panel_button(self):
+        class P(object):
+            def https(self): return True
+            def url(self): return "https://trade.example.ru/d/secret"
+        bot = Bot(self.tg, self.pack, {"telegram": {"allowed_user_ids": [111]}}, None, P())
+        bot.handle(msg("/panel"))
+        self.assertEqual(self.tg.sent[-1][2][0][0]["web_app"]["url"], "https://trade.example.ru/d/secret")
+        bot = Bot(self.tg, self.pack, {"telegram": {"allowed_user_ids": [111]}}, None, None)
+        bot.handle(msg("/panel"))
+        self.assertIn("выключена", self.tg.sent[-1][1])
+
     def test_html_escape(self):
         self.assertEqual(html("a<b>&"), "a&lt;b&gt;&amp;")
 

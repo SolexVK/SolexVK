@@ -82,6 +82,13 @@ class PanelTests(unittest.TestCase):
         self.assertFalse(p.enabled())
         p.stop()
         self.assertTrue(self.panel.url().endswith("/d/s3cr3t-s3cr3t-s3cr3t"))
+        self.assertNotIn("s3cr3t-s3cr3t", self.panel.masked_url())
+        self.assertFalse(self.panel.https())
+        p2 = Panel(self.pack, None, {"web": {"host": "127.0.0.1", "port": 0, "secret": "s3cr3t-s3cr3t-s3cr3t",
+                                            "public_url": "https://trade.example.ru/"}})
+        self.assertTrue(p2.https())
+        self.assertEqual(p2.url(), "https://trade.example.ru/d/s3cr3t-s3cr3t-s3cr3t")
+        p2.stop()
 
 
 if __name__ == "__main__":

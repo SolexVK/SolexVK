@@ -296,7 +296,11 @@ class Bot(object):
         if not self.panel:
             self.tg.send(chat, "Панель выключена: задайте web.secret в service/config.json (docs/dashboard.md).")
             return
-        self.tg.send(chat, 'Панель: <a href="%s">открыть</a>\nСсылка содержит секрет, никому её не пересылайте.' % html(self.panel.url()))
+        if self.panel.https():
+            self.tg.send(chat, "Панель открывается кнопкой ниже, прямо в Telegram. Ссылка содержит секрет, никому её не пересылайте.",
+                         [[{"text": "Открыть панель", "web_app": {"url": self.panel.url()}}]])
+        else:
+            self.tg.send(chat, 'Панель: <a href="%s">открыть</a>\nСсылка содержит секрет, никому её не пересылайте.' % html(self.panel.url()))
 
     def cmd_jobs(self, chat, args, user):
         self.tg.send(chat, self.scheduler.status_text() if self.scheduler else "Планировщик не запущен.")

@@ -105,7 +105,7 @@ def main(argv=None):
             panel = Panel(pack, sched, cfg)
             if panel.enabled():
                 panel.start()
-                print("panel: %s" % panel.url())
+                print("panel: %s" % panel.masked_url())
             else:
                 print("panel: web.secret must be at least 16 characters; panel off", file=sys.stderr)
                 panel = None
@@ -117,6 +117,12 @@ def main(argv=None):
         tg.set_commands(COMMANDS)
     except TgError:
         pass
+    if panel is not None and panel.https():
+        for uid in allowed:  # the "Панель" button inside Telegram, for the allowed users only
+            try:
+                tg.set_menu_button(uid, "Панель", panel.url())
+            except TgError as exc:
+                print("menu button for %s: %s" % (uid, exc), file=sys.stderr)
     sched.start()
     notify("Сервис запущен. /status", silent=True)  # no sound: a restart is not news
     return poll_forever(tg, bot, sched)
