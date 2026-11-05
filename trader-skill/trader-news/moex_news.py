@@ -64,7 +64,8 @@ KEYWORDS = [
     ("риск", r"дефолт|банкрот|делистинг|приостанов\w+ торг|дестабилизаци|взлом|утечк"),
     ("нефть", r"нефт|Brent|Urals|ОПЕК"),
 ]
-MARKET_TAGS = {"ставка", "рынок", "санкции"}
+MARKET_TAGS = {"рынок", "санкции"}
+KEY_RATE = re.compile(r"ключев\w+ ставк|ставк\w+ ЦБ|Банк России (?:сохранил|снизил|повысил|поднял|оставил)", re.I | re.U)
 KEEP_DAYS = 30
 
 
@@ -161,7 +162,7 @@ def tag(items, watch, aliases):
         hay = "%s %s" % (it["title"], it.get("summary") or "")
         it["touches"] = sorted(t for t, rx in pats.items() if rx.search(hay))
         it["tags"] = [label for label, rx in KEYWORDS if re.search(rx, hay, re.I | re.U)]
-        it["market"] = bool(MARKET_TAGS & set(it["tags"]))
+        it["market"] = bool(MARKET_TAGS & set(it["tags"])) or bool(KEY_RATE.search(hay))
         it["important"] = bool(it["touches"]) and bool({"отчётность", "дивиденды", "риск", "сделка"} & set(it["tags"]))
     return items
 

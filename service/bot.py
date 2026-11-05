@@ -234,9 +234,15 @@ class Bot(object):
         doc = self.pack.news(tickers)
         items = doc.get("items", [])
         lines = ["<b>Новости</b> (%s)" % html(", ".join(doc.get("watch", [])) or "рынок")]
+        offset = datetime.timedelta(hours=float(self.cfg.get("timezone_offset_hours", 3)))
         for it in items[:15]:
             who = ",".join(it.get("touches", [])) or "рынок"
-            when = (it.get("time") or "")[11:16]
+            when = ""
+            if it.get("time"):
+                try:
+                    when = (datetime.datetime.fromisoformat(it["time"]) + offset).strftime("%d.%m %H:%M")
+                except ValueError:
+                    when = it["time"][11:16]
             mark = "❗" if it.get("important") else "•"
             lines.append('%s <b>%s</b> %s <a href="%s">%s</a>' % (mark, html(who), when, html(it.get("link", "")),
                                                                    html(it.get("title", ""))))

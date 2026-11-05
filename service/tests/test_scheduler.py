@@ -41,8 +41,9 @@ class FakePack(object):
         self.calls.append("alerts")
         return {"rings": list(self.rings), "errors": []}
 
-    def news(self, tickers=(), only_mine=False):
+    def news(self, tickers=(), only_mine=False, state=None):
         self.calls.append("news")
+        assert only_mine and state == "trader/state/moex_news_job.json"
         return {"items": [{"touches": ["SBER"], "important": True, "title": "Сбер отчитался", "link": "https://x/1", "tags": ["отчётность"]},
                           {"touches": ["SBER"], "important": False, "title": "мелочь", "link": "https://x/2", "tags": []}],
                 "errors": [], "watch": ["SBER"]}

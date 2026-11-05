@@ -123,9 +123,12 @@ class Pack(object):
         """trader-tinvest: trading days and hours from the exchange -> trader/state/schedule.json."""
         return self.run("trader-tinvest", "tinvest.py", "schedule", "--write")
 
-    def news(self, tickers=(), only_mine=False):
-        """trader-news MOEX edition: new stories about your stocks and the market."""
+    def news(self, tickers=(), only_mine=False, state=None):
+        """trader-news MOEX edition: new stories about your stocks and the market.
+        `state` separates what the scheduler has seen from what the user has seen."""
         args = ["--json"] + (["--tickers"] + list(tickers) if tickers else []) + (["--only-mine"] if only_mine else [])
+        if state:
+            args += ["--state", state]
         code, out, err = self.run("trader-news", "moex_news.py", *args)
         try:
             doc = json.loads(out)

@@ -188,7 +188,7 @@ class Scheduler(object):
         return "изменение за день %+.2f%%" % (-drop)
 
     def job_news(self, now):
-        doc = self.pack.news(only_mine=True)
+        doc = self.pack.news(only_mine=True, state="trader/state/moex_news_job.json")  # its own memory
         sent = 0
         for it in doc.get("items", []):
             if not it.get("important"):

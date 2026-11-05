@@ -177,10 +177,16 @@ class News(InTemp):
 
     def test_foreign_central_bank_is_not_the_rate_tag(self):
         items = [{"title": "ЦБ Узбекистана снова сохранил основную ставку", "summary": "", "ticker": ""},
-                 {"title": "ЦБ сохранил ключевую ставку", "summary": "", "ticker": ""}]
+                 {"title": "ЦБ сохранил ключевую ставку", "summary": "", "ticker": ""},
+                 {"title": "Россияне стали больше жаловаться в ЦБ", "summary": "", "ticker": ""},
+                 {"title": "Индекс Мосбиржи открылся снижением", "summary": "", "ticker": ""}]
         news.tag(items, {}, {})
         self.assertNotIn("ставка", items[0]["tags"])
         self.assertIn("ставка", items[1]["tags"])
+        self.assertTrue(items[1]["market"])          # the key rate is market-wide
+        self.assertIn("ставка", items[2]["tags"])
+        self.assertFalse(items[2]["market"])         # a mention of the central bank is not
+        self.assertTrue(items[3]["market"])
 
 
 class Index(InTemp):
