@@ -182,6 +182,23 @@ class Api(object):
     def order_state(self, account_id, order_id):
         return call(self.env, self._m("order_state"), {"accountId": account_id, "orderId": order_id}, self.token)
 
+    def shares(self, status="INSTRUMENT_STATUS_BASE"):
+        """Every share the API knows (the base list: tradable through the API)."""
+        return call(self.env, "InstrumentsService/Shares", {"instrumentStatus": status}, self.token).get("instruments", [])
+
+    def fundamentals(self, asset_uids):
+        """GetAssetFundamentals, at most 100 asset uids per call."""
+        out = []
+        ids = list(asset_uids)
+        for i in range(0, len(ids), 100):
+            out += call(self.env, "InstrumentsService/GetAssetFundamentals", {"assets": ids[i:i + 100]},
+                        self.token).get("fundamentals", [])
+        return out
+
+    def dividends(self, uid, start, end):
+        body = {"instrumentId": uid, "from": start, "to": end}
+        return call(self.env, "InstrumentsService/GetDividends", body, self.token).get("dividends", [])
+
     def schedules(self, exchange, start, end):
         body = {"exchange": exchange, "from": start, "to": end}
         return call(self.env, "InstrumentsService/TradingSchedules", body, self.token).get("exchanges", [])

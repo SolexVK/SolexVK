@@ -139,6 +139,11 @@ does not click it or automate it. The route:
 - Never places an order, and never copies options trades.
 - Never automates the Senate agreement or any login.
 
+## Московская биржа
+
+Публичного аналога деклараций Конгресса в России нет. Этот скилл остаётся
+для американских бумаг и не используется в российской цепочке.
+
 ## Safety
 
 - Education and tooling, not financial advice. Nothing in this pack is a

@@ -102,6 +102,20 @@ latest 10-Q.
 - Never fills in a missing number or guesses a metric: missing means missing.
 - Never sends anything to `/trader-budget` or an order path by itself.
 
+## Московская биржа
+
+Метрики для российских акций пишет `trader-analyst/moex_facts.py` в тот же
+`trader/metrics.json`. Пример правил под эти данные:
+`rules.moex.example.json` в этой папке (прибыльные, с P/E до 12,
+дивидендной доходностью от 5% и чистым долгом до 2,5 EBITDA).
+
+```bash
+python3 "${CLAUDE_SKILL_DIR}/screen.py" trader/metrics.json --rules "${CLAUDE_SKILL_DIR}/rules.moex.example.json" --prices trader/prices.json
+```
+
+С `--prices` P/E пересчитывается по текущей цене и EPS; без него берётся
+P/E из данных брокера.
+
 ## Safety
 
 Education and tooling, not financial advice. This skill only filters numbers.

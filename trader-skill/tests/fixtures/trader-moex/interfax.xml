@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:ns0="https://www.w3.org/2005/Atom" version="2.0">
+  <channel>
+    <title>Интерфакс</title>
+    <link>https://www.interfax.ru</link>
+    <description>Интерфакс</description>
+    <image>
+      <url>https://www.interfax.ru/img/logo200.png</url>
+      <title>Интерфакс</title>
+      <link>https://www.interfax.ru</link>
+    </image>
+    <item>
+      <title>Военные РФ за ночь сбили над регионами 496 дронов</title>
+      <link>https://www.interfax.ru/russia/1127092</link>
+      <description>Российские военные с 20:00 среды до 8:00 четверга перехватили и уничтожили 496 украинских беспилотников самолетного типа, заявили в Минобороны РФ.</description>
+      <pubDate>Thu, 05 Nov 2026 08:44:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/russia/1127092</guid>
+    </item>
+    <item>
+      <title>Нефть Brent подешевела до $93,79 за баррель</title>
+      <link>https://www.interfax.ru/world/1127091</link>
+      <description>Цены на нефть продолжают снижаться утром в четверг после обвала по итогам предыдущей сессии.</description>
+      <pubDate>Thu, 05 Nov 2026 08:40:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/world/1127091</guid>
+    </item>
+    <item>
+      <title>ЦБ Узбекистана снова сохранил основную ставку на уровне 14%</title>
+      <link>https://www.interfax.ru/world/1127090</link>
+      <description>Правление Центрального банка Узбекистана решило сохранить основную ставку на уровне 14% годовых, сообщила пресс-служба регулятора.</description>
+      <pubDate>Thu, 05 Nov 2026 08:36:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/world/1127090</guid>
+    </item>
+    <item>
+      <title>Аэропорт Махачкалы приостановил работу</title>
+      <link>https://www.interfax.ru/russia/1127089</link>
+      <description>Временные ограничения на прием и выпуск воздушных судов введены в аэропорту Махачкалы (Дагестан), сообщает Росавиация в своем канале в Max."Аэропорт Махачкала ("Уйташ").</description>
+      <pubDate>Thu, 05 Nov 2026 08:21:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/russia/1127089</guid>
+    </item>
+    <item>
+      <title>Российские военные поразили логистический терминал в Харьковской области</title>
+      <link>https://www.interfax.ru/world/1127088</link>
+      <description>Российские военные в ночь на четверг нанесли удары беспилотниками по логистическому терминалу в Харьковской области и электроподстанции в Днепропетровской области, заявили в Минобороны РФ."В результате ударов поражены: в Харьковской области в населенном пункте Новый Коротыч - логистический терминал </description>
+      <pubDate>Thu, 05 Nov 2026 08:07:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/world/1127088</guid>
+    </item>
+    <item>
+      <title>Пожар на маслозаводе произошел в Орле</title>
+      <link>https://www.interfax.ru/russia/1127087</link>
+      <description>Огнеборцы ликвидировали возгорание на территории производственного объекта в городе Орел, сообщила пресс-служба ГУ МЧС по региону.</description>
+      <pubDate>Thu, 05 Nov 2026 08:02:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/russia/1127087</guid>
+    </item>
+    <item>
+      <title>Минобороны РФ сообщило о поражении сухогруза с военным имуществом в Черном море</title>
+      <link>https://www.interfax.ru/russia/1127086</link>
+      <description>Минобороны РФ сообщило, что в акватории Черного моря в 52 км юго-западнее Одессы поражено судно типа "сухогруз" с военным имуществом.</description>
+      <pubDate>Thu, 05 Nov 2026 08:00:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/russia/1127086</guid>
+    </item>
+    <item>
+      <title>Дождь со снегом ожидается в четверг днем в Москве</title>
+      <link>https://www.interfax.ru/moscow/1127085</link>
+      <description>Столичный департамент транспорта рекомендует водителям, не поменявшим летнюю резину на зимнюю, в четверг воспользоваться городским транспортом из-за прогнозируемого дождя со снегом."По прогнозу синоптиков, сегодня днем возможен дождь со снегом.</description>
+      <pubDate>Thu, 05 Nov 2026 07:56:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/moscow/1127085</guid>
+    </item>
+    <ns0:link href="https://www.interfax.ru/rss" rel="self" type="application/rss+xml" />
+  </channel>
+</rss>

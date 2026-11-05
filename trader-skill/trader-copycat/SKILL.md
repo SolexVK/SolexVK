@@ -151,6 +151,27 @@ your $5,000."
 - Never scrapes past SEC's fair-access limits (10 requests a second; the tool
   stays well under).
 
+## Московская биржа: `moex_index.py`
+
+Отчётов 13F в России нет, зато есть индексы биржи с открытыми весами.
+`moex_index.py` читает состав индекса из открытого API Московской биржи
+(ISS, без ключей) и пишет `trader/targets.json`, как и `edgar13f.py copy`.
+
+```bash
+python3 "${CLAUDE_SKILL_DIR}/moex_index.py" indexes                   # какие индексы можно копировать
+python3 "${CLAUDE_SKILL_DIR}/moex_index.py" list                      # состав и веса индекса Мосбиржи
+python3 "${CLAUDE_SKILL_DIR}/moex_index.py" list --index MOEXBC       # голубые фишки
+python3 "${CLAUDE_SKILL_DIR}/moex_index.py" copy --top 10             # топ-10 по весу -> trader/targets.json
+python3 "${CLAUDE_SKILL_DIR}/moex_index.py" copy --min-weight 2 --exclude GAZP
+```
+
+Веса перенормируются на 100% по оставшимся бумагам. В `targets.json`
+попадает поле `why` с описанием индекса. Дальше обычная цепочка: цены
+для новых тикеров (`tinvest.py quote ... --write` или `/quotes` в боте),
+trader-budget, trader-risk, trader-broker.
+
+Индекс это список, составленный комитетом биржи, не рекомендация.
+
 ## Safety
 
 - Education and tooling, not financial advice. Nothing in this pack is a

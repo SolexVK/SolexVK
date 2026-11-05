@@ -159,6 +159,37 @@ class BotFlow(unittest.TestCase):
         self.bot.handle(msg("/propose"))
         self.assertIn("is not a targets file", self.tg.sent[-1][1])
 
+    def test_news_metrics_screen_index_commands(self):
+        fix = os.path.join(ROOT, "trader-skill", "tests", "fixtures", "trader-moex")
+        real_run = self.pack.run
+
+        def offline_run(skill, name, *args, **kw):
+            if name == "moex_news.py":
+                args = list(args) + ["--offline", fix, "--now", "2026-11-05T06:00:00Z", "--hours", "72"]
+            if name == "moex_index.py":
+                args = list(args) + ["--offline", fix]
+            return real_run(skill, name, *args, **kw)
+        self.pack.run = offline_run
+        self.pack.quote = lambda tickers=(): (0, "quoted %s" % " ".join(tickers), "")
+        self.w("trader/portfolio.json", {"cash": 1, "positions": [{"ticker": "SBER", "shares": 85}, {"ticker": "LKOH", "shares": 4}]})
+        self.bot.handle(msg("/news"))
+        text = self.tg.sent[-1][1]
+        self.assertIn("Новости", text)
+        self.assertIn("LKOH", text)
+        self.assertIn('href="https://www.finam.ru', text)
+        self.bot.handle(msg("/index IMOEX 3 -GAZP"))
+        text = self.tg.sent[-1][1]
+        self.assertIn("top 3 by weight, excluding GAZP", text)
+        self.assertIn("quoted LKOH SBER YDEX", text)
+        self.assertEqual([w["ticker"] for w in self.r("trader/targets.json")["weights"]], ["LKOH", "SBER", "YDEX"])
+        os.environ.pop("TINVEST_SANDBOX_TOKEN", None)  # no token: the script must refuse before any network
+        self.bot.handle(msg("/metrics"))
+        self.assertIn("Считаю показатели", self.tg.sent[-2][1])
+        self.assertIn("no token", self.tg.sent[-1][1])
+        self.w("trader/metrics.json", {"companies": [{"ticker": "SBER", "eps_ttm": 70, "pe": 4, "dividend_yield": 11, "net_debt_to_ebitda": 0.5}]})
+        self.bot.handle(msg("/screen"))
+        self.assertIn("SBER", self.tg.sent[-1][1])
+
     def test_status_and_unknown_command(self):
         self.bot.handle(msg("/status"))
         self.assertIn("песочница", self.tg.sent[-1][1])

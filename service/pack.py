@@ -123,6 +123,38 @@ class Pack(object):
         """trader-tinvest: trading days and hours from the exchange -> trader/state/schedule.json."""
         return self.run("trader-tinvest", "tinvest.py", "schedule", "--write")
 
+    def news(self, tickers=(), only_mine=False):
+        """trader-news MOEX edition: new stories about your stocks and the market."""
+        args = ["--json"] + (["--tickers"] + list(tickers) if tickers else []) + (["--only-mine"] if only_mine else [])
+        code, out, err = self.run("trader-news", "moex_news.py", *args)
+        try:
+            doc = json.loads(out)
+        except ValueError:
+            doc = {"items": [], "errors": [(err or out).strip()[:300] or "moex_news.py failed"]}
+        return doc
+
+    def metrics(self, tickers=(), all_shares=False, sector=None):
+        """trader-analyst MOEX edition: fundamentals -> trader/metrics.json."""
+        args = list(tickers)
+        if all_shares:
+            args.append("--all")
+        if sector:
+            args += ["--sector", sector]
+        return self.run("trader-analyst", "moex_facts.py", *args, timeout=600)
+
+    def screen(self, rules=None):
+        """trader-screener on trader/metrics.json with MOEX rules by default."""
+        rules = rules or os.path.join(self.pack, "trader-screener", "rules.moex.example.json")
+        args = ["trader/metrics.json", "--rules", rules]
+        if os.path.exists(self.path("trader/prices.json")):
+            args += ["--prices", "trader/prices.json"]
+        return self.run("trader-screener", "screen.py", *args)
+
+    def index_copy(self, index="IMOEX", top=None, exclude=()):
+        """trader-copycat MOEX edition: an index's weights -> trader/targets.json."""
+        args = ["copy", "--index", index] + (["--top", top] if top else []) + (["--exclude"] + list(exclude) if exclude else [])
+        return self.run("trader-copycat", "moex_index.py", *args)
+
     def alerts_check(self):
         code, out, err = self.run("trader-alerts", "alerts.py", "check", "--source", "file", "--json")
         try:

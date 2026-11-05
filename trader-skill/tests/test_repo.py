@@ -24,9 +24,14 @@ def frontmatter(path):
     return (m.group(1) if m else ""), text
 
 
+VERBATIM_FIXTURES = os.path.join("tests", "fixtures", "trader-moex")  # real Russian feeds, kept as they came
+
+
 def every_text_file():
     for base, dirs, files in os.walk(ROOT):
         dirs[:] = [d for d in dirs if d not in (".git", "__pycache__")]
+        if os.path.relpath(base, ROOT).startswith(VERBATIM_FIXTURES):
+            continue
         for f in files:
             if f.endswith((".md", ".py", ".json", ".csv", ".txt", ".xml")) or f == "LICENSE":
                 yield os.path.join(base, f)

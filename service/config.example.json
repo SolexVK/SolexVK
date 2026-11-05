@@ -13,6 +13,7 @@
     {"name": "quotes",   "every_min": 15, "market_hours_only": true},
     {"name": "alerts",   "every_min": 5,  "market_hours_only": true},
     {"name": "guard",    "every_min": 10, "market_hours_only": true},
+    {"name": "news",     "every_min": 60, "market_hours_only": true},
     {"name": "snapshot", "at": "09:55", "days": [0, 1, 2, 3, 4]},
     {"name": "digest",   "at": "18:55", "days": [0, 1, 2, 3, 4]}
   ]

@@ -26,6 +26,10 @@ HELP = """<b>Команды</b>
 /risk – проверить предложенные ордера по лимитам
 /orders – тикеты с кнопками подтверждения
 /alerts – проверить ценовые алерты сейчас
+/news [тикеры] – новости по бумагам и рынку (новое с прошлого раза)
+/metrics [тикеры|all] – фундаментальные показатели в metrics.json
+/screen – отбор по правилам из metrics.json
+/index [IMOEX] [N] [-ТИКЕР...] – скопировать индекс в цели
 /log – решения за сегодня
 /jobs – планировщик
 /stop [причина] – стоп-кран: ничего не отправлять
@@ -224,6 +228,58 @@ class Bot(object):
         for e in res.get("errors", []):
             lines.append("⚠ " + html(e))
         self.tg.send(chat, "\n".join(lines))
+
+    def cmd_news(self, chat, args, user):
+        tickers = [a.upper() for a in args if re.match(r"^[A-Za-z][A-Za-z0-9.\-]{0,6}$", a)]
+        doc = self.pack.news(tickers)
+        items = doc.get("items", [])
+        lines = ["<b>Новости</b> (%s)" % html(", ".join(doc.get("watch", [])) or "рынок")]
+        for it in items[:15]:
+            who = ",".join(it.get("touches", [])) or "рынок"
+            when = (it.get("time") or "")[11:16]
+            mark = "❗" if it.get("important") else "•"
+            lines.append('%s <b>%s</b> %s <a href="%s">%s</a>' % (mark, html(who), when, html(it.get("link", "")),
+                                                                   html(it.get("title", ""))))
+            if it.get("tags"):
+                lines.append("   <i>%s</i>" % html(", ".join(it["tags"])))
+        if not items:
+            lines.append("Ничего нового.")
+        for e in doc.get("errors", []):
+            lines.append("⚠ " + html(e))
+        self.tg.send(chat, "\n".join(lines))
+
+    def cmd_metrics(self, chat, args, user):
+        tickers = [a.upper() for a in args if re.match(r"^[A-Za-z][A-Za-z0-9.\-]{0,6}$", a) and a.lower() != "all"]
+        all_shares = any(a.lower() == "all" for a in args)
+        if not tickers and not all_shares:
+            pf = self.pack.read("trader/portfolio.json", {}) or {}
+            tickers = [str(p.get("ticker", "")).upper() for p in pf.get("positions", []) if p.get("ticker")]
+        if not tickers and not all_shares:
+            self.tg.send(chat, "Укажите тикеры или all: /metrics SBER LKOH, /metrics all")
+            return
+        self.tg.send(chat, "Считаю показатели%s..." % (" по всем бумагам, это минута-две" if all_shares else ""))
+        code, out, err = self.pack.metrics(tickers, all_shares)
+        self.tg.send(chat, "<pre>%s</pre>\n%s" % (html((out + err).strip()[:3500]),
+                                                   "Дальше: /screen" if code == 0 else "Ошибка, см. выше."))
+
+    def cmd_screen(self, chat, args, user):
+        code, out, err = self.pack.screen()
+        self.tg.send(chat, "<b>Отбор</b>\n<pre>%s</pre>" % html((out + err).strip()[:3500]))
+
+    def cmd_index(self, chat, args, user):
+        index = next((a.upper() for a in args if re.match(r"^[A-Za-z]{3,8}$", a) and not a.startswith("-")), "IMOEX")
+        top = next((a for a in args if re.match(r"^\d{1,3}$", a)), None)
+        exclude = [a[1:].upper() for a in args if a.startswith("-") and len(a) > 1]
+        code, out, err = self.pack.index_copy(index, top, exclude)
+        if code != 0:
+            self.tg.send(chat, "<pre>%s</pre>" % html((out + err).strip()[:2000]))
+            return
+        targets = self.pack.read("trader/targets.json", {}) or {}
+        tickers = [w.get("ticker") for w in targets.get("weights", []) if w.get("ticker")]
+        qcode, qout, qerr = self.pack.quote(tickers)
+        self.tg.send(chat, "<pre>%s</pre>\nЦены для целей:\n<pre>%s</pre>\n%s" % (
+            html(out.strip()[:2500]), html((qout + qerr).strip()[:1200]),
+            "Дальше: /propose или /rebalance, потом /risk" if qcode == 0 else "Цены получены не все, см. выше."))
 
     def cmd_log(self, chat, args, user):
         code, out, err = self.pack.log_today()

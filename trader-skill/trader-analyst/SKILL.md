@@ -97,6 +97,33 @@ so the summary reads that 10-Q directly.
 - Never calls SEC without the User-Agent, and stays well under 10 requests a
   second.
 
+## Московская биржа: `moex_facts.py`
+
+Для российских акций SEC не нужен. `moex_facts.py` берёт фундаментальные
+показатели из T-Invest API (метод GetAssetFundamentals) и пишет их в тот же
+`trader/metrics.json`, который читает trader-screener. Нужен токен Т-Банка
+(тот же, что у trader-tinvest; читающего достаточно).
+
+```bash
+python3 "${CLAUDE_SKILL_DIR}/moex_facts.py" SBER LKOH GAZP           # таблица и trader/metrics.json
+python3 "${CLAUDE_SKILL_DIR}/moex_facts.py" --all                    # все российские акции, доступные через API
+python3 "${CLAUDE_SKILL_DIR}/moex_facts.py" --all --sector energy    # один сектор, как его называет API
+python3 "${CLAUDE_SKILL_DIR}/moex_facts.py" SBER --dividends         # плюс дивиденды за два года
+python3 "${CLAUDE_SKILL_DIR}/moex_facts.py" SBER --raw               # сырой ответ API, чтобы увидеть единицы
+```
+
+Колонки: `revenue_ttm`, `net_income_ttm`, `ebitda_ttm`, `eps_ttm`,
+`revenue_growth_yoy`, `net_margin`, `roe`, `roa`, `pe`, `pb`, `ps`, `ev_ebitda`,
+`debt_to_equity`, `net_debt_to_ebitda`, `dividend_yield`,
+`forward_dividend_yield`, `dividend_payout`, `market_cap`, `free_float`, `beta`,
+`high_52w`, `low_52w`, `avg_volume_10d`, плюс `sector` и `period_end`. Ноль
+в ответе API означает «нет данных» и записывается как null.
+
+Шаги для российской бумаги: `moex_facts.py` по тикерам или `--all`, затем
+trader-screener с `rules.moex.example.json`, затем обсуждение с пользователем.
+Единицы процентных полей проверьте один раз через `--raw`, прежде чем
+опираться на пороги.
+
 ## Safety
 
 Education and tooling, not financial advice. This skill only reads filings.

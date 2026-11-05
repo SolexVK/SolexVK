@@ -41,6 +41,12 @@ class FakePack(object):
         self.calls.append("alerts")
         return {"rings": list(self.rings), "errors": []}
 
+    def news(self, tickers=(), only_mine=False):
+        self.calls.append("news")
+        return {"items": [{"touches": ["SBER"], "important": True, "title": "Сбер отчитался", "link": "https://x/1", "tags": ["отчётность"]},
+                          {"touches": ["SBER"], "important": False, "title": "мелочь", "link": "https://x/2", "tags": []}],
+                "errors": [], "watch": ["SBER"]}
+
     def schedule(self):
         self.calls.append("schedule")
         self.files["trader/state/schedule.json"] = {"exchange": "MOEX", "days": {
@@ -67,6 +73,7 @@ CFG = {"timezone_offset_hours": 3, "max_daily_loss_pct": 3,
                 {"name": "quotes", "every_min": 15, "market_hours_only": True},
                 {"name": "alerts", "every_min": 5, "market_hours_only": True},
                 {"name": "guard", "every_min": 10, "market_hours_only": True},
+                {"name": "news", "every_min": 60, "market_hours_only": True},
                 {"name": "snapshot", "at": "09:55", "days": [0, 1, 2, 3, 4]},
                 {"name": "digest", "at": "18:55", "days": [0, 1, 2, 3, 4]}]}
 
@@ -96,7 +103,8 @@ class SchedulerTests(unittest.TestCase):
     def test_calendar_from_the_exchange(self):
         s = self.make(at(4, "12:00"))
         self.assertTrue(s.market_open(at(4, "12:00")))      # no calendar yet: config hours say open
-        self.assertEqual(s.tick(), ["schedule", "quotes", "alerts", "guard"])
+        self.assertEqual(s.tick(), ["schedule", "quotes", "alerts", "guard", "news"])
+        self.assertEqual(len([n for n in self.notes if "Сбер отчитался" in n]), 1)  # only the important one
         self.assertFalse(s.market_open(at(4, "12:00")))     # calendar: Nov 4 is a holiday
         self.assertTrue(s.market_open(at(5, "10:00")))      # 07:00 UTC is inside 06:59..15:50
         self.assertFalse(s.market_open(at(5, "18:51")))     # 15:51 UTC is after the close
@@ -123,7 +131,7 @@ class SchedulerTests(unittest.TestCase):
     def test_every_jobs_and_cadence(self):
         s = self.make(at(5, "10:00"))
         self.pack.schedule()
-        self.assertEqual(sorted(s.tick()), ["alerts", "guard", "quotes"])
+        self.assertEqual(sorted(s.tick()), ["alerts", "guard", "news", "quotes"])
         self.assertIn("quote", self.pack.calls)
         s.clock.t = at(5, "10:05")
         self.assertEqual(s.tick(), ["alerts"])
@@ -163,7 +171,7 @@ class SchedulerTests(unittest.TestCase):
         s.clock.t = at(5, "10:10")
         s.tick()
         self.assertFalse(self.pack.halted())
-        self.assertEqual(self.notes, [])
+        self.assertFalse(any("Стоп-кран" in n for n in self.notes))
 
     def test_digest_and_errors_throttled(self):
         s = self.make(at(4, "18:40"))

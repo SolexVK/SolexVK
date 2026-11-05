@@ -34,7 +34,11 @@ QUOTE_HOSTS = frozenset({"query1.finance.yahoo.com", "query2.finance.yahoo.com",
 FIGI_HOSTS = frozenset({"api.openfigi.com"})
 TINVEST_HOSTS = frozenset({"invest-public-api.tbank.ru", "sandbox-invest-public-api.tbank.ru"})
 TELEGRAM_HOSTS = frozenset({"api.telegram.org"})
-ALL_HOSTS = SEC_HOSTS | HOUSE_HOSTS | QUOTE_HOSTS | FIGI_HOSTS | TINVEST_HOSTS | TELEGRAM_HOSTS
+MOEX_HOSTS = frozenset({"iss.moex.com", "www.moex.com"})   # the exchange's open data and notices
+RU_NEWS_HOSTS = frozenset({"www.finam.ru", "www.interfax.ru", "rssexport.rbc.ru", "www.vedomosti.ru",
+                           "www.kommersant.ru", "www.finmarket.ru", "1prime.ru"})
+ALL_HOSTS = (SEC_HOSTS | HOUSE_HOSTS | QUOTE_HOSTS | FIGI_HOSTS | TINVEST_HOSTS | TELEGRAM_HOSTS
+             | MOEX_HOSTS | RU_NEWS_HOSTS)
 
 
 class NetError(Exception):

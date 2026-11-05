@@ -1,0 +1,17 @@
+{
+  "name": "MOEX: profitable, cheap, paying, not drowning in debt",
+  "note": "Metrics come from trader-analyst/moex_facts.py (T-Invest GetAssetFundamentals). Percent fields are in percent as the API gives them; check one row with --raw before trusting a threshold.",
+  "rules": [
+    {"metric": "eps_ttm", "op": ">", "value": 0},
+    {"metric": "pe", "op": "between", "value": [0.5, 12]},
+    {"metric": "dividend_yield", "op": ">=", "value": 5},
+    {"metric": "net_debt_to_ebitda", "op": "<=", "value": 2.5}
+  ],
+  "rank": [
+    {"metric": "dividend_yield", "order": "desc", "weight": 2},
+    {"metric": "pe", "order": "asc", "weight": 1},
+    {"metric": "revenue_growth_yoy", "order": "desc", "weight": 1}
+  ],
+  "missing": "skip",
+  "top": 10
+}

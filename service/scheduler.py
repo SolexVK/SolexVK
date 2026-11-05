@@ -9,6 +9,7 @@ Jobs (service/config.json "jobs"):
   guard     if the portfolio fell more than max_daily_loss_pct since the snapshot,
             pull the kill switch (trader/state/halt.json) and say so
   digest    evening summary: portfolio, today's decisions, kill switch state
+  news      new stories naming your stocks (important ones only, to keep it quiet)
 
 A job runs every N minutes ("every_min") or once a day at "at" (HH:MM local),
 optionally only during market hours (Moscow, Mon to Fri by default; MOEX holidays
@@ -185,6 +186,21 @@ class Scheduler(object):
                         "Ордера не отправляются до /resume.\n%s" % (drop, limit, text))
             return "СТОП: %.2f%%" % drop
         return "изменение за день %+.2f%%" % (-drop)
+
+    def job_news(self, now):
+        doc = self.pack.news(only_mine=True)
+        sent = 0
+        for it in doc.get("items", []):
+            if not it.get("important"):
+                continue
+            self.notify('📰 <b>%s</b> <a href="%s">%s</a>%s' % (
+                html(",".join(it.get("touches", []))), html(it.get("link", "")), html(it.get("title", "")),
+                ("\n<i>%s</i>" % html(", ".join(it["tags"]))) if it.get("tags") else ""))
+            sent += 1
+        errs = doc.get("errors", [])
+        if errs and not doc.get("items"):
+            raise RuntimeError("; ".join(errs)[:300])
+        return "%d важных из %d новых" % (sent, len(doc.get("items", [])))
 
     def job_digest(self, now):
         text, total = self._total()
