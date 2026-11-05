@@ -9,8 +9,10 @@ docs/telegram-relay.md) and TELEGRAM_RELAY_KEY is sent as X-Relay-Key so
 nobody else can use it. The relay sees the bot token, so it must be yours.
 """
 
+import http.client
 import json
 import os
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -59,6 +61,7 @@ class Telegram(object):
             headers["X-Relay-Key"] = self.relay_key
         req = urllib.request.Request(self.url(method), data=json.dumps(payload).encode("utf-8"), method="POST",
                                      headers=headers)
+        host = urllib.parse.urlparse(self.base).hostname
         try:
             with open_url(req, timeout=timeout, allowed=self.allowed) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
@@ -71,7 +74,16 @@ class Telegram(object):
             except ValueError:
                 raise TgError("%s: HTTP %d" % (method, exc.code))
         except urllib.error.URLError as exc:
-            raise TgError("could not reach %s: %s" % (urllib.parse.urlparse(self.base).hostname, exc.reason))
+            raise TgError("could not reach %s: %s" % (host, exc.reason))
+        # A long poll that stalls mid-answer raises a bare timeout or a dropped
+        # connection, not URLError. Before this they escaped, the process died
+        # and systemd restarted it ("Сервис запущен" several times a night).
+        except (socket.timeout, TimeoutError) as exc:
+            raise TgError("%s: %s timed out: %s" % (method, host, exc))
+        except (http.client.HTTPException, ConnectionError, OSError) as exc:
+            raise TgError("%s: connection to %s broke: %s" % (method, host, exc.__class__.__name__))
+        except ValueError as exc:  # a half-read or garbled answer that is not JSON
+            raise TgError("%s: bad answer from %s: %s" % (method, host, exc))
         return body
 
     def call(self, method, payload=None, timeout=30):

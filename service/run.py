@@ -26,9 +26,7 @@ from service.scheduler import Scheduler  # noqa: E402
 
 COMMANDS = [("status", "среда, счёт, стоп-кран"), ("portfolio", "портфель"), ("quotes", "цены"),
             ("propose", "предложить ордера"), ("rebalance", "ребалансировка"), ("risk", "проверить ордера"),
-            ("orders", "тикеты с кнопками"), ("alerts", "алерты сейчас"), ("news", "новости по бумагам"),
-            ("metrics", "фундаментальные показатели"), ("screen", "отбор по правилам"), ("index", "скопировать индекс"),
-            ("log", "решения за сегодня"),
+            ("orders", "тикеты с кнопками"), ("alerts", "алерты сейчас"), ("log", "решения за сегодня"),
             ("jobs", "планировщик"), ("stop", "стоп-кран"), ("resume", "снять стоп-кран"), ("help", "команды")]
 
 
@@ -40,6 +38,29 @@ def load_config(path):
     if not cfg.get("telegram", {}).get("allowed_user_ids"):
         print("WARNING: allowed_user_ids is empty. The bot will only answer /start with your id.", file=sys.stderr)
     return cfg
+
+
+def poll_forever(tg, bot, sched, sleep=time.sleep):
+    """Long polling. A network hiccup or one bad update must not kill the process:
+    it is logged, we wait (1, 2, 4 ... 60 s) and poll again."""
+    backoff = 1
+    while True:
+        try:
+            for u in tg.updates():
+                bot.handle(u)
+            backoff = 1
+        except KeyboardInterrupt:
+            print("stopping")
+            sched.stop.set()
+            return 0
+        except TgError as exc:
+            print("telegram: %s" % exc, file=sys.stderr)
+            sleep(backoff)
+            backoff = min(backoff * 2, 60)
+        except Exception as exc:  # last line of defence; systemd restart is the next one
+            print("poll loop: %s: %s" % (exc.__class__.__name__, exc), file=sys.stderr)
+            sleep(backoff)
+            backoff = min(backoff * 2, 60)
 
 
 def main(argv=None):
@@ -67,10 +88,10 @@ def main(argv=None):
     allowed = cfg.get("telegram", {}).get("allowed_user_ids") or []
     chat_id = cfg.get("telegram", {}).get("chat_id") or (allowed[0] if allowed else None)
 
-    def notify(text):
+    def notify(text, silent=False):
         if chat_id:
             try:
-                tg.send(chat_id, text)
+                tg.send(chat_id, text, silent=silent)
             except TgError as exc:
                 print("notify failed: %s" % exc, file=sys.stderr)
 
@@ -81,21 +102,8 @@ def main(argv=None):
     except TgError:
         pass
     sched.start()
-    notify("Сервис запущен. /status")
-    backoff = 1
-    while True:
-        try:
-            for u in tg.updates():
-                bot.handle(u)
-            backoff = 1
-        except TgError as exc:
-            print("telegram: %s" % exc, file=sys.stderr)
-            time.sleep(backoff)
-            backoff = min(backoff * 2, 60)
-        except KeyboardInterrupt:
-            print("stopping")
-            sched.stop.set()
-            return 0
+    notify("Сервис запущен. /status", silent=True)  # no sound: a restart is not news
+    return poll_forever(tg, bot, sched)
 
 
 if __name__ == "__main__":
