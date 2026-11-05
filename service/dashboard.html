@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Торговая панель</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#ffffff; --ink:#1a1d23; --muted:#6b7280; --line:#e5e7eb; --up:#15803d; --down:#b91c1c;
+          --accent:#2563eb; --warn:#b45309; --halt:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1115; --card:#171a21; --ink:#e7e9ee; --muted:#9aa3b2; --line:#2a2f3a; --up:#4ade80; --down:#f87171; --accent:#60a5fa; } }
+  :root[data-theme="dark"] { --bg:#0f1115; --card:#171a21; --ink:#e7e9ee; --muted:#9aa3b2; --line:#2a2f3a; --up:#4ade80; --down:#f87171; --accent:#60a5fa; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin:0; background:var(--bg); color:var(--ink); font: 15px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  h1 { font-size: 20px; margin:0; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--line); color:var(--muted); }
+  .tag.live { border-color:var(--halt); color:var(--halt); font-weight:600; }
+  .tag.halt { background:var(--halt); color:#fff; border-color:var(--halt); }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 10px; }
+  .big { font-size:28px; font-weight:700; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:13px; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  table { width:100%; border-collapse:collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align:right; padding:6px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  .bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; }
+  .bar > i { display:block; height:100%; background:var(--accent); }
+  .span2 { grid-column: 1 / -1; }
+  svg { width:100%; height:160px; display:block; }
+  .muted { color:var(--muted); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .pill { font-size:12px; padding:2px 8px; border-radius:6px; background:var(--bg); border:1px solid var(--line); }
+  .ok { border-color: var(--up); } .warn { border-color: var(--warn); }
+  footer { margin-top:16px; color:var(--muted); font-size:12px; }
+  @media (max-width: 600px) {
+    .wrap { padding:12px; } .big { font-size:24px; } td, th { padding:5px 4px; font-size:13px; }
+    #decisions thead { display:none; }
+    #decisions tr { display:block; padding:8px 0; border-bottom:1px solid var(--line); }
+    #decisions td { display:inline; border:0; padding:0 6px 0 0; white-space:normal; text-align:left; }
+    #decisions td:nth-child(2) { display:none; }
+    #decisions td:nth-child(3) { font-weight:600; }
+    #decisions td:nth-child(5) { display:block; }
+    #positions td:nth-child(3), #positions th:nth-child(3) { display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="row"><h1>Торговая панель</h1><span id="env" class="tag">…</span><span id="halt" class="tag" hidden>СТОП-КРАН</span></div>
+    <div class="sub" id="stamp">загрузка…</div>
+  </header>
+
+  <div class="grid">
+    <div class="card"><h2>Стоимость портфеля</h2><div class="big" id="total">…</div><div class="sub" id="day"></div></div>
+    <div class="card"><h2>Вложено и результат</h2><div class="big" id="pnl">…</div><div class="sub" id="invested"></div></div>
+    <div class="card"><h2>Кэш и лимиты</h2><div class="big" id="cash">…</div><div class="sub" id="limits"></div></div>
+    <div class="card span2"><h2>Динамика стоимости</h2><svg id="chart" viewBox="0 0 800 160" preserveAspectRatio="none"></svg><div class="sub" id="chartnote"></div></div>
+    <div class="card span2"><h2>Позиции</h2><table id="positions"><thead><tr><th>бумага</th><th>шт</th><th>средняя</th><th>цена</th><th>стоимость</th><th>результат</th><th>%</th><th>доля</th></tr></thead><tbody></tbody></table></div>
+    <div class="card"><h2>Цели и отклонения</h2><div class="sub" id="targetsrc"></div><table id="targets"><thead><tr><th>бумага</th><th>цель</th><th>факт</th><th>откл.</th></tr></thead><tbody></tbody></table></div>
+    <div class="card"><h2>Ордера, ждущие решения</h2><div id="tickets" class="sub">…</div></div>
+    <div class="card"><h2>Фоновые задачи</h2><div id="jobs" class="sub">…</div></div>
+    <div class="card span2"><h2>Последние решения</h2><table id="decisions"><thead><tr><th>когда</th><th>#</th><th>статус</th><th>что</th><th>примечание</th></tr></thead><tbody></tbody></table></div>
+  </div>
+  <footer>Данные из файлов сервиса, обновляются каждые 60 секунд. Это не инвестиционная рекомендация. Решение о каждой сделке принимает владелец кнопками в Telegram.</footer>
+</div>
+<script>
+(function () {
+  var cur = "RUB";
+  function money(x, digits) { if (x === null || x === undefined) return "—"; var s = Number(x).toLocaleString("ru-RU", {maximumFractionDigits: digits === undefined ? 0 : digits}); return s + (cur === "RUB" ? " ₽" : " " + cur); }
+  function pct(x) { return (x === null || x === undefined) ? "—" : (x > 0 ? "+" : "") + Number(x).toFixed(2) + "%"; }
+  function cls(x) { return x > 0 ? "up" : (x < 0 ? "down" : ""); }
+  function esc(s) { return String(s === null || s === undefined ? "" : s).replace(/[&<>"]/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function when(iso) { if (!iso) return "—"; return iso.replace("T", " ").slice(0, 16); }
+
+  function chart(hist) {
+    var svg = document.getElementById("chart"); var note = document.getElementById("chartnote");
+    if (!hist || hist.length < 2) { svg.innerHTML = ""; note.textContent = "График появится, когда накопится история (две точки и больше)."; return; }
+    var w = 800, h = 160, pad = 8;
+    var vals = hist.map(function (r) { return r.total; });
+    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals); if (max === min) { max = min + 1; }
+    var pts = hist.map(function (r, i) { var x = pad + (w - 2 * pad) * i / (hist.length - 1); var y = h - pad - (h - 2 * pad) * (r.total - min) / (max - min); return [x, y]; });
+    var d = pts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
+    var last = vals[vals.length - 1], first = vals[0];
+    var color = last >= first ? "var(--up)" : "var(--down)";
+    svg.innerHTML = '<path d="' + d + ' L' + pts[pts.length-1][0].toFixed(1) + ' ' + (h - pad) + ' L' + pts[0][0].toFixed(1) + ' ' + (h - pad) + ' Z" fill="' + color + '" opacity="0.08"></path>' +
+                    '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2"></path>';
+    note.textContent = when(hist[0].at) + " → " + when(hist[hist.length - 1].at) + ": " + money(first) + " → " + money(last) + " (" + pct(100 * (last / first - 1)) + "), " + hist.length + " точек";
+  }
+
+  function render(s) {
+    cur = s.currency || "RUB";
+    var env = document.getElementById("env"); env.textContent = s.env === "live" ? "РЕАЛЬНЫЙ СЧЁТ" : "песочница"; env.className = "tag" + (s.env === "live" ? " live" : "");
+    var halt = document.getElementById("halt"); halt.hidden = !s.halt; if (s.halt) { halt.textContent = "СТОП-КРАН: " + (s.halt.reason || ""); halt.className = "tag halt"; }
+    document.getElementById("stamp").textContent = "обновлено " + when(s.generated_at) + (s.portfolio.prices_as_of ? ", цены " + when(s.portfolio.prices_as_of) : "") + (s.market_open === null ? "" : (s.market_open ? ", рынок открыт" : ", рынок закрыт"));
+    var p = s.portfolio;
+    document.getElementById("total").textContent = money(p.total);
+    var dayEl = document.getElementById("day");
+    if (s.day && s.day.change !== null && s.day.change !== undefined) { dayEl.innerHTML = 'за день <span class="' + cls(s.day.change) + '">' + (s.day.change > 0 ? "+" : "") + money(s.day.change) + " (" + pct(s.day.change_pct) + ")</span> от " + money(s.day.start_total) + " на старте"; } else { dayEl.textContent = "старт дня ещё не записан"; }
+    var pnlEl = document.getElementById("pnl"); pnlEl.textContent = (p.pnl > 0 ? "+" : "") + money(p.pnl); pnlEl.className = "big " + cls(p.pnl);
+    document.getElementById("invested").textContent = "вложено " + money(p.invested) + (p.invested ? " (" + pct(100 * p.pnl / p.invested) + ")" : "");
+    document.getElementById("cash").textContent = money(p.cash);
+    var L = s.limits || {};
+    document.getElementById("limits").textContent = "резерв " + (L.cash_buffer_pct || 0) + "%, потолок " + (L.max_position_pct || 0) + "% на бумагу, ордер до " + money(L.max_order_usd) + ", до " + (L.max_orders_per_day || "—") + " ордеров в день";
+
+    var tb = document.querySelector("#positions tbody"); tb.innerHTML = "";
+    p.positions.forEach(function (r) {
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td><b>" + esc(r.ticker) + "</b></td><td>" + r.shares + "</td><td>" + money(r.avg, 2) + "</td><td>" + (r.priced ? money(r.price, 2) : "—") +
+        "</td><td>" + money(r.value) + '</td><td class="' + cls(r.pnl) + '">' + (r.pnl > 0 ? "+" : "") + money(r.pnl) + '</td><td class="' + cls(r.pnl) + '">' + pct(r.pnl_pct) +
+        '</td><td><div class="row" style="justify-content:flex-end;gap:6px"><div class="bar" style="width:60px"><i style="width:' + Math.min(100, r.share_pct) + '%"></i></div>' + r.share_pct.toFixed(1) + "%</div></td>";
+      tb.appendChild(tr);
+    });
+    var cashRow = document.createElement("tr"); cashRow.innerHTML = "<td class='muted'>кэш</td><td></td><td></td><td></td><td>" + money(p.cash) + "</td><td></td><td></td><td>" + (p.total ? (100 * p.cash / p.total).toFixed(1) : "0") + "%</td>"; tb.appendChild(cashRow);
+    if (!p.positions.length) { tb.innerHTML = "<tr><td colspan='8' class='muted'>позиций нет</td></tr>"; }
+
+    var t = s.targets || {}; var tt = document.querySelector("#targets tbody"); tt.innerHTML = "";
+    document.getElementById("targetsrc").textContent = (t.source ? t.source : "целей нет") + (t.inbox ? " · в inbox лежит новое предложение, его заберёт /propose" : "");
+    (t.rows || []).forEach(function (r) {
+      var tr = document.createElement("tr"); var big = Math.abs(r.drift) >= 5;
+      tr.innerHTML = "<td>" + esc(r.ticker) + (r.untracked ? ' <span class="muted">(вне целей)</span>' : "") + "</td><td>" + r.target.toFixed(1) + "%</td><td>" + r.actual.toFixed(1) + '%</td><td class="' + (big ? "down" : "") + '">' + (r.drift > 0 ? "+" : "") + r.drift.toFixed(1) + "</td>";
+      tt.appendChild(tr);
+    });
+
+    var tk = document.getElementById("tickets");
+    var ready = (s.tickets || []).filter(function (x) { return x.ready; });
+    if (!s.tickets || !s.tickets.length) { tk.textContent = "Предложенных ордеров нет. Цепочка: /propose или /rebalance, /risk, /orders в Telegram."; }
+    else { tk.innerHTML = s.tickets.map(function (x) { return '<div class="row" style="margin:4px 0"><span class="pill ' + (x.ready ? "ok" : "") + '">#' + x.index + "</span> " + esc(x.plain) + ' <span class="muted">' + esc(x.status) + "</span></div>"; }).join("") + (ready.length ? '<div class="sub" style="margin-top:6px">' + ready.length + " готовы: подтверждение только кнопками в Telegram (/orders).</div>" : ""); }
+
+    var jb = document.getElementById("jobs");
+    jb.innerHTML = (s.jobs || []).map(function (j) { return '<div class="row" style="margin:3px 0"><span class="pill">' + esc(j.name) + "</span> <span>" + (j.every_min ? "каждые " + j.every_min + " мин" : "в " + j.at) + "</span> <span class='muted'>" + (j.last ? when(j.last) : "ещё не было") + " " + esc(j.result) + "</span></div>"; }).join("") || "<span class='muted'>планировщик не запущен</span>";
+
+    var dd = document.querySelector("#decisions tbody"); dd.innerHTML = "";
+    (s.decisions || []).forEach(function (r) {
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + when(r.at) + "</td><td>" + (r.index || "") + "</td><td>" + esc(r.status) + "</td><td style='white-space:normal;text-align:left'>" + esc(r.plain) + "</td><td style='white-space:normal;text-align:left' class='muted'>" + esc(r.note || (r.broker_order_id ? "id " + r.broker_order_id.slice(0, 8) : "") || (r.via ? r.via : "")) + "</td>";
+      dd.appendChild(tr);
+    });
+    if (!(s.decisions || []).length) { dd.innerHTML = "<tr><td colspan='5' class='muted'>решений пока нет</td></tr>"; }
+    chart(s.history);
+  }
+
+  function load() {
+    fetch(location.pathname.replace(/\/$/, "") + "/state.json", {cache: "no-store"}).then(function (r) { return r.json(); }).then(function (s) {
+      if (s.error) { document.getElementById("stamp").textContent = "ошибка: " + s.error; return; }
+      render(s);
+    }).catch(function (e) { document.getElementById("stamp").textContent = "нет связи с сервисом: " + e; });
+  }
+  load(); setInterval(load, 60000);
+})();
+</script>
+</body>
+</html>

@@ -31,6 +31,7 @@ HELP = """<b>Команды</b>
 /screen – отбор по правилам из metrics.json
 /index [IMOEX] [N] [-ТИКЕР...] – скопировать индекс в цели
 /log – решения за сегодня
+/panel – ссылка на веб-панель
 /jobs – планировщик
 /stop [причина] – стоп-кран: ничего не отправлять
 /resume – снять стоп-кран
@@ -91,8 +92,8 @@ def fp8(t):
 
 
 class Bot(object):
-    def __init__(self, tg, pack, cfg, scheduler=None, clock=None):
-        self.tg, self.pack, self.cfg, self.scheduler = tg, pack, cfg, scheduler
+    def __init__(self, tg, pack, cfg, scheduler=None, panel=None, clock=None):
+        self.tg, self.pack, self.cfg, self.scheduler, self.panel = tg, pack, cfg, scheduler, panel
         self.allowed = {int(x) for x in (cfg.get("telegram", {}).get("allowed_user_ids") or [])}
         self.clock = clock or datetime.datetime.now
 
@@ -290,6 +291,12 @@ class Bot(object):
     def cmd_log(self, chat, args, user):
         code, out, err = self.pack.log_today()
         self.tg.send(chat, "<pre>%s</pre>" % html((out + err).strip()[:3500] or "пусто"))
+
+    def cmd_panel(self, chat, args, user):
+        if not self.panel:
+            self.tg.send(chat, "Панель выключена: задайте web.secret в service/config.json (docs/dashboard.md).")
+            return
+        self.tg.send(chat, 'Панель: <a href="%s">открыть</a>\nСсылка содержит секрет, никому её не пересылайте.' % html(self.panel.url()))
 
     def cmd_jobs(self, chat, args, user):
         self.tg.send(chat, self.scheduler.status_text() if self.scheduler else "Планировщик не запущен.")

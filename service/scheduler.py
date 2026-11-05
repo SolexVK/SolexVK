@@ -21,6 +21,7 @@ import threading
 import time
 
 from .bot import portfolio_view, html
+from .state import record_history
 
 
 class Scheduler(object):
@@ -170,6 +171,7 @@ class Scheduler(object):
         text, total = self._total()
         self.pack.write("trader/state/day.json", {"date": now.date().isoformat(), "start_total": round(total, 2),
                                                   "at": now.replace(microsecond=0).isoformat()})
+        record_history(self.pack, now, "open")
         return "старт дня %.0f" % total
 
     def job_guard(self, now):
@@ -177,6 +179,7 @@ class Scheduler(object):
         if day.get("date") != now.date().isoformat() or not day.get("start_total"):
             return self.job_snapshot(now)
         text, total = self._total()
+        record_history(self.pack, now, "tick")
         start = float(day["start_total"])
         drop = 100.0 * (1 - total / start) if start else 0.0
         limit = float(self.cfg.get("max_daily_loss_pct") or 0)
@@ -204,6 +207,7 @@ class Scheduler(object):
 
     def job_digest(self, now):
         text, total = self._total()
+        record_history(self.pack, now, "close")
         code, out, err = self.pack.log_today()
         halted = self.pack.halted()
         day = self.pack.read("trader/state/day.json", {}) or {}

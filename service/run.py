@@ -23,10 +23,13 @@ from service.tg import Telegram, TgError  # noqa: E402
 from service.pack import Pack  # noqa: E402
 from service.bot import Bot  # noqa: E402
 from service.scheduler import Scheduler  # noqa: E402
+from service.web import Panel  # noqa: E402
 
 COMMANDS = [("status", "среда, счёт, стоп-кран"), ("portfolio", "портфель"), ("quotes", "цены"),
             ("propose", "предложить ордера"), ("rebalance", "ребалансировка"), ("risk", "проверить ордера"),
-            ("orders", "тикеты с кнопками"), ("alerts", "алерты сейчас"), ("log", "решения за сегодня"),
+            ("orders", "тикеты с кнопками"), ("alerts", "алерты сейчас"), ("news", "новости по бумагам"),
+            ("metrics", "фундаментальные показатели"), ("screen", "отбор по правилам"), ("index", "скопировать индекс"),
+            ("log", "решения за сегодня"), ("panel", "ссылка на панель"),
             ("jobs", "планировщик"), ("stop", "стоп-кран"), ("resume", "снять стоп-кран"), ("help", "команды")]
 
 
@@ -96,7 +99,20 @@ def main(argv=None):
                 print("notify failed: %s" % exc, file=sys.stderr)
 
     sched = Scheduler(pack, notify, cfg)
-    bot = Bot(tg, pack, cfg, sched)
+    panel = None
+    if (cfg.get("web") or {}).get("secret"):
+        try:
+            panel = Panel(pack, sched, cfg)
+            if panel.enabled():
+                panel.start()
+                print("panel: %s" % panel.url())
+            else:
+                print("panel: web.secret must be at least 16 characters; panel off", file=sys.stderr)
+                panel = None
+        except OSError as exc:
+            print("panel: cannot listen: %s" % exc, file=sys.stderr)
+            panel = None
+    bot = Bot(tg, pack, cfg, sched, panel)
     try:
         tg.set_commands(COMMANDS)
     except TgError:

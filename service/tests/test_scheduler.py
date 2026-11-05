@@ -1,4 +1,5 @@
 import datetime
+import json
 import unittest
 
 import _path  # noqa: F401
@@ -28,6 +29,14 @@ class FakePack(object):
 
     def write(self, rel, doc):
         self.files[rel] = doc
+
+    def path(self, rel):
+        import os, tempfile
+        base = getattr(self, "_tmp", None) or tempfile.mkdtemp()
+        self._tmp = base
+        p = os.path.join(base, rel)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        return p
 
     def quote(self, tickers=()):
         self.calls.append("quote")
@@ -119,6 +128,9 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(s.due(), [])
         s.clock.t = at(4, "09:55")
         self.assertEqual(sorted(s.tick()), ["schedule", "snapshot"])  # the 09:30 calendar job and the snapshot
+        with open(self.pack.path("trader/state/history.jsonl")) as fh:
+            rows = [json.loads(l) for l in fh if l.strip()]
+        self.assertEqual((rows[-1]["label"], rows[-1]["total"]), ("open", 10000.0))
         self.assertEqual(self.pack.files["trader/state/day.json"]["start_total"], 10000.0)
         s.clock.t = at(4, "09:56")
         self.assertEqual(s.tick(), [])  # once a day

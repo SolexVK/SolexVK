@@ -5,6 +5,7 @@
     "allowed_user_ids": [],
     "chat_id": null
   },
+  "web": {"host": "127.0.0.1", "port": 8787, "secret": "", "public_url": ""},
   "timezone_offset_hours": 3,
   "market_hours": {"open": "10:00", "close": "18:50", "days": [0, 1, 2, 3, 4]},
   "max_daily_loss_pct": 3,
