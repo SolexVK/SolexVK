@@ -139,6 +139,12 @@ class SchedulerTests(unittest.TestCase):
         s = self.make(at(4, "19:30"))
         self.pack.schedule()
         self.assertEqual(s.due(), [])
+        self.assertIn("время уже прошло", s.status_text())
+        s.clock.t = at(5, "10:00")  # the next day the marker is gone and the 18:55 job is simply pending
+        self.assertNotIn("время уже прошло", s.status_text())
+        self.assertIn("digest –", s.status_line())
+        s.clock.t = at(5, "18:55")
+        self.assertIn("digest", s.tick())
         self.assertEqual(self.notes, [])
 
     def test_every_jobs_and_cadence(self):

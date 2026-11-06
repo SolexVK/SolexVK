@@ -147,6 +147,6 @@ def build_state(pack, scheduler=None, cache=None):
         for j in scheduler.jobs:
             last = scheduler.last.get(j["name"])
             out["jobs"].append({"name": j["name"], "every_min": j.get("every_min"), "at": j.get("at"),
-                                "last": last.isoformat() if last and j["name"] not in scheduler.skipped else None,
+                                "last": last.isoformat() if last and not scheduler._skipped(j["name"]) else None,
                                 "result": scheduler.last_result.get(j["name"], "")})
     return out

@@ -71,6 +71,17 @@ class Scheduler(object):
         hhmm = now.strftime("%H:%M")
         return mh.get("open", "10:00") <= hhmm < mh.get("close", "18:50")
 
+    def _skipped(self, name, now=None):
+        """Skipped at start-up and still the same day: the marker expires with the day."""
+        if name not in self.skipped:
+            return False
+        last = self.last.get(name)
+        if last is None or last.date() != (now or self.now()).date():
+            self.skipped.discard(name)
+            self.last_result.pop(name, None)
+            return False
+        return True
+
     def _at_passed(self, job, now):
         return now.strftime("%H:%M") >= job["at"] and now.weekday() in job.get("days", [0, 1, 2, 3, 4, 5, 6])
 
@@ -79,7 +90,7 @@ class Scheduler(object):
         out = []
         # the calendar first: if today's entry is missing, fetch it (at most once an hour)
         if any(j["name"] == "schedule" for j in self.jobs) and self.schedule_for(now) is None:
-            last = None if "schedule" in self.skipped else self.last.get("schedule")
+            last = None if self._skipped("schedule", now) else self.last.get("schedule")
             if last is None or (now - last).total_seconds() >= 3600:
                 out.append("schedule")
         for j in self.jobs:
@@ -230,7 +241,7 @@ class Scheduler(object):
         parts = []
         for j in self.jobs:
             last = self.last.get(j["name"])
-            parts.append("%s %s" % (j["name"], "–" if (last is None or j["name"] in self.skipped) else last.strftime("%H:%M")))
+            parts.append("%s %s" % (j["name"], "–" if (last is None or self._skipped(j["name"])) else last.strftime("%H:%M")))
         return ", ".join(parts) + (", рынок открыт" if self.market_open() else ", рынок закрыт")
 
     def status_text(self):
@@ -240,7 +251,7 @@ class Scheduler(object):
             if j.get("market_hours_only"):
                 when += ", в торговые часы"
             last = self.last.get(j["name"])
-            if j["name"] in self.skipped:
+            if self._skipped(j["name"]):
                 last = None
             lines.append("• %s: %s. Последний запуск %s. %s" % (
                 j["name"], when, last.strftime("%d.%m %H:%M") if last else "ещё не было",
