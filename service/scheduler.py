@@ -79,6 +79,7 @@ class Scheduler(object):
         if last is None or last.date() != (now or self.now()).date():
             self.skipped.discard(name)
             self.last_result.pop(name, None)
+            self.last.pop(name, None)  # it never ran: no "last run" either
             return False
         return True
 

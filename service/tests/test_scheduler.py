@@ -145,7 +145,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertIn("digest –", s.status_line())
         s.clock.t = at(5, "18:55")
         self.assertIn("digest", s.tick())
-        self.assertEqual(self.notes, [])
+        self.assertTrue(any("Итог дня" in n for n in self.notes))
 
     def test_every_jobs_and_cadence(self):
         s = self.make(at(5, "10:00"))
