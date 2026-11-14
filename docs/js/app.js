@@ -9,6 +9,7 @@ import { cameraSupported } from './pose.js';
 import { askMaster, hasKey } from './master.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
+import { PALETTES, applyPalette, CLOUD_RULE } from './theme.js';
 import { startIntake, runCheckin, runReview, reviewDue, currentPlan, todayCheckin, programHtml } from './flows.js';
 import { readiness, levelInfo } from './program.js';
 import { LEVELS } from './kb.js';
@@ -156,6 +157,7 @@ function renderToday() {
 
     ${needMeasure ? '<section class="callout"><strong>Понедельник.</strong> Утром натощак взвесьтесь и измерьте талию на уровне пупка, запишите в дневник. <button class="link" data-go="diary">Открыть дневник</button></section>' : ''}
 
+    ${CLOUD_RULE}
     <section class="sessions" id="sessions" aria-label="Занятия на сегодня">
       ${SESSION_KINDS.map((k) => sessionCard(k, ci, d)).join('')}
     </section>
@@ -573,6 +575,12 @@ function openSettings() {
         <label for="set-health">Что беспокоит и что запрещал врач</label>
         <textarea id="set-health" rows="3">${esc(p.health)}</textarea>
       </fieldset>
+      <fieldset><legend>Оформление</legend>
+        <div class="palettes" role="group" aria-label="Цветовая тема">
+          ${[{ id: 'auto', name: 'Как в системе', bg: 'linear-gradient(135deg, #f2ebdd 50%, #121110 50%)', accent: '#2e5b4e', seal: '#b0362a' }, ...PALETTES].map((p) => `<button type="button" class="pal" data-palette="${p.id}" aria-pressed="${(s.palette || 'auto') === p.id}">
+            <span class="pal-sw" style="background:${p.bg}"><i style="background:${p.seal}"></i><b style="background:${p.accent}"></b></span>${esc(p.name)}</button>`).join('')}
+        </div>
+      </fieldset>
       <fieldset><legend>Голос наставника</legend>
         <label class="switch"><input type="checkbox" id="set-voice" ${s.voice ? 'checked' : ''}><span>Говорить вслух</span></label>
         <label class="switch"><input type="checkbox" id="set-count" ${s.countAloud ? 'checked' : ''}><span>Считать повторы вслух</span></label>
@@ -605,6 +613,12 @@ function openSettings() {
       <button class="btn wide" type="submit">Сохранить</button>
       <button class="btn ghost wide" type="button" data-close>Закрыть</button>
     </form>`);
+  $$('.pal').forEach((b) => b.addEventListener('click', () => {
+    s.palette = b.dataset.palette;
+    applyPalette(s.palette);
+    save();
+    $$('.pal').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  }));
   $('#set-rate').addEventListener('input', (e) => { $('#set-rate-out').textContent = e.target.value; });
   $('#set-test').addEventListener('click', () => {
     state.settings.rate = Number($('#set-rate').value);
@@ -747,4 +761,5 @@ if ('serviceWorker' in navigator && window.isSecureContext && !params.get('nosw'
   });
 }
 
+applyPalette();
 render();

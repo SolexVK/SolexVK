@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Тай-Чи</title>
 <meta name="description" content="Личный курс Тай-Чи и цигун: занятия с голосовым наставником, контроль осанки камерой, дневник и прогресс.">
-<meta name="theme-color" content="#edf1ee" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0e1513" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2ebdd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -16,8 +16,17 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/app.css">
+<script>try { var p = (JSON.parse(localStorage.getItem('taichi.state.v1') || '{}').settings || {}).palette; if (p && p !== 'auto') document.documentElement.dataset.palette = p; } catch (e) {}</script>
 </head>
 <body>
+<div class="scenery" aria-hidden="true">
+  <svg viewBox="0 0 900 400" preserveAspectRatio="xMidYMax slice">
+    <circle class="sun" cx="690" cy="120" r="46"/>
+    <path fill="currentColor" opacity="0.55" d="M0 250 C60 225 95 175 150 182 C200 188 225 232 270 226 C330 218 350 150 410 140 C470 130 500 205 560 210 C615 214 640 168 700 160 C770 152 820 210 900 205 V400 H0 Z"/>
+    <path fill="currentColor" opacity="0.8" d="M0 300 C70 290 110 248 170 252 C240 256 270 300 340 292 C410 284 440 236 500 238 C560 240 590 290 660 292 C730 294 780 262 840 262 C870 262 890 270 900 274 V400 H0 Z"/>
+    <path fill="currentColor" d="M0 352 C90 338 150 322 240 330 C330 338 380 360 470 354 C560 348 620 320 720 324 C800 328 860 344 900 348 V400 H0 Z"/>
+  </svg>
+</div>
 <div id="app">
   <header class="top">
     <span class="seal-mark" aria-hidden="true">太極</span>

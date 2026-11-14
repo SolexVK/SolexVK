@@ -26,7 +26,7 @@ function defaults() {
       onboarded: false, name: '', startDate: dateStr(),
       age: null, height: null, startWeight: null, startWaist: null, health: '',
     },
-    settings: { voice: true, voiceURI: '', rate: 0.95, camera: true, handsFree: false, countAloud: true },
+    settings: { voice: true, voiceURI: '', rate: 0.95, camera: true, handsFree: false, countAloud: true, palette: 'auto', music: true, musicVolume: 0.5, lang: 'ru' },
     days: {},
     tasks: {},
     chat: [],

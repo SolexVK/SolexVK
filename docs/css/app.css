@@ -1,60 +1,227 @@
-/* Макет: один экран-приложение. Туманно-зелёные нейтральные, тушь для текста, нефрит для действий,
-   киноварь — только для печатей выполненных занятий. Экран занятия всегда тёмный: он читается с трёх метров. */
+/* Восточный стиль: рисовая бумага, тушь, киноварь печатей, горы в тумане.
+   Темы: auto (бумага днём, тушь ночью) и шесть явных — data-palette на <html>.
+   Экран занятия всегда тёмный: он читается с трёх метров. */
 :root {
-  --bg: #edf1ee;
-  --surface: #f9fbf9;
-  --surface-2: #e2e9e4;
-  --ink: #14221d;
-  --ink-2: #4a5a53;
-  --muted: #74837c;
-  --line: #d2dbd5;
-  --accent: #1d6b58;
+  --bg: #f2ebdd;
+  --surface: #fbf7ef;
+  --surface-2: #e8dfcd;
+  --ink: #1f1a14;
+  --ink-2: #4d4437;
+  --muted: #6b6050;
+  --line: #dcd1bc;
+  --accent: #2e5b4e;
   --accent-ink: #ffffff;
-  --accent-soft: #d6e9e2;
-  --seal: #b23a2b;
+  --accent-soft: #dce6dc;
+  --seal: #b0362a;
   --seal-ink: #fff7f2;
   --warn: #8a5a00;
-  --warn-bg: #fbefd2;
+  --warn-bg: #f6e8c8;
   --danger: #b42318;
-  --danger-bg: #fbe5e2;
+  --danger-bg: #f7e0da;
   --good: #1c6e45;
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
-  --grid: #dfe6e1;
-  --axis: #b8c4bd;
+  --grid: #dcd1bc;
+  --axis: #6b6050;
+  --mountain: rgba(40, 34, 26, 0.09);
+  --grain-opacity: 0.08;
+  color-scheme: light;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
   --display: ui-serif, "New York", "Iowan Old Style", Georgia, "Times New Roman", serif;
   --round: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
   --radius: 14px;
-  color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0e1513;
-    --surface: #161f1c;
-    --surface-2: #202b27;
-    --ink: #e7eeea;
-    --ink-2: #b6c4bd;
-    --muted: #86968e;
-    --line: #2a3731;
-    --accent: #63c7ab;
-    --accent-ink: #06231b;
-    --accent-soft: #1b3a32;
-    --seal: #e2604e;
-    --seal-ink: #2a0d08;
-    --warn: #f0b84a;
-    --warn-bg: #382c10;
-    --danger: #f1776b;
-    --danger-bg: #3c1814;
-    --good: #5fcf96;
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --grid: #25302c;
-    --axis: #34423c;
-    color-scheme: dark;
+  :root:not([data-palette]) {
+  --bg: #121110;
+  --surface: #1c1b19;
+  --surface-2: #272522;
+  --ink: #ede6d9;
+  --ink-2: #c4baa9;
+  --muted: #90877a;
+  --line: #322f2a;
+  --accent: #cfa95e;
+  --accent-ink: #1b1407;
+  --accent-soft: #3a3020;
+  --seal: #d4553f;
+  --seal-ink: #2a0d08;
+  --warn: #f0b84a;
+  --warn-bg: #382c10;
+  --danger: #f1776b;
+  --danger-bg: #3c1814;
+  --good: #5fcf96;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --grid: #322f2a;
+  --axis: #90877a;
+  --mountain: rgba(236, 226, 205, 0.07);
+  --grain-opacity: 0.05;
+  color-scheme: dark;
   }
+}
+:root[data-palette="paper"] {
+  --bg: #f2ebdd;
+  --surface: #fbf7ef;
+  --surface-2: #e8dfcd;
+  --ink: #1f1a14;
+  --ink-2: #4d4437;
+  --muted: #6b6050;
+  --line: #dcd1bc;
+  --accent: #2e5b4e;
+  --accent-ink: #ffffff;
+  --accent-soft: #dce6dc;
+  --seal: #b0362a;
+  --seal-ink: #fff7f2;
+  --warn: #8a5a00;
+  --warn-bg: #f6e8c8;
+  --danger: #b42318;
+  --danger-bg: #f7e0da;
+  --good: #1c6e45;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --grid: #dcd1bc;
+  --axis: #6b6050;
+  --mountain: rgba(40, 34, 26, 0.09);
+  --grain-opacity: 0.08;
+  color-scheme: light;
+}
+:root[data-palette="ink"] {
+  --bg: #121110;
+  --surface: #1c1b19;
+  --surface-2: #272522;
+  --ink: #ede6d9;
+  --ink-2: #c4baa9;
+  --muted: #90877a;
+  --line: #322f2a;
+  --accent: #cfa95e;
+  --accent-ink: #1b1407;
+  --accent-soft: #3a3020;
+  --seal: #d4553f;
+  --seal-ink: #2a0d08;
+  --warn: #f0b84a;
+  --warn-bg: #382c10;
+  --danger: #f1776b;
+  --danger-bg: #3c1814;
+  --good: #5fcf96;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --grid: #322f2a;
+  --axis: #90877a;
+  --mountain: rgba(236, 226, 205, 0.07);
+  --grain-opacity: 0.05;
+  color-scheme: dark;
+}
+:root[data-palette="jade"] {
+  --bg: #e4ede7;
+  --surface: #f3f8f4;
+  --surface-2: #d4e3d9;
+  --ink: #11241c;
+  --ink-2: #3f5449;
+  --muted: #596d63;
+  --line: #c9d9ce;
+  --accent: #1d6b58;
+  --accent-ink: #ffffff;
+  --accent-soft: #cfe5dc;
+  --seal: #b23a2b;
+  --seal-ink: #fff7f2;
+  --warn: #8a5a00;
+  --warn-bg: #f6e8c8;
+  --danger: #b42318;
+  --danger-bg: #f7e0da;
+  --good: #1c6e45;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --grid: #c9d9ce;
+  --axis: #596d63;
+  --mountain: rgba(40, 34, 26, 0.09);
+  --grain-opacity: 0.08;
+  color-scheme: light;
+}
+:root[data-palette="celadon"] {
+  --bg: #e2eaec;
+  --surface: #f2f6f7;
+  --surface-2: #d3dfe2;
+  --ink: #13232a;
+  --ink-2: #3e525a;
+  --muted: #576a71;
+  --line: #c8d6da;
+  --accent: #2b6880;
+  --accent-ink: #ffffff;
+  --accent-soft: #d2e3ea;
+  --seal: #b23a2b;
+  --seal-ink: #fff7f2;
+  --warn: #8a5a00;
+  --warn-bg: #f6e8c8;
+  --danger: #b42318;
+  --danger-bg: #f7e0da;
+  --good: #1c6e45;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --grid: #c8d6da;
+  --axis: #576a71;
+  --mountain: rgba(40, 34, 26, 0.09);
+  --grain-opacity: 0.08;
+  color-scheme: light;
+}
+:root[data-palette="lacquer"] {
+  --bg: #22100e;
+  --surface: #2d1613;
+  --surface-2: #3a1d19;
+  --ink: #f4e7d6;
+  --ink-2: #d9c3aa;
+  --muted: #a98e79;
+  --line: #4a2621;
+  --accent: #dcb05e;
+  --accent-ink: #2a1606;
+  --accent-soft: #4a3419;
+  --seal: #e8603f;
+  --seal-ink: #2a0d08;
+  --warn: #f0b84a;
+  --warn-bg: #382c10;
+  --danger: #f1776b;
+  --danger-bg: #3c1814;
+  --good: #5fcf96;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --grid: #4a2621;
+  --axis: #a98e79;
+  --mountain: rgba(236, 226, 205, 0.07);
+  --grain-opacity: 0.05;
+  color-scheme: dark;
+}
+:root[data-palette="bamboo"] {
+  --bg: #ebe8d7;
+  --surface: #f8f7ed;
+  --surface-2: #dedcc6;
+  --ink: #252914;
+  --ink-2: #4d5434;
+  --muted: #62674b;
+  --line: #d2d0b7;
+  --accent: #4f6e27;
+  --accent-ink: #ffffff;
+  --accent-soft: #dfe7cb;
+  --seal: #a8402c;
+  --seal-ink: #fff7f2;
+  --warn: #8a5a00;
+  --warn-bg: #f6e8c8;
+  --danger: #b42318;
+  --danger-bg: #f7e0da;
+  --good: #1c6e45;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --grid: #d2d0b7;
+  --axis: #62674b;
+  --mountain: rgba(40, 34, 26, 0.09);
+  --grain-opacity: 0.08;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -436,3 +603,37 @@ body.focus .top, body.focus .tabs { display: none; }
 .srv-status { font-size: 15px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); color: var(--ink-2); }
 .srv-status.good { background: var(--accent-soft); color: var(--good); font-weight: 600; }
 .srv-status.bad { background: var(--danger-bg); color: var(--danger); font-weight: 600; }
+
+/* ---- восточный фон: зерно рисовой бумаги и горы тушью ---- */
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.scenery { position: fixed; left: 0; right: 0; bottom: 0; height: 46vh; pointer-events: none; z-index: 0; color: var(--mountain); }
+.scenery svg { position: absolute; left: 50%; bottom: 0; width: max(100%, 900px); height: 100%; transform: translateX(-50%); }
+.scenery .sun { fill: var(--seal); opacity: 0.16; }
+#app { position: relative; z-index: 1; }
+.top, .tabs { background: color-mix(in srgb, var(--bg) 88%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.tile, .chart-card, .memory { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+
+/* облачный разделитель (сянъюнь) */
+.cloud-rule { display: block; width: 100%; height: 18px; color: var(--line); }
+
+/* символ тайцзи на экранах ожидания */
+.taiji { width: 72px; height: 72px; animation: spin 6s linear infinite; }
+.taiji .yang { fill: var(--surface); }
+.taiji .yin { fill: var(--ink); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* линия прогресса занятия — мазок кистью */
+.s-progress { height: 6px; border-radius: 3px; }
+.s-progress i { border-radius: 3px 6px 6px 3px; background: linear-gradient(90deg, rgba(140, 235, 205, 0.55), #8cebcd 70%, #d9f7ec); }
+
+/* выбор темы */
+.palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.pal { display: flex; flex-direction: column; gap: 6px; align-items: stretch; padding: 8px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); font-size: 13px; text-align: center; }
+.pal[aria-pressed="true"] { border-color: var(--accent); font-weight: 600; }
+.pal-sw { height: 44px; border-radius: 9px; position: relative; overflow: hidden; }
+.pal-sw i { position: absolute; width: 14px; height: 14px; border-radius: 3px; right: 7px; top: 7px; }
+.pal-sw b { position: absolute; left: 7px; bottom: 7px; width: 34px; height: 7px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { .taiji { animation: none; } }

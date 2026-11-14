@@ -6,6 +6,7 @@ import { newProgram, resolvePlan, checkinDecision, readiness, levelInfo } from '
 import { aiAvailable, designProgram, checkinReply, reviewProgress, remember } from './brain.js';
 import { runInterview } from './interview.js';
 import * as voice from './voice.js';
+import { TAIJI } from './theme.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const FLAG_TEXT = {
@@ -51,7 +52,7 @@ export async function startIntake(root, onDone) {
   logEntry('intake', 'user', JSON.stringify(answers));
   save();
 
-  root.innerHTML = '<section class="iv iv-wait"><div class="seal-mark big" aria-hidden="true">太極</div><h2>Мастер составляет программу</h2><p class="note">Обычно это занимает до минуты.</p></section>';
+  root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>Мастер составляет программу</h2><p class="note">Обычно это занимает до минуты.</p></section>`;
   voice.speak(INTAKE_DONE, { interrupt: true });
   const base = newProgram(state.intake);
   let program = { ...base };
@@ -128,7 +129,7 @@ export async function runCheckin(root, kind) {
   const rule = checkinDecision(answers);
   let decision = { mode: rule.mode, skip: [], say: CHECKIN_REPLIES[rule.key], source: 'rules', reasons: rule.reasons };
   if (rule.mode !== 'none' && aiAvailable()) {
-    root.innerHTML = '<section class="iv iv-wait"><div class="seal-mark big" aria-hidden="true">太極</div><h2>Мастер обдумывает ответ</h2></section>';
+    root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>Мастер обдумывает ответ</h2></section>`;
     try {
       const ai = await checkinReply(answers, rule, kind);
       decision = { ...decision, ...ai, source: 'ai' };
@@ -167,7 +168,7 @@ export async function runReview(root, onDone) {
   voice.unlock();
   const pr = state.program;
   const ready = readiness();
-  root.innerHTML = '<section class="iv iv-wait"><div class="seal-mark big" aria-hidden="true">太極</div><h2>Мастер изучает дневник</h2></section>';
+  root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>Мастер изучает дневник</h2></section>`;
   voice.speak(FLOW_LINES.reviewIntro, { interrupt: true });
   let r;
   if (aiAvailable()) {
