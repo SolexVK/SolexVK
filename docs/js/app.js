@@ -221,7 +221,7 @@ function openStart(kind) {
       <p class="note"><span class="pill ${mode}">${BP_LABEL[mode]}</span> ${BP_TEXT[mode]}</p>
       ${mode === 'none' ? '<div class="callout danger"><strong>Сегодня без занятия.</strong> Если есть боль в груди, одышка, слабость руки или ноги, нарушение речи — звоните 103 или 112.</div>' : `
       <p class="note">${minutes(plan.dur)}, упражнений: ${plan.steps.filter((s) => s.kind !== 'talk').length}. Неделя ${ci.planWeek} программы.</p>
-      ${hasPose && cameraSupported ? `<label class="switch"><input type="checkbox" id="st-cam" ${state.settings.camera ? 'checked' : ''}><span>Камера следит за осанкой и считает повторы</span></label>
+      ${hasPose && cameraSupported ? `<label class="switch"><input type="checkbox" id="st-cam" ${state.settings.camera ? 'checked' : ''}><span>Камера следит за осанкой и подсказывает</span></label>
         <p class="note">Поставьте телефон вертикально на уровне пояса в двух–трёх метрах, чтобы в кадре были голова и стопы. Видео обрабатывается на телефоне и никуда не отправляется.</p>` : ''}
       ${voice.sttSupported ? `<label class="switch"><input type="checkbox" id="st-hf" ${state.settings.handsFree ? 'checked' : ''}><span>Голосовые команды: «пауза», «дальше», «повтори», «мастер, …»</span></label>` : ''}
       ${voice.ttsSupported ? '' : '<p class="note">Этот браузер не умеет говорить вслух: подсказки будут только на экране.</p>'}

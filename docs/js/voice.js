@@ -6,6 +6,7 @@ const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
 const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
 
 export const ttsSupported = !!synth && typeof SpeechSynthesisUtterance !== 'undefined';
+export const clipsSupported = !!(typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext));
 export const sttSupported = !!SR;
 
 let voices = [];
@@ -47,9 +48,91 @@ function split(text) {
   return out;
 }
 
+// ---- записанный голос мастера ----
+// Все постоянные фразы курса заранее озвучены и лежат в audio/<ключ>.mp3.
+// Фраз, которых нет в записи (ответы мастера в чате), говорит голос телефона.
+const AC = typeof window !== 'undefined' ? (window.AudioContext || window.webkitAudioContext) : null;
+let ctx = null;
+let manifest = null;
+let manifestLoading = null;
+const buffers = new Map();
+const loadingClips = new Map();
+
+export const normText = (t) => String(t ?? '').replace(/\s+/g, ' ').trim();
+// FNV-1a: тот же ключ считает скрипт озвучки (tools/voice).
+export function clipKey(text) {
+  let h = 0x811c9dc5;
+  const s = normText(text);
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+export function loadManifest() {
+  if (manifest) return Promise.resolve(manifest);
+  if (!manifestLoading) {
+    manifestLoading = fetch(new URL('../audio/manifest.json', import.meta.url))
+      .then((r) => (r.ok ? r.json() : { clips: {} }))
+      .catch(() => ({ clips: {} }))
+      .then((m) => { manifest = m; return m; });
+  }
+  return manifestLoading;
+}
+if (typeof window !== 'undefined') loadManifest();
+
+export const hasClip = (text) => !!(manifest?.clips && manifest.clips[clipKey(text)] != null);
+export const clipDuration = (text) => manifest?.clips?.[clipKey(text)] ?? null;
+
+function loadClip(key) {
+  if (buffers.has(key)) return Promise.resolve(buffers.get(key));
+  if (loadingClips.has(key)) return loadingClips.get(key);
+  const p = fetch(new URL(`../audio/${key}.mp3`, import.meta.url))
+    .then((r) => { if (!r.ok) throw new Error('clip'); return r.arrayBuffer(); })
+    .then((ab) => new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)))
+    .then((buf) => { buffers.set(key, buf); loadingClips.delete(key); return buf; })
+    .catch((e) => { loadingClips.delete(key); throw e; });
+  loadingClips.set(key, p);
+  return p;
+}
+
+// Заранее загружаем фразы занятия, чтобы голос не запаздывал.
+export async function preload(texts, onProgress) {
+  await loadManifest();
+  if (!ctx) return;
+  const keys = [...new Set(texts.filter(hasClip).map(clipKey))];
+  let done = 0;
+  const queueKeys = [...keys];
+  const worker = async () => {
+    while (queueKeys.length) {
+      const k = queueKeys.shift();
+      try { await loadClip(k); } catch { /* фраза уйдёт в голос телефона */ }
+      done++;
+      onProgress?.(done, keys.length);
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+}
+
 // Первое произнесение на айфоне должно случиться прямо в обработчике касания.
 let unlocked = false;
 export function unlock() {
+  try {
+    // Звук занятия должен играть и при выключенном звонке.
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+  } catch { /* не поддерживается */ }
+  if (AC) {
+    try {
+      if (!ctx) ctx = new AC();
+      if (ctx.state === 'suspended') ctx.resume();
+      const b = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = b;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch { /* не критично */ }
+  }
   if (!ttsSupported || unlocked) return;
   unlocked = true;
   try {
@@ -62,11 +145,13 @@ export function unlock() {
 
 export function speak(text, { interrupt = false, force = false } = {}) {
   return new Promise((resolve) => {
-    if (!ttsSupported || (!state.settings.voice && !force) || !text) return resolve(false);
+    if ((!state.settings.voice && !force) || !text) return resolve(false);
     if (interrupt) cancel();
     unlocked = true;
-    const parts = split(text);
+    const whole = normText(text);
+    const parts = hasClip(whole) && ctx ? [whole] : split(whole);
     if (!parts.length) return resolve(false);
+    if (!ctx && !ttsSupported) return resolve(false);
     parts.forEach((t, i) => queue.push({ text: t, resolve: i === parts.length - 1 ? resolve : null }));
     pump();
     return undefined;
@@ -80,7 +165,6 @@ function pump() {
   busy = true;
   notify();
   // Сразу после отмены айфон может «проглотить» новую фразу — даём короткую паузу.
-  // Если отмены не было, говорим синхронно: так первая фраза остаётся внутри касания.
   const wait = Math.max(0, 90 - (Date.now() - lastCancel));
   if (wait > 0) setTimeout(run, wait); else run();
 }
@@ -88,12 +172,10 @@ function pump() {
 function run() {
   const item = queue.shift();
   if (!item) { busy = false; notify(); return; }
-  const u = new SpeechSynthesisUtterance(item.text);
-  u.lang = 'ru-RU';
-  const v = pickVoice();
-  if (v) u.voice = v;
-  u.rate = state.settings.rate || 0.95;
   let done = false;
+  let wd = null;
+  let stopFn = null;
+  const me = {};
   const finish = (ok) => {
     if (done) return;
     done = true;
@@ -103,12 +185,39 @@ function run() {
     item.resolve?.(ok);
     if (queue.length) pump(); else notify();
   };
-  const me = { finish };
+  me.finish = (ok) => { try { stopFn?.(); } catch { /* noop */ } finish(ok); };
   current = me;
+
+  if (ctx && hasClip(item.text)) {
+    const key = clipKey(item.text);
+    loadClip(key).then((buf) => {
+      if (done) return;
+      if (ctx.state === 'suspended') ctx.resume();
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.onended = () => finish(true);
+      stopFn = () => { src.onended = null; src.stop(); };
+      wd = setTimeout(() => finish(false), (buf.duration + 3) * 1000);
+      src.start(0);
+    }).catch(() => { if (!done) speakSynth(item, finish, (f) => { stopFn = f; }, (t) => { wd = t; }); });
+    return;
+  }
+  speakSynth(item, finish, (f) => { stopFn = f; }, (t) => { wd = t; });
+}
+
+function speakSynth(item, finish, setStop, setWd) {
+  if (!ttsSupported) { finish(false); return; }
+  const u = new SpeechSynthesisUtterance(item.text);
+  u.lang = 'ru-RU';
+  const v = pickVoice();
+  if (v) u.voice = v;
+  u.rate = state.settings.rate || 0.95;
   u.onend = () => finish(true);
   u.onerror = () => finish(false);
+  setStop(() => { try { synth.cancel(); } catch { /* noop */ } });
   // Иногда событие окончания не приходит — страхуемся таймером.
-  const wd = setTimeout(() => finish(false), 5000 + item.text.length * 130);
+  setWd(setTimeout(() => finish(false), 5000 + item.text.length * 130));
   try { synth.speak(u); } catch { finish(false); }
 }
 

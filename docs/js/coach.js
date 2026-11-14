@@ -121,6 +121,16 @@ export const POSES = {
   },
 };
 
+// Все замечания, которые может сделать мастер по камере (для озвучки).
+export const COACH_LOST = {
+  side: 'Я не вижу вас сбоку целиком. Встаньте боком к камере, чтобы были видны плечо, таз и стопа.',
+  front: 'Я не вижу вас целиком. Отойдите на два-три шага, чтобы в кадре были голова и стопы.',
+};
+export const COACH_TEXTS = [...new Set([
+  ...Object.values(POSES).flatMap((p) => [...p.rules.map((r) => r.say), p.slowSay, p.fastDownSay]),
+  ...Object.values(COACH_LOST),
+].filter(Boolean))];
+
 const EMA_KEYS = ['knee', 'kneeL', 'kneeR', 'elbowSide', 'bodyLine', 'leanSide', 'leanFB', 'shTilt', 'wristH', 'wristHL', 'wristHR', 'hipShift', 'kneeSpan', 'neck'];
 
 export class Coach {
@@ -237,9 +247,7 @@ export class Coach {
     if (ms > 3500 && t - this.lostTold > 25000) {
       this.lostTold = t;
       const side = this.def.need.includes('side');
-      ev.push({ type: 'cue', id: 'lost', say: side
-        ? 'Я не вижу вас сбоку целиком. Встаньте боком к камере, чтобы были видны плечо, таз и стопа.'
-        : 'Я не вижу вас целиком. Отойдите на два-три шага, чтобы в кадре были голова и стопы.' });
+      ev.push({ type: 'cue', id: 'lost', say: side ? COACH_LOST.side : COACH_LOST.front });
     }
     return { ev, m: raw || null, visible: false, lostMs: ms, bad: false };
   }
