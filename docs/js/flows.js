@@ -7,6 +7,7 @@ import { aiAvailable, designProgram, checkinReply, reviewProgress, remember } fr
 import { runInterview } from './interview.js';
 import * as voice from './voice.js';
 import { TAIJI } from './theme.js';
+import * as ambient from './ambient.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const FLAG_TEXT = {
@@ -17,8 +18,8 @@ const FLAG_TEXT = {
 };
 const MODE_TEXT = { full: 'Полное занятие', light: 'Мягкий режим', rest: 'День восстановления', none: 'Сегодня без занятия' };
 
-const focusOn = () => document.body.classList.add('focus');
-const focusOff = () => document.body.classList.remove('focus');
+const focusOn = () => { document.body.classList.add('focus'); ambient.start(); ambient.setScene('talk'); };
+const focusOff = () => { document.body.classList.remove('focus'); ambient.setScene('home'); };
 
 // План занятия с учётом программы и сегодняшних пропусков.
 export function currentPlan(extraSkip = []) {

@@ -53,6 +53,7 @@ function split(text) {
 // Фраз, которых нет в записи (ответы мастера в чате), говорит голос телефона.
 const AC = typeof window !== 'undefined' ? (window.AudioContext || window.webkitAudioContext) : null;
 let ctx = null;
+export const audioContext = () => ctx;
 let manifest = null;
 let manifestLoading = null;
 const buffers = new Map();

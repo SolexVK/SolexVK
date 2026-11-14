@@ -4,6 +4,7 @@ import { buildSession, RED_FLAGS, SESSION_META, SESSION_LINES } from './course.j
 import { COACH_TEXTS } from './coach.js';
 import { Coach, POSES, describe } from './coach.js';
 import * as voice from './voice.js';
+import * as ambient from './ambient.js';
 import * as pose from './pose.js';
 import { askMaster, hasKey } from './master.js';
 
@@ -12,6 +13,17 @@ const SPEED = Math.max(1, Number(params.get('speed')) || 1);
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const mmss = (sec) => { const s = Math.max(0, Math.ceil(sec)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+// Какая музыка звучит на шаге занятия.
+function sceneFor(s) {
+  if (s.kind === 'talk') return 'talk';
+  if (s.id === 'unload') return 'rest';
+  if (s.kind === 'breath') return 'breath';
+  if (s.id === 'stolb' || s.id === 'walk' || /^rest/.test(s.id)) return 'hold';
+  if (s.group === 'Цигун' || s.id === 'sky' || s.id === 'qishi' || s.id === 'shift') return 'qigong';
+  if (s.group === 'Суставная разминка') return 'warmup';
+  return 'strength';
+}
 
 export class SessionRunner {
   constructor(root, opts) {
@@ -155,6 +167,8 @@ export class SessionRunner {
     this.el.count.textContent = `${this.i + 1}/${this.steps.length}`;
     this.el.cue.textContent = '';
     this.root.dataset.kind = s.kind;
+    ambient.setScene(sceneFor(s));
+    if (s.id === 'end') ambient.chime('end');
     this.ink.className = 's-ink';
     this.startItem();
     this.paint();
@@ -189,6 +203,7 @@ export class SessionRunner {
     if (it.t === 'say') {
       this.sayNow(it.text, () => this.nextItem());
     } else if (it.t === 'beat') {
+      ambient.beat({ breath: it.breath, dur: it.dur / SPEED, rep: it.rep });
       st.beatLeft = it.dur;
       if (it.rep) { st.rep = it.rep; st.maxRep = Math.max(st.maxRep, it.rep); }
       if (it.breath && it.breath !== st.breath) {
@@ -327,6 +342,7 @@ export class SessionRunner {
 
   pause() {
     this.paused = true;
+    ambient.setPaused(true);
     voice.cancel();
     if (this.st) { this.st.token++; this.st.speaking = false; }
     this.el.pause.textContent = 'Продолжить';
@@ -335,6 +351,7 @@ export class SessionRunner {
 
   resume() {
     this.paused = false;
+    ambient.setPaused(false);
     this.lastTick = performance.now();
     this.el.pause.textContent = 'Пауза';
     this.root.classList.remove('paused');
@@ -523,6 +540,8 @@ export class SessionRunner {
   }
 
   destroy() {
+    ambient.setPaused(false);
+    ambient.setScene('home');
     this.stopEngines();
     voice.cancel();
     voice.stopListening();

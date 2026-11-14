@@ -10,6 +10,7 @@ import { askMaster, hasKey } from './master.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
 import { PALETTES, applyPalette, CLOUD_RULE } from './theme.js';
+import * as ambient from './ambient.js';
 import { startIntake, runCheckin, runReview, reviewDue, currentPlan, todayCheckin, programHtml } from './flows.js';
 import { readiness, levelInfo } from './program.js';
 import { LEVELS } from './kb.js';
@@ -59,6 +60,7 @@ const todaySkip = (d) => d?.checkin?.decision?.skip || [];
 const TITLES = { today: 'Сегодня', diary: 'Дневник', progress: 'Прогресс', master: 'Мастер' };
 
 function render() {
+  if (!runner) ambient.setScene(document.body.classList.contains('focus') ? 'talk' : 'home');
   const onboard = !state.profile.onboarded;
   document.body.classList.toggle('onboarding', onboard);
   if (onboard) return renderOnboard();
@@ -581,6 +583,11 @@ function openSettings() {
             <span class="pal-sw" style="background:${p.bg}"><i style="background:${p.seal}"></i><b style="background:${p.accent}"></b></span>${esc(p.name)}</button>`).join('')}
         </div>
       </fieldset>
+      <fieldset><legend>Фоновая музыка</legend>
+        <label class="switch"><input type="checkbox" id="set-music" ${s.music !== false ? 'checked' : ''}><span>Ручей, струны, колокольчик и бамбук. Тихо, под голос мастера приглушается</span></label>
+        <label for="set-mvol">Громкость музыки: <output id="set-mvol-out">${Math.round((s.musicVolume ?? 0.5) * 100)}%</output></label>
+        <input type="range" id="set-mvol" min="0.1" max="1" step="0.05" value="${s.musicVolume ?? 0.5}">
+      </fieldset>
       <fieldset><legend>Голос наставника</legend>
         <label class="switch"><input type="checkbox" id="set-voice" ${s.voice ? 'checked' : ''}><span>Говорить вслух</span></label>
         <label class="switch"><input type="checkbox" id="set-count" ${s.countAloud ? 'checked' : ''}><span>Считать повторы вслух</span></label>
@@ -619,6 +626,9 @@ function openSettings() {
     save();
     $$('.pal').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   }));
+  $('#set-music').addEventListener('change', (e) => { s.music = e.target.checked; save(); ambient.refresh(); });
+  $('#set-mvol').addEventListener('input', (e) => { s.musicVolume = Number(e.target.value); $('#set-mvol-out').textContent = `${Math.round(s.musicVolume * 100)}%`; ambient.refresh(); });
+  $('#set-mvol').addEventListener('change', () => save());
   $('#set-rate').addEventListener('input', (e) => { $('#set-rate-out').textContent = e.target.value; });
   $('#set-test').addEventListener('click', () => {
     state.settings.rate = Number($('#set-rate').value);
@@ -760,6 +770,9 @@ if ('serviceWorker' in navigator && window.isSecureContext && !params.get('nosw'
     location.reload();
   });
 }
+
+// Звук на айфоне можно включить только по касанию: запускаем голос и музыку при первом.
+document.addEventListener('pointerdown', () => { voice.unlock(); ambient.start(); ambient.setScene(runner ? 'talk' : document.body.classList.contains('focus') ? 'talk' : 'home'); }, { once: true, capture: true });
 
 applyPalette();
 render();
