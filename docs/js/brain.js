@@ -20,7 +20,11 @@ async function call(params, { signal } = {}) {
     if (cfg) {
       const r = await api('/api/messages', { method: 'POST', body: JSON.stringify(req), signal });
       if (r.status === 429) throw new BrainError('rate', 'Слишком много запросов. Подождите минуту.');
-      if (!r.ok) throw new BrainError('api', `Сервер ответил ошибкой ${r.status}.`);
+      if (!r.ok) {
+        const info = await r.json().catch(() => ({}));
+        if (info.error === 'ai_not_configured') throw new BrainError('api', 'На сервере не задан ключ Claude API.');
+        throw new BrainError('api', info.message ? `Claude ${info.status ?? ''}: ${info.message}` : `Сервер ответил ошибкой ${r.status}.`);
+      }
       return await r.json();
     }
     const key = getApiKey();

@@ -150,7 +150,12 @@ const server = http.createServer(async (req, res) => {
     if (err.code === 413) return send(res, 413, { error: 'too_large' });
     if (err instanceof SyntaxError) return send(res, 400, { error: 'bad_json' });
     if (err instanceof Anthropic.RateLimitError) return send(res, 429, { error: 'rate_limited' });
-    if (err instanceof Anthropic.APIError) return send(res, 502, { error: 'ai_error', status: err.status });
+    if (err instanceof Anthropic.APIError) {
+      // Текст отказа сервиса Claude — в журнал (journalctl -u taichi) и в приложение.
+      const detail = err.error?.error?.message || err.message || '';
+      console.error(`Claude API ${err.status ?? ''}: ${detail}`);
+      return send(res, 502, { error: 'ai_error', status: err.status, message: String(detail).slice(0, 300) });
+    }
     console.error(err);
     return send(res, 500, { error: 'server_error' });
   }
