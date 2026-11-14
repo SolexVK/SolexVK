@@ -737,7 +737,14 @@ onSyncStatus((st) => {
 startSync();
 
 if ('serviceWorker' in navigator && window.isSecureContext && !params.get('nosw')) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+  // Пришла новая версия приложения — перезагружаемся, если сейчас не идёт занятие или беседа.
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloaded || runner || document.body.classList.contains('focus')) return;
+    reloaded = true;
+    location.reload();
+  });
 }
 
 render();

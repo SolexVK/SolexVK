@@ -1,5 +1,5 @@
 // Офлайн-кэш: оболочка приложения обновляется в фоне, тяжёлые файлы модели берутся из кэша.
-const VERSION = 'taichi-v5';
+const VERSION = 'taichi-v6';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon-192.png',
   'js/app.js', 'js/store.js', 'js/kb.js', 'js/program.js', 'js/brain.js', 'js/ai-request.js', 'js/sync.js', 'js/interview.js', 'js/flows.js', 'js/flow-lines.js', 'js/course.js', 'js/coach.js', 'js/voice.js', 'js/pose.js', 'js/master.js', 'js/charts.js', 'js/session.js',
   'vendor/anthropic-sdk.mjs'];
@@ -19,9 +19,13 @@ self.addEventListener('fetch', (e) => {
     const cache = await caches.open(VERSION);
     const hit = await cache.match(req, { ignoreSearch: req.mode === 'navigate' });
     const fresh = () => fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; });
+    // Тяжёлые файлы (модель, голос) — из кэша. Всё остальное — сначала из сети, чтобы обновления
+    // приходили сразу; без сети или при медленном ответе — из кэша.
     if (hit && HEAVY.test(url.pathname) && !url.pathname.endsWith('manifest.json')) return hit;
-    if (hit) { fresh().catch(() => {}); return hit; }
-    try { return await fresh(); } catch (err) {
+    try {
+      return await Promise.race([fresh(), new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), hit ? 4000 : 30000))]);
+    } catch (err) {
+      if (hit) return hit;
       if (req.mode === 'navigate') { const idx = await cache.match('index.html'); if (idx) return idx; }
       throw err;
     }
