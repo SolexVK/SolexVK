@@ -88,7 +88,7 @@ export const clipDuration = (text) => manifest?.clips?.[clipKey(text)] ?? null;
 function loadClip(key) {
   if (buffers.has(key)) return Promise.resolve(buffers.get(key));
   if (loadingClips.has(key)) return loadingClips.get(key);
-  const p = fetch(new URL(`../audio/${key}.mp3`, import.meta.url))
+  const p = fetch(new URL(`../audio/${key}.mp3?v=${manifest?.rev ?? 1}`, import.meta.url))
     .then((r) => { if (!r.ok) throw new Error('clip'); return r.arrayBuffer(); })
     .then((ab) => new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)))
     .then((buf) => { buffers.set(key, buf); loadingClips.delete(key); return buf; })

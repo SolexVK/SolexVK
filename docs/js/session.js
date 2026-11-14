@@ -57,7 +57,7 @@ export class SessionRunner {
           <button class="s-btn" data-act="next">Дальше</button>
         </div>
         <div class="s-extra">
-          <button class="s-chip" data-act="ask">Спросить мастера</button>
+          <button class="s-chip" data-act="ask">Сказать мастеру</button>
           <button class="s-chip" data-act="look">Мастер, посмотри</button>
           <button class="s-chip s-danger" data-act="sos">Мне нехорошо</button>
         </div>
@@ -91,9 +91,6 @@ export class SessionRunner {
     document.body.classList.add('in-session');
     this.requestWake();
     if (this.o.camera && pose.cameraSupported) this.enableCamera();
-    if (this.o.handsFree && voice.sttSupported) {
-      voice.startCommands((p) => this.command(p), () => this.flash('Микрофон недоступен. Управляйте кнопками.'));
-    }
     this.lastTick = performance.now();
     this.timer = setInterval(() => this.tick(), 100);
     // Загружаем записи голоса мастера для этого занятия, но не дольше 12 секунд.
@@ -346,20 +343,21 @@ export class SessionRunner {
   }
 
   // ---- голосовые команды ----
-  command(p) {
-    if (this.ended) return;
-    if (this.overlayOpen) return;
-    const m = p.match(/^(?:мастер|учитель|вопрос)[,.!\s]+(.+)/);
-    if (m && /посмотри/.test(m[1])) return this.ask({ look: true });
-    if (m && m[1].length > 3) return this.ask({ text: m[1] });
-    if (/нехорошо|плохо|кружится|больно/.test(p)) return this.sos();
-    if (/пауза|подожди|стоп/.test(p)) { if (!this.paused) { this.pause(); voice.speak(SESSION_LINES.paused); } return undefined; }
-    if (/продолж|поехали/.test(p)) { if (this.paused) this.resume(); return undefined; }
-    if (/дальше|следующ|пропус/.test(p)) return this.paused ? this.resume() : this.finishStep(true);
-    if (/назад|предыдущ/.test(p)) return this.go(this.i - 1);
-    if (/повтори/.test(p)) return this.repeatInstruction();
-    if (/закончи|хватит/.test(p)) return this.exitDialog();
-    return undefined;
+  // Короткая голосовая команда после нажатия «Сказать мастеру». Возвращает true, если это была команда.
+  // Микрофон включается только по нажатию: постоянное прослушивание на айфоне прерывает звук занятия.
+  command(raw) {
+    const p = String(raw || '').toLowerCase().replace(/^(?:мастер|учитель)[,.!\s]*/, '').trim();
+    if (!p || p.split(/\s+/).length > 3) return false;
+    const run = (fn) => { this.closeOverlay(); fn(); return true; };
+    if (/посмотри/.test(p)) { this.ask({ look: true }); return true; }
+    if (/нехорошо|плохо|кружится/.test(p)) { this.sos(); return true; }
+    if (/пауза|подожди|стоп/.test(p)) return run(() => { if (!this.paused) this.pause(); });
+    if (/продолж|поехали/.test(p)) return run(() => { if (this.paused) this.resume(); });
+    if (/дальше|следующ|пропус/.test(p)) return run(() => (this.paused ? this.resume() : this.finishStep(true)));
+    if (/назад|предыдущ/.test(p)) return run(() => this.go(this.i - 1));
+    if (/повтори/.test(p)) return run(() => this.repeatInstruction());
+    if (/закончи|хватит/.test(p)) { this.exitDialog(); return true; }
+    return false;
   }
 
   // ---- оверлеи ----
@@ -367,7 +365,6 @@ export class SessionRunner {
     this.overlayOpen = true;
     voice.cancel();
     if (this.st) { this.st.token++; this.st.speaking = false; }
-    voice.pauseCommands();
     this.el.overlay.innerHTML = html;
     this.el.overlay.hidden = false;
   }
@@ -379,7 +376,6 @@ export class SessionRunner {
     this.el.overlay.hidden = true;
     this.el.overlay.innerHTML = '';
     this.overlayOpen = false;
-    voice.resumeCommands();
     this.lastTick = performance.now();
     if (!this.paused && !this.ended) this.startItem();
   }
@@ -403,12 +399,13 @@ export class SessionRunner {
     let question = text || (look ? 'Посмотрите, пожалуйста, как я выполняю это упражнение, и поправьте меня.' : '');
     if (!question) {
       if (voice.sttSupported) {
-        this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">Слушаю</p><p class="ov-live">Говорите…</p><button class="btn ghost" data-act="ov-close">Отмена</button></div>`);
+        this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">Слушаю</p><p class="ov-live">Говорите…</p><p class="note">Вопрос или команда: «пауза», «дальше», «назад», «повтори», «посмотри».</p><button class="btn ghost" data-act="ov-close">Отмена</button></div>`);
         const live = this.el.overlay.querySelector('.ov-live');
         try {
           question = await voice.listenOnce({ onInterim: (t) => { if (live.isConnected) live.textContent = t || 'Говорите…'; } });
         } catch { question = null; }
         if (!this.overlayOpen) return undefined;
+        if (question && this.command(question)) return undefined;
       }
       if (!question) return this.typedPrompt(question === '' ? 'Не расслышал. Напишите вопрос или попробуйте ещё раз.' : 'Напишите вопрос. Можно надиктовать кнопкой микрофона на клавиатуре.');
     }
@@ -494,7 +491,6 @@ export class SessionRunner {
     clearInterval(this.timer);
     this.ended = true;
     pose.stopCamera();
-    voice.stopCommands();
     try { this.wake?.release(); } catch { /* noop */ }
   }
 

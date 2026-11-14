@@ -20,6 +20,7 @@ OUT = Path(os.environ.get('VOICE_OUT', ROOT / 'docs' / 'audio'))
 PHRASES = json.loads(Path(os.environ.get('VOICE_PHRASES', ROOT / 'tools' / 'voice' / 'phrases.json')).read_text(encoding='utf-8'))
 SPEAKER = 'Baldur Sanjin'
 SPEED = 0.9
+TEMPO = 1.08  # итоговое ускорение речи без изменения тембра (ffmpeg atempo)
 TRIES = 6
 
 torch.set_num_threads(os.cpu_count() or 4)
@@ -28,6 +29,7 @@ man_path = OUT / 'manifest.json'
 manifest = json.loads(man_path.read_text()) if man_path.exists() else {}
 manifest.setdefault('voice', f'{SPEAKER}, Coqui XTTS-v2 (CPML, некоммерческая лицензия)')
 clips = manifest.setdefault('clips', {})
+manifest['tempo'] = TEMPO
 report = manifest.setdefault('check', {})
 
 tts = TTS('tts_models/multilingual/multi-dataset/xtts_v2').to('cpu')
@@ -122,10 +124,10 @@ for idx, p in enumerate(todo, 1):
     dur = len(y) / sr
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
         sf.write(f.name, y, sr)
-        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', f.name, '-ac', '1', '-ar', '24000',
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', f.name, '-filter:a', f'atempo={TEMPO}', '-ac', '1', '-ar', '24000',
                         '-codec:a', 'libmp3lame', '-b:a', '48k', str(OUT / f'{key}.mp3')], check=True)
         os.unlink(f.name)
-    clips[key] = round(dur, 2)
+    clips[key] = round(dur / TEMPO, 2)
     report[key] = {'text': text, 'heard': heard, 'sim': round(sim, 2), 'tries': tries, 'ok': ok}
     man_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=0), encoding='utf-8')
     flag = '' if ok else '  <-- проверить'

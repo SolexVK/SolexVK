@@ -1,5 +1,5 @@
 // Офлайн-кэш: оболочка приложения обновляется в фоне, тяжёлые файлы модели берутся из кэша.
-const VERSION = 'taichi-v2';
+const VERSION = 'taichi-v3';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon-192.png',
   'js/app.js', 'js/store.js', 'js/course.js', 'js/coach.js', 'js/voice.js', 'js/pose.js', 'js/master.js', 'js/charts.js', 'js/session.js',
   'vendor/anthropic-sdk.mjs'];

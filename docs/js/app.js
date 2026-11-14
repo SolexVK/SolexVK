@@ -223,7 +223,7 @@ function openStart(kind) {
       <p class="note">${minutes(plan.dur)}, упражнений: ${plan.steps.filter((s) => s.kind !== 'talk').length}. Неделя ${ci.planWeek} программы.</p>
       ${hasPose && cameraSupported ? `<label class="switch"><input type="checkbox" id="st-cam" ${state.settings.camera ? 'checked' : ''}><span>Камера следит за осанкой и подсказывает</span></label>
         <p class="note">Поставьте телефон вертикально на уровне пояса в двух–трёх метрах, чтобы в кадре были голова и стопы. Видео обрабатывается на телефоне и никуда не отправляется.</p>` : ''}
-      ${voice.sttSupported ? `<label class="switch"><input type="checkbox" id="st-hf" ${state.settings.handsFree ? 'checked' : ''}><span>Голосовые команды: «пауза», «дальше», «повтори», «мастер, …»</span></label>` : ''}
+      ${voice.sttSupported ? '<p class="note">Микрофон включается только по кнопке «Сказать мастеру»: задайте вопрос или скажите «пауза», «дальше», «повтори».</p>' : ''}
       ${voice.ttsSupported ? '' : '<p class="note">Этот браузер не умеет говорить вслух: подсказки будут только на экране.</p>'}
       <button class="btn wide" id="st-go">Начать занятие</button>`}`;
   };
@@ -253,14 +253,12 @@ function openStart(kind) {
   $('#st-dyn').addEventListener('click', (e) => {
     if (!e.target.closest('#st-go')) return;
     const camera = !!$('#st-cam')?.checked;
-    const handsFree = !!$('#st-hf')?.checked;
     if ($('#st-cam')) state.settings.camera = camera;
-    if ($('#st-hf')) state.settings.handsFree = handsFree;
     save();
     const mode = bpMode(d.bp?.sys, d.bp?.dia) === 'light' ? 'light' : 'full';
     closeSheet();
     runner = new SessionRunner($('#session'), {
-      kind, week: ci.planWeek, mode, camera, handsFree,
+      kind, week: ci.planWeek, mode, camera,
       onFinish: (recorded) => { runner = null; render(); if (recorded) toast('Занятие записано в дневник'); },
     });
     if (params.get('debug')) window.__runner = runner;
