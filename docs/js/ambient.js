@@ -1,65 +1,162 @@
-// Фоновое звучание: ручей, тянущийся фон, струны в пятиступенной гамме, колокольчик, поющая чаша, бамбук.
-// Всё синтезируется на телефоне в реальном времени и меняется по экрану, упражнению и ритму.
-// Пока говорит мастер, музыка приглушается.
+// Фоновое звучание из живых записей (папка sounds/).
+// Три слоя: тихая мелодия задаёт настроение; поверх — природа (фонтан, капли, ветер, птицы);
+// по ходу упражнений — колокольчики, поющая чаша, гонг и деревянный блок на счёт.
+// Пока говорит мастер, всё приглушается.
 import { state } from './store.js';
 import { audioContext, onSpeaking } from './voice.js';
 
-const BASE = 0.3; // общий уровень при громкости 100 %: фон всегда заметно тише голоса
-// Пятиступенная гамма гун от соль: G A B D E.
-const SCALE = [196.0, 220.0, 246.94, 293.66, 329.63, 392.0, 440.0, 493.88, 587.33, 659.25];
-const ROOT = 98.0; // соль большой октавы
+const DIR = 'sounds/';
+const BASE = 0.8; // общий уровень при громкости 100 %
+const MUSIC = 0.42; // мелодия — тише природы
+const TRACKS = ['kalimba', 'xiao', 'healing', 'temple'];
+// Петли: файл содержит поля по 0,5 с, играем только область между ними — без щелчков на стыке.
+const LOOPS = {
+  fountain: [0.5, 52.5],
+  wind: [0.5, 60.5],
+  birds: [0.5, 75.5],
+  drops: [0.5, 18.5],
+};
+const SHOTS = ['bowl', 'gong', 'chime1', 'chime2', 'chime3', 'windchime1', 'windchime2', 'wood1', 'wood2'];
 
-// Сцены: уровни слоёв и плотность событий (событий в секунду).
+// Сцены: громкость слоёв природы и события.
 const SCENES = {
-  off: { water: 0, drone: 0, pluck: 0, bell: 0 },
-  home: { water: 0.5, drone: 0.22, pluck: 0.07, bell: 0.015, bright: 1400 },
-  talk: { water: 0.22, drone: 0.28, pluck: 0.025, bell: 0.008, bright: 1100 },
-  breath: { water: 0.18, drone: 0.42, pluck: 0, bell: 0, bright: 900 },
-  warmup: { water: 0.3, drone: 0.18, pluck: 0.03, bell: 0, bamboo: 0.45, bright: 1500 },
-  qigong: { water: 0.28, drone: 0.32, pluck: 0, bell: 0, breathPluck: true, bright: 1200 },
-  hold: { water: 0.42, drone: 0.3, pluck: 0.05, bell: 0, minuteBell: true, bright: 1000 },
-  strength: { water: 0.2, drone: 0.22, pluck: 0.05, bell: 0, bamboo: 0.65, bright: 1700 },
-  rest: { water: 0.32, drone: 0.45, pluck: 0.015, bell: 0, bright: 700, slow: true },
+  off: { music: 0 },
+  home: { music: 1, fountain: 0.55, windchime: 1 / 150 },
+  talk: { music: 0.8, fountain: 0.3 },
+  breath: { music: 1, wind: 0.45 },
+  warmup: { music: 0.9, fountain: 0.45, wood: 0.35 },
+  qigong: { music: 1, wind: 0.32, fountain: 0.22, breathChime: true },
+  hold: { music: 1, fountain: 0.4, drops: 0.35, minuteChime: true },
+  strength: { music: 0.9, fountain: 0.4, wood: 0.45 },
+  rest: { music: 1, birds: 0.5, wind: 0.22 },
 };
 
 let ctx = null;
 let out = null; // громкость из настроек
 let duck = null; // приглушение под голос
-let water = null;
-let waterFilter = null;
-let drone = null;
-let droneFilter = null;
-let droneGain = null;
+let musicGain = null;
+let musicEl = null;
+let trackIdx = 0;
+const beds = {}; // name -> { gain, src }
+const buffers = new Map(); // name -> AudioBuffer | Promise
 let scene = 'off';
 let cfg = SCENES.off;
 let running = false;
 let paused = false;
 let timer = 0;
-let lastBell = 0;
 let holdStart = 0;
-const plucks = new Map();
-let noiseBuf = null;
+let lastChime = 0;
 
 const now = () => ctx.currentTime;
 const ramp = (param, v, t = 1.5) => { param.cancelScheduledValues(now()); param.setTargetAtTime(v, now(), t / 3); };
 const enabled = () => state.settings.music !== false;
 const level = () => (enabled() ? BASE * (state.settings.musicVolume ?? 0.5) : 0);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-function noise() {
-  if (noiseBuf) return noiseBuf;
-  const len = ctx.sampleRate * 4;
-  noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const d = noiseBuf.getChannelData(0);
-  // «Розоватый» шум: сглаженный белый, мягче для слуха.
-  let b0 = 0; let b1 = 0; let b2 = 0;
-  for (let i = 0; i < len; i++) {
-    const w = Math.random() * 2 - 1;
-    b0 = 0.997 * b0 + w * 0.029591;
-    b1 = 0.985 * b1 + w * 0.032534;
-    b2 = 0.95 * b2 + w * 0.048056;
-    d[i] = (b0 + b1 + b2 + w * 0.04) * 0.6;
+// ---- загрузка ----
+function load(name) {
+  if (buffers.has(name)) return buffers.get(name);
+  const p = fetch(DIR + name + '.mp3')
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+    .then((b) => new Promise((res, rej) => ctx.decodeAudioData(b, res, rej)))
+    .then((buf) => { buffers.set(name, buf); return buf; })
+    .catch(() => { buffers.delete(name); return null; });
+  buffers.set(name, p);
+  return p;
+}
+const ready = (name) => { const b = buffers.get(name); return b && !(b instanceof Promise) ? b : null; };
+
+// ---- мелодия ----
+function startMusic() {
+  // Элемент создаётся и запускается внутри касания: так iPhone разрешает воспроизведение.
+  if (musicEl) return;
+  musicEl = new Audio();
+  musicEl.preload = 'auto';
+  musicEl.crossOrigin = 'anonymous';
+  const h = new Date().getHours();
+  trackIdx = h >= 17 ? 3 : h >= 12 ? 2 : new Date().getDate() % 2;
+  musicEl.src = DIR + TRACKS[trackIdx] + '.mp3';
+  musicEl.addEventListener('ended', () => {
+    trackIdx = (trackIdx + 1) % TRACKS.length;
+    musicEl.src = DIR + TRACKS[trackIdx] + '.mp3';
+    playMusic();
+  });
+  try {
+    ctx.createMediaElementSource(musicEl).connect(musicGain);
+  } catch { /* без маршрута через AudioContext мелодия не играет */ }
+  playMusic();
+}
+function playMusic() {
+  if (!musicEl || paused || !enabled() || !cfg.music || document.hidden) return;
+  const p = musicEl.play();
+  if (p && p.catch) p.catch(() => {});
+}
+function stopMusicLater() {
+  // Пауза после затухания, чтобы не тратить батарею.
+  setTimeout(() => { if (musicEl && (paused || !enabled() || !cfg.music || document.hidden)) musicEl.pause(); }, 1500);
+}
+
+// ---- природа (петли) ----
+function bed(name) {
+  if (beds[name]) return beds[name];
+  const g = ctx.createGain();
+  g.gain.value = 0;
+  g.connect(out);
+  beds[name] = { gain: g, src: null };
+  return beds[name];
+}
+async function ensureBed(name) {
+  const b = bed(name);
+  if (b.src) return b;
+  const buf = await load(name);
+  if (!buf || b.src) return b;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  [src.loopStart, src.loopEnd] = LOOPS[name];
+  src.connect(b.gain);
+  // Начинаем с разных мест петли, чтобы повторы не узнавались.
+  src.start(0, LOOPS[name][0] + Math.random() * (LOOPS[name][1] - LOOPS[name][0] - 1));
+  b.src = src;
+  return b;
+}
+
+// ---- одиночные звуки ----
+function play(name, vel = 0.7, when = 0) {
+  if (!ctx || !running || paused || !enabled()) return;
+  const buf = ready(name);
+  if (!buf) { load(name); return; }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = 0.97 + Math.random() * 0.06; // живая неровность
+  const g = ctx.createGain();
+  g.gain.value = vel;
+  src.connect(g).connect(out);
+  src.start(now() + when);
+}
+
+// ---- планировщик ----
+function tick() {
+  if (!running || paused || document.hidden || !enabled()) return;
+  if (cfg.windchime && Math.random() < cfg.windchime) play(pick(['windchime1', 'windchime2']), 0.45);
+  if (cfg.minuteChime && holdStart && now() - holdStart >= 60 && now() - lastChime > 55) {
+    play(pick(['chime1', 'chime2', 'chime3']), 0.6);
+    lastChime = now();
+    holdStart = now();
   }
-  return noiseBuf;
+}
+
+function apply() {
+  if (!ctx) return;
+  const on = !paused && enabled() && !document.hidden;
+  ramp(out.gain, on ? level() : 0, 1.2);
+  ramp(musicGain.gain, MUSIC * (cfg.music || 0), 2);
+  if (on && cfg.music) playMusic(); else stopMusicLater();
+  for (const name of Object.keys(LOOPS)) {
+    const v = cfg[name] || 0;
+    if (v && on) ensureBed(name).then((b) => ramp(b.gain.gain, cfg[name] || 0, 2.5));
+    else if (beds[name]) ramp(beds[name].gain.gain, 0, 2);
+  }
 }
 
 function build() {
@@ -70,188 +167,27 @@ function build() {
   duck = ctx.createGain();
   duck.gain.value = 1;
   out.connect(duck).connect(ctx.destination);
-
-  // Ручей: шум через два полосовых фильтра, частоты медленно блуждают.
-  water = ctx.createGain();
-  water.gain.value = 0;
-  const src = ctx.createBufferSource();
-  src.buffer = noise();
-  src.loop = true;
-  waterFilter = [ctx.createBiquadFilter(), ctx.createBiquadFilter()];
-  waterFilter.forEach((f, k) => { f.type = 'bandpass'; f.frequency.value = k ? 2400 : 900; f.Q.value = k ? 3 : 1.4; src.connect(f).connect(water); });
-  water.connect(out);
-  src.start();
-
-  // Тянущийся фон: основной тон и квинта, мягко через фильтр.
-  droneGain = ctx.createGain();
-  droneGain.gain.value = 0;
-  droneFilter = ctx.createBiquadFilter();
-  droneFilter.type = 'lowpass';
-  droneFilter.frequency.value = 900;
-  drone = [ROOT, ROOT * 1.5, ROOT * 2.003].map((f, k) => {
-    const o = ctx.createOscillator();
-    o.type = k === 1 ? 'triangle' : 'sine';
-    o.frequency.value = f;
-    const g = ctx.createGain();
-    g.gain.value = [0.5, 0.22, 0.14][k];
-    o.connect(g).connect(droneFilter);
-    o.start();
-    return o;
-  });
-  // Медленное «дыхание» фона.
-  const lfo = ctx.createOscillator();
-  const lfoGain = ctx.createGain();
-  lfo.frequency.value = 0.07;
-  lfoGain.gain.value = 0.12;
-  lfo.connect(lfoGain).connect(droneGain.gain);
-  lfo.start();
-  droneFilter.connect(droneGain).connect(out);
-
+  musicGain = ctx.createGain();
+  musicGain.gain.value = 0;
+  musicGain.connect(out);
+  SHOTS.forEach(load);
   onSpeaking((speaking) => {
     if (!ctx || !duck) return;
-    // Пока говорит мастер — тише; после фразы плавно возвращаемся.
     duck.gain.cancelScheduledValues(now());
-    duck.gain.setTargetAtTime(speaking ? 0.32 : 1, now(), speaking ? 0.08 : 0.5);
+    duck.gain.setTargetAtTime(speaking ? 0.35 : 1, now(), speaking ? 0.08 : 0.6);
   });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) mute(); else apply(); });
+  document.addEventListener('visibilitychange', () => apply());
   return true;
 }
 
-// ---- события ----
-function pluckBuffer(f) {
-  const key = Math.round(f);
-  if (plucks.has(key)) return plucks.get(key);
-  // Карплус — Стронг: щипок струны, похожий на гучжэн.
-  const sr = ctx.sampleRate;
-  const len = Math.floor(sr * 2.6);
-  const buf = ctx.createBuffer(1, len, sr);
-  const d = buf.getChannelData(0);
-  const N = Math.max(2, Math.round(sr / f));
-  const ring = new Float32Array(N);
-  for (let i = 0; i < N; i++) ring[i] = (Math.random() * 2 - 1) * (1 - i / N);
-  let idx = 0;
-  for (let i = 0; i < len; i++) {
-    const a = ring[idx];
-    const b = ring[(idx + 1) % N];
-    ring[idx] = 0.4985 * (a + b);
-    d[i] = a;
-    idx = (idx + 1) % N;
-  }
-  plucks.set(key, buf);
-  return buf;
-}
-
-function pluck(f, vel = 0.5, when = 0) {
-  const t = now() + when;
-  const s = ctx.createBufferSource();
-  s.buffer = pluckBuffer(f);
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.value = cfg.bright || 1300;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(vel * 0.9, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
-  s.connect(lp).connect(g).connect(out);
-  s.start(t);
-  s.stop(t + 2.6);
-}
-
-function bell(f = 1318.5, vel = 0.4, when = 0) {
-  // Колокольчик: частотная модуляция с негармоническим отношением.
-  const t = now() + when;
-  const car = ctx.createOscillator();
-  const mod = ctx.createOscillator();
-  const mg = ctx.createGain();
-  const g = ctx.createGain();
-  car.frequency.value = f;
-  mod.frequency.value = f * 1.41;
-  mg.gain.setValueAtTime(f * 1.2, t);
-  mg.gain.exponentialRampToValueAtTime(f * 0.02, t + 2.5);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(vel * 0.35, t + 0.005);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5);
-  mod.connect(mg).connect(car.frequency);
-  car.connect(g).connect(out);
-  car.start(t); mod.start(t);
-  car.stop(t + 4.6); mod.stop(t + 4.6);
-}
-
-function bowl(f = 196, vel = 0.5, when = 0) {
-  // Поющая чаша: несколько негармонических призвуков с биениями, долгое затухание.
-  const t = now() + when;
-  [[1, 1], [1.004, 0.6], [2.76, 0.35], [2.765, 0.25], [5.4, 0.12]].forEach(([r, a]) => {
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.frequency.value = f * r;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vel * a * 0.3, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 9 / Math.sqrt(r));
-    o.connect(g).connect(out);
-    o.start(t);
-    o.stop(t + 9.2);
-  });
-}
-
-function bamboo(vel = 0.5, when = 0) {
-  // Удар по бамбуку: короткий тон с падением высоты и щелчок.
-  const t = now() + when;
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.frequency.setValueAtTime(620, t);
-  o.frequency.exponentialRampToValueAtTime(430, t + 0.06);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(vel * 0.5, t + 0.003);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-  o.connect(g).connect(out);
-  o.start(t); o.stop(t + 0.2);
-  const n = ctx.createBufferSource();
-  n.buffer = noise();
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 9;
-  const ng = ctx.createGain();
-  ng.gain.setValueAtTime(vel * 0.6, t);
-  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-  n.connect(bp).connect(ng).connect(out);
-  n.start(t, Math.random() * 3, 0.06);
-}
-
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-// ---- планировщик ----
-function tick() {
-  if (!running || paused || document.hidden || !enabled()) return;
-  const dt = 0.25;
-  const slow = cfg.slow ? 0.6 : 1;
-  if (cfg.pluck && Math.random() < cfg.pluck * dt * slow) {
-    // Короткая фраза из 1–3 нот гаммы.
-    const start = Math.floor(Math.random() * 6);
-    const n = 1 + Math.floor(Math.random() * 3);
-    for (let k = 0; k < n; k++) pluck(SCALE[Math.min(SCALE.length - 1, start + k * (Math.random() < 0.5 ? 1 : 2))], 0.32 - k * 0.06, k * (0.35 + Math.random() * 0.3) / slow);
-  }
-  if (cfg.bell && Math.random() < cfg.bell * dt) bell(pick([1174.7, 1318.5, 1568]), 0.25);
-  if (cfg.minuteBell && holdStart && now() - holdStart >= 60 && now() - lastBell > 55) { bell(1568, 0.3); lastBell = now(); holdStart = now(); }
-  // Блуждание ручья.
-  waterFilter[0].frequency.setTargetAtTime(700 + Math.random() * 700, now(), 1.2);
-  waterFilter[1].frequency.setTargetAtTime(1900 + Math.random() * 1400, now(), 0.6);
-}
-
-function apply() {
-  if (!ctx) return;
-  const lv = paused ? 0 : level();
-  ramp(out.gain, lv, 1.2);
-  ramp(water.gain, cfg.water || 0, 2);
-  ramp(droneGain.gain, (cfg.drone || 0) * 0.5, 2.5);
-  ramp(droneFilter.frequency, cfg.bright ? cfg.bright * 0.6 : 600, 2);
-}
-
-function mute() { if (out) ramp(out.gain, 0, 0.6); }
-
 // ---- открытый интерфейс ----
 export function start() {
-  if (running) return;
+  if (!enabled()) return;
   if (!ctx && !build()) return;
+  if (!musicEl) startMusic();
+  if (running) { playMusic(); return; }
   running = true;
-  timer = setInterval(tick, 250);
+  timer = setInterval(tick, 1000);
   apply();
 }
 
@@ -259,7 +195,7 @@ export function setScene(name) {
   if (!SCENES[name] || name === scene) return;
   scene = name;
   cfg = SCENES[name];
-  if (name === 'hold') { holdStart = ctx ? now() : 0; lastBell = 0; }
+  if (name === 'hold') { holdStart = ctx ? now() : 0; lastChime = ctx ? now() : 0; }
   if (ctx) apply();
 }
 
@@ -269,34 +205,25 @@ export function setPaused(p) {
 }
 
 // Обновить громкость после изменения настроек.
-export function refresh() { if (ctx) apply(); else if (enabled()) start(); }
+export function refresh() {
+  if (ctx) { if (enabled() && !musicEl) startMusic(); apply(); } else if (enabled()) start();
+}
 
-// Такт упражнения: музыка следует ритму счёта и дыхания.
-export function beat({ breath, dur = 2, rep = 0 } = {}) {
+// Такт упражнения: звуки следуют счёту и дыханию.
+export function beat({ breath, rep = 0 } = {}) {
   if (!ctx || !running || paused || !enabled()) return;
-  if (cfg.bamboo && rep) bamboo(cfg.bamboo * (rep % 4 === 1 ? 1 : 0.7));
-  if (breath && (scene === 'breath' || scene === 'rest')) {
-    // Фон нарастает на вдохе и стихает на выдохе.
-    const peak = (cfg.drone || 0.3) * (breath === 'in' ? 0.85 : 0.35);
-    droneGain.gain.cancelScheduledValues(now());
-    droneGain.gain.setTargetAtTime(peak, now(), dur / 3);
-    droneFilter.frequency.setTargetAtTime(breath === 'in' ? 1200 : 500, now(), dur / 3);
-    if (breath === 'in' && rep === 1) bowl(ROOT * 2, 0.45);
-  }
-  if (cfg.breathPluck && breath) {
-    // Арпеджио вверх на вдохе, вниз на выдохе.
-    const notes = breath === 'in' ? [0, 1, 2, 3, 4] : [7, 5, 4, 2, 0];
-    const step = Math.min(0.9, dur / notes.length);
-    notes.forEach((n, k) => pluck(SCALE[n], 0.26 - k * 0.025, k * step));
-  }
+  if (cfg.wood && rep) play(rep % 2 ? 'wood1' : 'wood2', cfg.wood);
+  if (breath === 'in' && rep === 1 && (scene === 'breath' || scene === 'rest')) play('bowl', 0.55);
+  if (cfg.breathChime && breath === 'in' && (rep === 1 || rep % 4 === 0)) play(pick(['chime1', 'chime2', 'chime3']), 0.4);
 }
 
 export function chime(kind = 'bell') {
   if (!ctx || !running || !enabled()) return;
-  if (kind === 'end') { [0, 1.6, 3.2].forEach((w) => bell(1318.5, 0.35, w)); bowl(ROOT * 2, 0.4, 0.2); }
-  else if (kind === 'bowl') bowl(ROOT * 2, 0.45);
-  else bell(1568, 0.3);
+  if (kind === 'end') { play('gong', 0.6); play('bowl', 0.5, 3); }
+  else if (kind === 'start') play('bowl', 0.6);
+  else if (kind === 'bowl') play('bowl', 0.55);
+  else play(pick(['chime1', 'chime2', 'chime3']), 0.55);
 }
 
-// Для проверки: доступ к выходу музыки (запись пробных фрагментов).
+// Для проверки: доступ к выходу (запись пробных фрагментов).
 export const debugTap = () => ({ ctx, out: duck });

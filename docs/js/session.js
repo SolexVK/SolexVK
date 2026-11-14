@@ -170,6 +170,7 @@ export class SessionRunner {
     this.root.dataset.kind = s.kind;
     ambient.setScene(sceneFor(s));
     if (s.id === 'end') ambient.chime('end');
+    else if (this.i === 0) ambient.chime('start');
     this.ink.className = 's-ink';
     this.startItem();
     this.paint();
