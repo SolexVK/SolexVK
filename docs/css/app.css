@@ -433,3 +433,6 @@ body.focus .top, body.focus .tabs { display: none; }
 .memory h4 { font: 600 14px var(--font); margin: 8px 0 4px; }
 .journal { display: grid; gap: 8px; font-size: 14px; color: var(--ink-2); }
 .journal span { display: block; color: var(--muted); font-size: 12px; }
+.srv-status { font-size: 15px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); color: var(--ink-2); }
+.srv-status.good { background: var(--accent-soft); color: var(--good); font-weight: 600; }
+.srv-status.bad { background: var(--danger-bg); color: var(--danger); font-weight: 600; }

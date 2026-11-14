@@ -588,8 +588,8 @@ function openSettings() {
         <input id="set-srv" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://taichi.example.ru" value="${esc(serverConfig()?.url || '')}">
         <label for="set-tok">Ключ доступа к серверу</label>
         <input id="set-tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(serverConfig()?.token || '')}">
-        <p class="note" id="set-srv-status">${esc(syncLabel())}</p>
-        <button type="button" class="btn ghost" id="set-srv-test">Проверить связь</button>
+        <button type="button" class="btn" id="set-srv-test">Проверить связь</button>
+        <p class="srv-status" id="set-srv-status" role="status">${esc(syncLabel())}</p>
       </fieldset>
       <fieldset><legend>Без сервера: ключ Claude API на телефоне</legend>
         <p class="note">Если сервера нет, можно ввести ключ с console.anthropic.com прямо сюда; он хранится только на этом телефоне. Без сервера и ключа мастер работает по встроенным правилам. При обращении к нейросети на серверы Anthropic уходят ваши ответы, записи дневника за две недели, анкета и заметки мастера; при «Мастер, посмотри» — ещё один кадр с камеры.</p>
@@ -611,17 +611,32 @@ function openSettings() {
     if ($('#set-voiceuri')) state.settings.voiceURI = $('#set-voiceuri').value;
     voice.speak('Плечи опущены, дыхание спокойное. Макушка тянется вверх.', { interrupt: true, force: true });
   });
-  $('#set-srv-test').addEventListener('click', async () => {
+  $('#set-srv-test').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
     const out = $('#set-srv-status');
-    const url = $('#set-srv').value.trim().replace(/\/+$/, '');
-    if (!url) { out.textContent = 'Введите адрес сервера.'; return; }
-    out.textContent = 'Проверяю…';
+    const url = normUrl($('#set-srv').value);
+    const show = (text, kind) => { out.textContent = text; out.className = `srv-status ${kind || ''}`; toast(text); };
+    if (!url) { show('Введите адрес сервера.', 'bad'); return; }
+    $('#set-srv').value = url;
+    btn.disabled = true;
+    btn.textContent = 'Проверяю…';
+    out.textContent = 'Проверяю связь с сервером…';
+    out.className = 'srv-status';
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 12000);
     try {
-      const h = await (await fetch(`${url}/api/health`)).json();
-      const r = await fetch(`${url}/api/state`, { headers: { Authorization: `Bearer ${$('#set-tok').value.trim()}` } });
-      out.textContent = r.status === 401 ? 'Сервер отвечает, но ключ доступа не подходит.'
-        : r.ok ? `Связь есть.${h.ai ? ' Нейросеть подключена.' : ' Нейросеть на сервере не настроена.'}` : `Сервер ответил ${r.status}.`;
-    } catch { out.textContent = 'Сервер недоступен. Проверьте адрес и что он открыт по https.'; }
+      const h = await (await fetch(`${url}/api/health`, { signal: ctl.signal, cache: 'no-store' })).json();
+      const r = await fetch(`${url}/api/state`, { signal: ctl.signal, cache: 'no-store', headers: { Authorization: `Bearer ${$('#set-tok').value.trim()}` } });
+      if (r.status === 401) show('Сервер отвечает, но ключ доступа не подходит. Проверьте строку APP_TOKEN.', 'bad');
+      else if (r.ok) show(`Связь есть.${h.ai ? ' Нейросеть подключена.' : ' Нейросеть на сервере не настроена.'} Нажмите «Сохранить».`, 'good');
+      else show(`Сервер ответил ошибкой ${r.status}.`, 'bad');
+    } catch (err) {
+      show(err?.name === 'AbortError' ? 'Сервер не ответил за 12 секунд.' : 'Сервер недоступен. Проверьте адрес: он должен начинаться с https://', 'bad');
+    } finally {
+      clearTimeout(timer);
+      btn.disabled = false;
+      btn.textContent = 'Проверить связь';
+    }
   });
   $('#set-export').addEventListener('click', () => copyText(exportJSON()));
   $('#set-import').addEventListener('click', () => {
@@ -647,7 +662,7 @@ function openSettings() {
     Object.assign(s, { voice: $('#set-voice').checked, countAloud: $('#set-count').checked, rate: Number($('#set-rate').value) });
     if ($('#set-voiceuri')) s.voiceURI = $('#set-voiceuri').value;
     setApiKey($('#set-key').value);
-    const srv = $('#set-srv').value.trim();
+    const srv = normUrl($('#set-srv').value);
     const tok = $('#set-tok').value.trim();
     if (srv !== (serverConfig()?.url || '') || tok !== (serverConfig()?.token || '')) { setServer(srv, tok); if (srv && tok) startSync(); }
     save();
@@ -698,6 +713,13 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden || runner) return;
   if (dateStr() !== lastDay) { lastDay = dateStr(); diaryDate = lastDay; render(); }
 });
+
+// Адрес сервера: добавляем https://, убираем лишние пробелы и слэши в конце.
+function normUrl(v) {
+  let u = String(v || '').trim().replace(/\s+/g, '').replace(/\/+$/, '');
+  if (u && !/^https?:\/\//i.test(u)) u = `https://${u}`;
+  return u;
+}
 
 function syncLabel(st = syncStatus()) {
   if (!serverConfig()) return 'Сервер не подключён.';
