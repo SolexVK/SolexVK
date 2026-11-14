@@ -3,12 +3,17 @@ import {
   getApiKey, setApiKey, exportJSON, importJSON, resetAll,
   coreDone, streak, weekCore, lastValue, series, SESSION_KINDS,
 } from './store.js';
-import { courseInfo, buildSession, bpMode, BP_TEXT, SESSION_META, SAFETY_RULES, RED_FLAGS, PHASES, phase2Criteria } from './course.js';
+import { courseInfo, buildSession, bpMode, BP_TEXT, SESSION_META, SAFETY_RULES, RED_FLAGS } from './course.js';
 import * as voice from './voice.js';
 import { cameraSupported } from './pose.js';
-import { askMaster, hasKey, MODEL } from './master.js';
+import { askMaster, hasKey } from './master.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
+import { startIntake, runCheckin, runReview, reviewDue, currentPlan, todayCheckin, programHtml } from './flows.js';
+import { readiness, levelInfo } from './program.js';
+import { LEVELS } from './kb.js';
+import { aiAvailable, remember } from './brain.js';
+import { startSync, serverConfig, setServer, syncStatus, onSyncStatus, pull, api } from './sync.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -39,6 +44,17 @@ function toast(text) {
 
 // ---------- каркас ----------
 const BP_LABEL = { full: 'полное занятие', light: 'лёгкий режим', none: 'не заниматься', unknown: 'не измерено' };
+const MODE_ORDER = { full: 0, light: 1, rest: 2, none: 3 };
+const MODE_LABEL = { full: 'полное занятие', light: 'мягкий режим', rest: 'день восстановления', none: 'без занятия' };
+// Режим на сегодня: самое бережное из решения опроса и правила давления.
+function effectiveMode(d) {
+  const bp = bpMode(d?.bp?.sys, d?.bp?.dia);
+  let m = bp === 'unknown' ? 'full' : bp;
+  const c = d?.checkin?.decision?.mode;
+  if (c && MODE_ORDER[c] > MODE_ORDER[m]) m = c;
+  return m;
+}
+const todaySkip = (d) => d?.checkin?.decision?.skip || [];
 const TITLES = { today: 'Сегодня', diary: 'Дневник', progress: 'Прогресс', master: 'Мастер' };
 
 function render() {
@@ -63,48 +79,22 @@ function go(v) {
 
 // ---------- первое знакомство ----------
 function renderOnboard() {
-  const p = state.profile;
   main.innerHTML = `
     <section class="onb">
       <div class="seal-mark big" aria-hidden="true">太極</div>
-      <h2>Путь в двенадцать недель</h2>
-      <p class="lead">Каждое утро и каждый день по 15–20 минут. Наставник ведёт голосом, камера следит за осанкой, дневник помнит всё.</p>
-      <form id="onb-form" class="form" novalidate>
-        <label for="onb-name">Как к вам обращаться</label>
-        <input id="onb-name" autocomplete="given-name" value="${esc(p.name)}" placeholder="Имя, по желанию">
-        <label for="onb-start">Первый день курса</label>
-        <input id="onb-start" type="date" value="${esc(p.startDate)}" required>
-        <div class="grid2">
-          <div><label for="onb-age">Возраст</label><input id="onb-age" inputmode="numeric" value="${esc(p.age ?? '')}"></div>
-          <div><label for="onb-height">Рост, см</label><input id="onb-height" inputmode="numeric" value="${esc(p.height ?? '')}"></div>
-          <div><label for="onb-weight">Вес, кг</label><input id="onb-weight" inputmode="decimal" value="${esc(p.startWeight ?? '')}"></div>
-          <div><label for="onb-waist">Талия на уровне пупка, см</label><input id="onb-waist" inputmode="decimal" value="${esc(p.startWaist ?? '')}"></div>
-        </div>
-        <label for="onb-health">Что беспокоит и что запрещал врач</label>
-        <textarea id="onb-health" rows="3" placeholder="Например: болит спина, повышенное давление, были травмы">${esc(p.health)}</textarea>
-        <p class="note">Всё, что вы вводите, хранится только на этом телефоне.</p>
-        <div class="callout">
-          <strong>Приложение не заменяет врача.</strong> Если есть боль в спине, отдающая в ноги, повышенное давление или болезни сердца, покажитесь врачу в первые недели занятий.
-        </div>
-        <button class="btn wide" type="submit">Начать путь</button>
-      </form>
+      <h2>Ваш мастер тай-чи</h2>
+      <p class="lead">Мастер начнёт со знакомства: голосом задаст около двадцати вопросов о здоровье, подвижности и целях, проведёт три простые проверки и подберёт программу под вас. Отвечать можно кнопками или голосом.</p>
+      <div class="callout">
+        <strong>Приложение не заменяет врача.</strong> Если есть боль в спине, отдающая в ноги, повышенное давление или болезни сердца, покажитесь врачу в первые недели занятий.
+      </div>
+      <p class="note">Для проверок понадобятся устойчивый стул и опора рядом. Займёт около десяти минут.</p>
+      <button class="btn wide" data-intake>Познакомиться с мастером</button>
+      ${serverConfig() ? '' : '<button class="btn ghost wide" data-open="settings">У меня уже есть сервер с данными</button>'}
     </section>`;
-  $('#onb-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    voice.unlock();
-    Object.assign(p, {
-      name: $('#onb-name').value.trim(),
-      startDate: $('#onb-start').value || dateStr(),
-      age: num($('#onb-age').value), height: num($('#onb-height').value),
-      startWeight: num($('#onb-weight').value), startWaist: num($('#onb-waist').value),
-      health: $('#onb-health').value.trim(), onboarded: true,
-    });
-    const d = day(p.startDate);
-    if (p.startWeight && d.weight == null) d.weight = p.startWeight;
-    if (p.startWaist && d.waist == null) d.waist = p.startWaist;
-    save();
-    go('today');
-  });
+}
+
+function openIntake() {
+  startIntake(main, () => go('today'));
 }
 
 // ---------- сегодня ----------
@@ -119,8 +109,8 @@ const START_TASKS = [
 function sessionCard(kind, ci, d) {
   const meta = SESSION_META[kind];
   const rec = d?.sessions?.[kind];
-  const mode = d?.bp?.sys ? bpMode(d.bp.sys, d.bp.dia) : 'full';
-  const plan = buildSession(kind, ci.planWeek, mode === 'light' ? 'light' : 'full');
+  const mode = effectiveMode(d);
+  const plan = buildSession(kind, currentPlan(todaySkip(d)), mode === 'none' ? 'full' : mode);
   const blocked = mode === 'none';
   return `
     <article class="sess ${rec?.done ? 'is-done' : ''}" data-kind="${kind}">
@@ -145,10 +135,13 @@ function renderToday() {
   $('#view-sub').textContent = longDate(today);
   main.innerHTML = `
     <section class="hero">
-      <p class="eyebrow">Неделя ${ci.week} · этап ${ci.phase.n} «${esc(ci.phase.name)}»</p>
+      <p class="eyebrow">${state.program?.level ? `Уровень ${state.program.level} «${esc(levelInfo(state.program.level).name)}» · ступень ${state.program.stage} из 4` : `Неделя ${ci.week}`}</p>
       <h2>${state.profile.name ? `${esc(state.profile.name)}, д` : 'Д'}ень ${ci.dayN}</h2>
-      ${ci.beyond ? '<p class="note">Этап 1 пройден по календарю. Программа этапа 2 появится после пересмотра с наставником; пока продолжаем план четвёртой недели.</p>' : ''}
+      ${d.checkin ? `<p class="note">Мастер сегодня: ${esc(MODE_LABEL[d.checkin.decision.mode])}. ${esc(d.checkin.decision.say)}</p>` : ''}
     </section>
+
+    ${!state.program ? '<section class="callout"><strong>Познакомьтесь с мастером.</strong> Он задаст около двадцати вопросов о здоровье и подготовке и подберёт программу под вас. <button class="btn" data-intake>Начать знакомство</button></section>' : ''}
+    ${reviewDue(today) ? '<section class="callout"><strong>Прошла неделя.</strong> Мастер хочет посмотреть ваш дневник и решить, как двигаться дальше. <button class="btn" data-review>Обсудить неделю</button></section>' : ''}
 
     <section class="bp" aria-labelledby="bp-h">
       <h3 id="bp-h">Давление перед занятием</h3>
@@ -190,15 +183,16 @@ function renderToday() {
     else return;
     save();
     // Обновляем только зависимые части, чтобы поле ввода не теряло фокус.
-    const m = bpMode(dd.bp?.sys, dd.bp?.dia);
+    const bm = bpMode(dd.bp?.sys, dd.bp?.dia);
+    const m = effectiveMode(dd);
     const pill = $('#bp-pill');
-    pill.className = `pill ${m}`;
-    pill.textContent = BP_LABEL[m];
-    $('#bp-text').textContent = BP_TEXT[m];
+    pill.className = `pill ${bm}`;
+    pill.textContent = BP_LABEL[bm];
+    $('#bp-text').textContent = BP_TEXT[bm];
     // Карточки не пересоздаём: иначе касание «Начать» сразу после ввода давления теряется.
     for (const k of SESSION_KINDS) {
       const card = $(`.sess[data-kind="${k}"]`);
-      const plan = buildSession(k, ci.planWeek, m === 'light' ? 'light' : 'full');
+      const plan = buildSession(k, currentPlan(todaySkip(dd)), m === 'none' ? 'full' : m);
       card.querySelector('.sess-sub').textContent = `${SESSION_META[k].sub} · ${minutes(plan.dur)}`;
       card.querySelector('[data-start]').disabled = m === 'none';
     }
@@ -208,19 +202,24 @@ function renderToday() {
 }
 
 // ---------- запуск занятия ----------
-function openStart(kind) {
+async function openStart(kind) {
   const today = dateStr();
-  const ci = courseInfo(today);
+  // Перед первым занятием дня мастер спрашивает о самочувствии.
+  if (state.program?.level && kind !== 'evening' && !todayCheckin(today)) {
+    const dec = await runCheckin(main, kind);
+    render();
+    if (!dec || dec.mode === 'none') return;
+  }
   const d = day(today);
   const meta = SESSION_META[kind];
   const dyn = () => {
-    const mode = bpMode(d.bp?.sys, d.bp?.dia);
-    const plan = buildSession(kind, ci.planWeek, mode === 'light' ? 'light' : 'full');
+    const mode = effectiveMode(d);
+    const plan = buildSession(kind, currentPlan(todaySkip(d)), mode === 'none' ? 'full' : mode);
     const hasPose = plan.steps.some((s) => s.pose);
     return `
-      <p class="note"><span class="pill ${mode}">${BP_LABEL[mode]}</span> ${BP_TEXT[mode]}</p>
+      <p class="note"><span class="pill ${mode}">${MODE_LABEL[mode]}</span> ${d.checkin ? esc(d.checkin.decision.say) : BP_TEXT[bpMode(d.bp?.sys, d.bp?.dia)]}</p>
       ${mode === 'none' ? '<div class="callout danger"><strong>Сегодня без занятия.</strong> Если есть боль в груди, одышка, слабость руки или ноги, нарушение речи — звоните 103 или 112.</div>' : `
-      <p class="note">${minutes(plan.dur)}, упражнений: ${plan.steps.filter((s) => s.kind !== 'talk').length}. Неделя ${ci.planWeek} программы.</p>
+      <p class="note">${minutes(plan.dur)}, упражнений: ${plan.steps.filter((s) => s.kind !== 'talk').length}. Уровень ${plan.level}, ступень ${plan.stage}.</p>
       ${hasPose && cameraSupported ? `<label class="switch"><input type="checkbox" id="st-cam" ${state.settings.camera ? 'checked' : ''}><span>Камера следит за осанкой и подсказывает</span></label>
         <p class="note">Поставьте телефон вертикально на уровне пояса в двух–трёх метрах, чтобы в кадре были голова и стопы. Видео обрабатывается на телефоне и никуда не отправляется.</p>` : ''}
       ${voice.sttSupported ? '<p class="note">Микрофон включается только по кнопке «Сказать мастеру»: задайте вопрос или скажите «пауза», «дальше», «повтори».</p>' : ''}
@@ -237,7 +236,7 @@ function openStart(kind) {
     </div>
     <div id="st-dyn" class="sheet-dyn">${dyn()}</div>
     <button class="btn ghost wide" data-close>Отмена</button>`);
-  let shownMode = bpMode(d.bp?.sys, d.bp?.dia);
+  let shownMode = effectiveMode(d);
   const upd = () => {
     const sys = num($('#st-sys').value);
     const dia = num($('#st-dia').value);
@@ -245,7 +244,7 @@ function openStart(kind) {
     else if (!sys && !dia && d.bp) delete d.bp;
     else return;
     save();
-    const m = bpMode(d.bp?.sys, d.bp?.dia);
+    const m = effectiveMode(d);
     if (m !== shownMode) { shownMode = m; $('#st-dyn').innerHTML = dyn(); }
   };
   $('#st-sys').addEventListener('change', upd);
@@ -255,11 +254,19 @@ function openStart(kind) {
     const camera = !!$('#st-cam')?.checked;
     if ($('#st-cam')) state.settings.camera = camera;
     save();
-    const mode = bpMode(d.bp?.sys, d.bp?.dia) === 'light' ? 'light' : 'full';
+    const mode = effectiveMode(d);
+    if (mode === 'none') return;
     closeSheet();
     runner = new SessionRunner($('#session'), {
-      kind, week: ci.planWeek, mode, camera,
-      onFinish: (recorded) => { runner = null; render(); if (recorded) toast('Занятие записано в дневник'); },
+      kind, week: currentPlan(todaySkip(d)), mode, camera,
+      onFinish: (recorded) => {
+        runner = null;
+        render();
+        if (!recorded) return;
+        toast('Занятие записано в дневник');
+        const rec = day(dateStr()).sessions[kind] || {};
+        remember('session', `Занятие «${SESSION_META[kind].title}» в режиме ${MODE_LABEL[mode]}${rec.partial ? ', частично' : ''}: ${Math.round((rec.durSec || 0) / 60)} мин${rec.stolbSec ? `, столб ${rec.stolbSec} с` : ''}${rec.chairReps ? `, вставаний со стула ${rec.chairReps}` : ''}${rec.quality != null ? `, без замечаний камеры ${rec.quality}%` : ''}.`);
+      },
     });
     if (params.get('debug')) window.__runner = runner;
     runner.start();
@@ -408,7 +415,7 @@ function renderProgress() {
   const w = lastValue('weight');
   const ws = lastValue('waist');
   const p = state.profile;
-  const crit = phase2Criteria(state);
+  const rd = readiness();
   main.innerHTML = `
     <section class="tiles two">
       <div class="tile"><span class="tile-l">Вес</span><span class="tile-v">${w ? String(w.value).replace('.', ',') : '—'}<small> кг</small></span>${delta(w?.value, p.startWeight, 'кг')}</div>
@@ -422,14 +429,17 @@ function renderProgress() {
     <section class="chart-card"><h3>Занятий за неделю</h3><p class="note">Утро и день, максимум 14. Вечерняя разгрузка в счёт не идёт.</p><div id="ch-weeks"></div></section>
     <p class="note center">Все цифры таблицей — во вкладке <button class="link" data-go="diary">«Дневник»</button>.</p>
 
-    <section class="phases"><h3>Этапы курса</h3>
-      ${PHASES.map((ph) => `<article class="phase ${ph.n === ci.phase.n ? 'cur' : ''} ${ph.n < ci.phase.n ? 'past' : ''}">
-        <div class="phase-n">${ph.n}</div>
-        <div><h4>${esc(ph.name)} <small>недели ${ph.weeks[0]}–${ph.weeks[1]}</small></h4><p>${esc(ph.text)}</p></div>
+    <section class="phases"><h3>Уровни</h3>
+      ${LEVELS.map((L) => `<article class="phase ${L.n === state.program?.level ? 'cur' : ''} ${L.n < (state.program?.level || 0) ? 'past' : ''}">
+        <div class="phase-n">${L.n}</div>
+        <div><h4>${esc(L.name)}${L.scripted === false ? ' <small>сценарии в работе</small>' : ''}</h4><p>${esc(L.goal)}</p></div>
       </article>`).join('')}
-      <h4 class="crit-h">Условия перехода на этап 2</h4>
-      <ul class="crit">${crit.map((c) => `<li class="${c.ok ? 'ok' : ''}"><span class="crit-mark">${c.ok ? '✓' : '○'}</span><span>${esc(c.text)}<small>${esc(c.have)}</small></span></li>`).join('')}</ul>
-    </section>`;
+      ${rd ? `<h4 class="crit-h">Готовность к следующему уровню: ${rd.score} из 100</h4>
+      <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${rd.score}"><i style="width:${rd.score}%"></i></div>
+      <ul class="crit">${rd.crit.map((c) => `<li class="${c.ok ? 'ok' : ''}"><span class="crit-mark">${c.ok ? '✓' : '○'}</span><span>${esc(c.text)}<small>${esc(c.have)}</small></span></li>`).join('')}</ul>
+      <p class="note">Ступень нагрузки внутри уровня меняется раз в неделю на пересмотре с мастером. Решение о новом уровне — только когда выполнены все условия.</p>` : '<p class="note">Готовность появится после знакомства с мастером.</p>'}
+    </section>
+    ${state.program ? `<section class="program-card">${programHtml(state.program)}<button class="btn ghost" data-intake>Пройти знакомство заново</button></section>` : ''}`;
 
   lineChart($('#ch-weight'), { unit: 'кг', series: [{ name: 'Вес', color: 'var(--series-1)', points: series((x) => x.weight) }] });
   lineChart($('#ch-waist'), { unit: 'см', series: [{ name: 'Талия', color: 'var(--series-1)', points: series((x) => x.waist) }] });
@@ -467,6 +477,10 @@ function bubble(m) {
 function renderMaster() {
   $('#view-sub').textContent = hasKey() ? 'Живой разговор' : 'Базовый режим';
   main.innerHTML = `
+    ${state.memory?.summary || state.log?.length ? `<details class="memory"><summary>Что мастер помнит о вас</summary>
+      <p>${esc(state.memory?.summary || 'Заметок пока нет: они появятся, когда подключена нейросеть.')}</p>
+      ${state.log?.length ? `<h4>Последние беседы</h4><ul class="journal">${state.log.slice(-12).reverse().map((e) => `<li><span>${new Date(e.at).toLocaleDateString('ru-RU')} · ${esc({ intake: 'знакомство', checkin: 'перед занятием', review: 'пересмотр', session: 'занятие', chat: 'беседа' }[e.kind] || e.kind)}</span>${esc(e.role === 'user' ? 'Вы ответили на вопросы' : String(e.text).slice(0, 220))}</li>`).join('')}</ul>` : ''}
+    </details>` : ''}
     <section class="chat" id="chat" aria-live="polite"></section>
     ${hasKey() ? '' : '<p class="note chat-note">Без ключа наставник отвечает только по курсу. Свободный разговор включается в настройках. <button class="link" data-open="settings">Открыть</button></p>'}
     <div class="chips" id="chips">${CHIPS.map((c) => `<button class="chip">${esc(c)}</button>`).join('')}</div>
@@ -568,13 +582,22 @@ function openSettings() {
         <button type="button" class="btn ghost" id="set-test">Проверить голос</button>
         ${voice.ttsSupported ? '' : '<p class="note">Этот браузер не умеет говорить вслух.</p>'}
       </fieldset>
-      <fieldset><legend>Живой разговор с наставником</legend>
-        <p class="note">Свободный диалог и разбор кадра с камеры идут через Claude API (модель ${MODEL}) по вашему собственному ключу с console.anthropic.com. Ключ хранится только на этом телефоне. При вопросе наставнику на серверы Anthropic уходят ваш вопрос, записи дневника за неделю и сведения о здоровье из профиля; при «Мастер, посмотри» — ещё один кадр с камеры. Запросы оплачиваются по тарифу API.</p>
+      <fieldset><legend>Ваш сервер</legend>
+        <p class="note">На сервере хранятся дневник, анкета, программа, беседы и память мастера, а также ключ Claude API. Через него мастер обращается к нейросети: Claude Haiku 5.5 для ежедневных бесед, Claude Sonnet 5.5 для программы и пересмотров.</p>
+        <label for="set-srv">Адрес сервера</label>
+        <input id="set-srv" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://taichi.example.ru" value="${esc(serverConfig()?.url || '')}">
+        <label for="set-tok">Ключ доступа к серверу</label>
+        <input id="set-tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(serverConfig()?.token || '')}">
+        <p class="note" id="set-srv-status">${esc(syncLabel())}</p>
+        <button type="button" class="btn ghost" id="set-srv-test">Проверить связь</button>
+      </fieldset>
+      <fieldset><legend>Без сервера: ключ Claude API на телефоне</legend>
+        <p class="note">Если сервера нет, можно ввести ключ с console.anthropic.com прямо сюда; он хранится только на этом телефоне. Без сервера и ключа мастер работает по встроенным правилам. При обращении к нейросети на серверы Anthropic уходят ваши ответы, записи дневника за две недели, анкета и заметки мастера; при «Мастер, посмотри» — ещё один кадр с камеры.</p>
         <label for="set-key">Ключ API</label>
         <input id="set-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-…" value="${esc(getApiKey())}">
       </fieldset>
       <fieldset><legend>Данные</legend>
-        <p class="note">Дневник хранится только в этом браузере. Очистка данных сайта или удаление приложения сотрёт его — раз в неделю сохраняйте копию.</p>
+        <p class="note">${serverConfig() ? 'Данные хранятся на телефоне и на вашем сервере.' : 'Без сервера данные хранятся только в этом браузере. Очистка данных сайта сотрёт их — раз в неделю сохраняйте копию.'}</p>
         <div class="ov-row"><button type="button" class="btn ghost" id="set-export">Скопировать копию</button><button type="button" class="btn ghost" id="set-import">Восстановить</button></div>
         <button type="button" class="btn ghost danger" id="set-reset">Стереть все данные</button>
       </fieldset>
@@ -587,6 +610,18 @@ function openSettings() {
     state.settings.rate = Number($('#set-rate').value);
     if ($('#set-voiceuri')) state.settings.voiceURI = $('#set-voiceuri').value;
     voice.speak('Плечи опущены, дыхание спокойное. Макушка тянется вверх.', { interrupt: true, force: true });
+  });
+  $('#set-srv-test').addEventListener('click', async () => {
+    const out = $('#set-srv-status');
+    const url = $('#set-srv').value.trim().replace(/\/+$/, '');
+    if (!url) { out.textContent = 'Введите адрес сервера.'; return; }
+    out.textContent = 'Проверяю…';
+    try {
+      const h = await (await fetch(`${url}/api/health`)).json();
+      const r = await fetch(`${url}/api/state`, { headers: { Authorization: `Bearer ${$('#set-tok').value.trim()}` } });
+      out.textContent = r.status === 401 ? 'Сервер отвечает, но ключ доступа не подходит.'
+        : r.ok ? `Связь есть.${h.ai ? ' Нейросеть подключена.' : ' Нейросеть на сервере не настроена.'}` : `Сервер ответил ${r.status}.`;
+    } catch { out.textContent = 'Сервер недоступен. Проверьте адрес и что он открыт по https.'; }
   });
   $('#set-export').addEventListener('click', () => copyText(exportJSON()));
   $('#set-import').addEventListener('click', () => {
@@ -612,6 +647,9 @@ function openSettings() {
     Object.assign(s, { voice: $('#set-voice').checked, countAloud: $('#set-count').checked, rate: Number($('#set-rate').value) });
     if ($('#set-voiceuri')) s.voiceURI = $('#set-voiceuri').value;
     setApiKey($('#set-key').value);
+    const srv = $('#set-srv').value.trim();
+    const tok = $('#set-tok').value.trim();
+    if (srv !== (serverConfig()?.url || '') || tok !== (serverConfig()?.token || '')) { setServer(srv, tok); if (srv && tok) startSync(); }
     save();
     closeSheet();
     render();
@@ -643,6 +681,8 @@ document.addEventListener('click', (e) => {
   const g = t.closest('[data-go]');
   if (g) return go(g.dataset.go);
   if (t.closest('[data-open="settings"]') || t.closest('#btn-settings')) return openSettings();
+  if (t.closest('[data-intake]')) { voice.unlock(); return openIntake(); }
+  if (t.closest('[data-review]')) { voice.unlock(); return runReview(main, () => go('today')); }
   return undefined;
 });
 document.addEventListener('change', (e) => {
@@ -658,6 +698,21 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden || runner) return;
   if (dateStr() !== lastDay) { lastDay = dateStr(); diaryDate = lastDay; render(); }
 });
+
+function syncLabel(st = syncStatus()) {
+  if (!serverConfig()) return 'Сервер не подключён.';
+  if (st.state === 'syncing') return 'Синхронизация…';
+  if (st.state === 'error') return `Нет связи с сервером: ${st.error}`;
+  if (st.state === 'ok') return `Синхронизировано ${new Date(st.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.`;
+  return 'Сервер подключён.';
+}
+onSyncStatus((st) => {
+  const el = document.getElementById('set-srv-status');
+  if (el) el.textContent = syncLabel(st);
+  // Пришли данные с сервера — перерисовываем экран, если не идёт занятие или беседа.
+  if (st.state === 'ok' && st.changed && !runner && !document.body.classList.contains('focus') && sheet.hidden) render();
+});
+startSync();
 
 if ('serviceWorker' in navigator && window.isSecureContext && !params.get('nosw')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

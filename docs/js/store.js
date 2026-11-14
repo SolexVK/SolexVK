@@ -30,6 +30,11 @@ function defaults() {
     days: {},
     tasks: {},
     chat: [],
+    intake: null, // ответы анкеты
+    program: null, // программа мастера: уровень, ступень, ограничения
+    log: [], // журнал бесед: анкета, опросы перед занятием, пересмотры
+    memory: { summary: '', updatedAt: 0 }, // сжатая память мастера об ученике
+    reviews: [], // пересмотры уровня
   };
 }
 
@@ -44,6 +49,7 @@ function load() {
       profile: { ...d.profile, ...(s.profile || {}) },
       settings: { ...d.settings, ...(s.settings || {}) },
       days: s.days || {}, tasks: s.tasks || {}, chat: s.chat || [],
+      log: s.log || [], memory: s.memory || d.memory, reviews: s.reviews || [],
     };
   } catch {
     return defaults();
@@ -96,6 +102,23 @@ export function importJSON(text) {
   });
   save();
 }
+// Полная замена данных (копия с сервера).
+export function replaceState(next) {
+  const d = defaults();
+  for (const k of Object.keys(state)) delete state[k];
+  Object.assign(state, d, next, {
+    profile: { ...d.profile, ...(next.profile || {}) },
+    settings: { ...d.settings, ...(next.settings || {}) },
+  });
+  save();
+}
+
+// Запись в журнал бесед.
+export function logEntry(kind, role, text, extra = {}) {
+  state.log.push({ at: Date.now(), kind, role, text, ...extra });
+  if (state.log.length > 400) state.log = state.log.slice(-400);
+}
+
 export function resetAll() {
   const d = defaults();
   for (const k of Object.keys(state)) delete state[k];

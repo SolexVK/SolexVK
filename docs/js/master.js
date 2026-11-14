@@ -1,67 +1,11 @@
 // Наставник: живой разговор через Claude API (нужен собственный ключ) и базовый режим без ключа.
-import Anthropic from '../vendor/anthropic-sdk.mjs';
+import { aiAvailable, chatReply } from './brain.js';
 import { state, getApiKey, dateStr, addDays, peekDay, weekCore, streak } from './store.js';
 import { courseInfo, bpMode, BP_TEXT, SESSION_META } from './course.js';
 
-export const MODEL = 'claude-opus-5-5';
+export const MODEL = 'claude-haiku-5-5';
 
-const SYSTEM = `Ты — наставник по Тай-Чи и цигун в личном приложении одного ученика. Ученик слышит твои ответы голосом через синтез речи: обычно он стоит в двух-трёх метрах от телефона во время занятия или только что его закончил.
-
-Как говорить
-Говори по-русски, на «вы», спокойно и тепло, как опытный учитель, который много лет ведёт людей старшего возраста. Без пафоса и без восточной экзотики ради экзотики.
-Отвечай коротко: обычно две–четыре фразы. Ответ звучит вслух, поэтому не используй списки, заголовки, скобки, эмодзи и любую разметку; числа и единицы пиши так, чтобы их было легко произнести.
-Давай один совет за раз. Если спрашивают о технике, назови одно-два главных ощущения или ориентира, а не весь перечень.
-Ты ИИ-наставник, а не врач и не живой человек. Если об этом спросят, так и скажи.
-
-Курс ученика
-Курс идёт двенадцать недель в три этапа. Этап первый, недели с первой по четвёртую, «Разбудить тело». Утром около двадцати минут, мастер ведёт голосом и считает вслух: десять дыханий животом на четыре счёта вдох и шесть выдох; суставная разминка сверху вниз (шея — только повороты и маленькие кивки, плечи, кисти, лопатки, таз по часовой и против, полуприседы, стопы), каждое движение на восемь счётов; три движения цигун — «Поднять небо» из «Восьми кусков парчи» восемь раз (взгляд прямо, голову не запрокидывать), «Начало Тай-Чи» восемь раз, перенос веса с ноги на ногу восемь раз; стояние столбом одну минуту на первой неделе, две на второй, три на третьей, четыре с половиной на четвёртой; завершение. Днём: ходьба восемь–десять минут, затем вставание со стула, отжимания от стены, ягодичный мост, «птица-собака» и лёгкий «мёртвый жук» (с третьей недели больше повторов), в конце три минуты лёжа с голенями на стуле. Перед сном: та же поза с голенями на стуле на четыре минуты. Этап второй, недели с пятой по восьмую: адаптированные «Восемь кусков парчи», шаг Тай-Чи, первые движения формы. Этап третий, недели с девятой по двенадцатую: форма из восьми движений стиля Ян. Переход на второй этап — когда столб держится четыре минуты без боли, получается двенадцать вставаний со стула подряд и набирается не меньше десяти занятий в неделю. Кроме занятий в курсе есть ходьба (прибавлять по тысяче шагов в неделю до семи–восьми тысяч), умеренный дефицит калорий с белком в каждом приёме пищи и сон семь–восемь часов.
-
-Данные о сегодняшнем дне, дневнике и текущем упражнении приложение передаёт в начале каждого сообщения ученика в блоке «Данные приложения». Опирайся на них, но не зачитывай их целиком. Особенности здоровья ученик указал там же, учитывай их в каждом совете.
-
-Безопасность важнее прогресса
-Движение идёт до лёгкого натяжения и никогда через боль: при боли выше трёх из десяти — уменьшить амплитуду или пропустить упражнение. Шее не нужны круговые вращения, запрокидывание и рывки. Пояснице не нужны наклоны вперёд с круглой спиной, глубокие скручивания и подъём прямых ног лёжа. При повышенном давлении не нужны задержки дыхания, натуживание и положения, где голова ниже сердца. Коленям не нужны глубокие приседы. Правило давления перед занятием: до ста пятидесяти на девяносто пять — полное занятие; от ста пятидесяти на девяносто пять до ста семидесяти на сто пять — только дыхание, суставная разминка и спокойная ходьба; выше — не заниматься.
-Если ученик описывает боль или давление в груди, одышку в покое, внезапную слабость руки или ноги, нарушение речи, перекос лица, онемение в паху или проблемы с мочеиспусканием — скажи прямо прекратить занятие и срочно обратиться за помощью по номеру сто три или сто двенадцать.
-Не ставь диагнозов и не советуй лекарства и дозировки. По таким вопросам направляй к врачу: терапевту, неврологу, урологу или эндокринологу.
-
-Если приложено фото
-Это кадр с камеры телефона во время упражнения, вместе с углами суставов, которые измерило приложение. Оцени осанку и положение тела применительно к текущему упражнению: назови одно, что получается хорошо, и одно-два исправления простыми словами. Не комментируй внешность, одежду и обстановку. Если тело видно не целиком, попроси отойти дальше.`;
-
-export function hasKey() { return !!getApiKey(); }
-
-// Сводка для наставника: профиль, сегодняшний день, последние записи дневника.
-export function buildContext(extra = '') {
-  const today = dateStr();
-  const ci = courseInfo(today);
-  const p = state.profile;
-  const d = peekDay(today) || {};
-  const lines = [];
-  lines.push(`Сегодня ${today}. День курса ${ci.dayN}, неделя ${ci.week}, этап ${ci.phase.n} «${ci.phase.name}».`);
-  const prof = [p.name && `имя: ${p.name}`, p.age && `возраст ${p.age}`, p.height && `рост ${p.height} см`, p.startWeight && `стартовый вес ${p.startWeight} кг`, p.startWaist && `стартовая талия ${p.startWaist} см`].filter(Boolean);
-  if (prof.length) lines.push(`Ученик: ${prof.join(', ')}.`);
-  if (p.health) lines.push(`Особенности здоровья со слов ученика: ${p.health}`);
-  const done = ['morning', 'day', 'evening'].map((k) => `${SESSION_META[k].title.toLowerCase()} — ${d.sessions?.[k]?.done ? 'сделано' : 'нет'}`).join(', ');
-  lines.push(`Занятия сегодня: ${done}. На этой неделе ${weekCore(today)} из 14, серия дней подряд: ${streak(today)}.`);
-  if (d.bp?.sys) lines.push(`Давление сегодня утром ${d.bp.sys}/${d.bp.dia}: ${BP_TEXT[bpMode(d.bp.sys, d.bp.dia)]}`);
-  const rows = [];
-  for (let i = 0; i < 7; i++) {
-    const ds = addDays(today, -i);
-    const x = peekDay(ds);
-    if (!x) continue;
-    const parts = [];
-    if (x.bp?.sys) parts.push(`АД ${x.bp.sys}/${x.bp.dia}`);
-    if (x.pain?.back != null) parts.push(`боль: поясница ${x.pain.back}${x.pain.blades != null ? `, лопатки ${x.pain.blades}` : ''}${x.pain.legs != null ? `, ноги ночью ${x.pain.legs}` : ''}`);
-    if (x.steps) parts.push(`шаги ${x.steps}`);
-    if (x.weight) parts.push(`вес ${x.weight}`);
-    if (x.waist) parts.push(`талия ${x.waist}`);
-    const s = ['morning', 'day', 'evening'].filter((k) => x.sessions?.[k]?.done).map((k) => SESSION_META[k].title.toLowerCase());
-    if (s.length) parts.push(`занятия: ${s.join(', ')}`);
-    if (x.note) parts.push(`заметка: ${x.note}`);
-    if (parts.length) rows.push(`${ds}: ${parts.join('; ')}`);
-  }
-  if (rows.length) lines.push('Дневник за последние дни:\n' + rows.join('\n'));
-  if (extra) lines.push(extra);
-  return lines.join('\n');
-}
+export function hasKey() { return aiAvailable(); }
 
 export class MasterError extends Error {
   constructor(kind, message) { super(message); this.kind = kind; }
@@ -69,47 +13,17 @@ export class MasterError extends Error {
 
 // Возвращает { text, offline }. onDelta получает куски текста по мере генерации.
 export async function askMaster({ text, image, extra, onDelta, signal }) {
-  const key = getApiKey();
-  if (!key) {
+  if (!aiAvailable()) {
     const ans = offlineAnswer(text);
     onDelta?.(ans);
     return { text: ans, offline: true };
   }
-  const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 1 });
-  const history = state.chat.slice(-10).map((m) => ({ role: m.role, content: m.text }));
-  while (history.length && history[0].role !== 'user') history.shift();
-  const preface = `[Данные приложения]\n${buildContext(extra)}\n\n[Слова ученика]\n${text}`;
-  const content = image
-    ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } }, { type: 'text', text: preface }]
-    : preface;
   try {
-    const stream = client.beta.messages.stream({
-      model: MODEL,
-      max_tokens: 16000,
-      // Отвечаем голосом, поэтому важна скорость: низкий уровень усилия.
-      output_config: { effort: 'low' },
-      // Если модель отклонит запрос, сервер сам повторит его на запасной модели.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      system: SYSTEM,
-      messages: [...history, { role: 'user', content }],
-    }, { signal });
-    stream.on('text', (delta) => onDelta?.(delta));
-    const msg = await stream.finalMessage();
-    if (msg.stop_reason === 'refusal') {
-      throw new MasterError('refusal', 'На этот вопрос наставник ответить не может. Спросите иначе или обратитесь к врачу.');
-    }
-    const out = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    const out = await chatReply(text, { extra, image, signal });
+    onDelta?.(out);
     return { text: out, offline: false };
   } catch (err) {
-    if (err instanceof MasterError) throw err;
-    if (err instanceof Anthropic.APIUserAbortError) throw new MasterError('aborted', 'Остановлено.');
-    if (err instanceof Anthropic.AuthenticationError) throw new MasterError('auth', 'Ключ API не принят. Проверьте его в настройках.');
-    if (err instanceof Anthropic.PermissionDeniedError) throw new MasterError('auth', 'У ключа нет доступа к этой модели.');
-    if (err instanceof Anthropic.RateLimitError) throw new MasterError('rate', 'Слишком много запросов. Подождите минуту и повторите.');
-    if (err instanceof Anthropic.APIConnectionError) throw new MasterError('network', 'Нет связи с сервером. Проверьте интернет.');
-    if (err instanceof Anthropic.APIError) throw new MasterError('api', `Сервер ответил ошибкой ${err.status ?? ''}. Попробуйте позже.`);
-    throw new MasterError('unknown', 'Не получилось получить ответ. Попробуйте ещё раз.');
+    throw new MasterError(err.kind || 'unknown', err.message || 'Не получилось получить ответ.');
   }
 }
 
@@ -148,5 +62,5 @@ export function offlineAnswer(text) {
     return `Сегодня день ${ci.dayN}, неделя ${ci.week}. ${left.length ? `Осталось: ${left.join(', ')}.` : 'Все три занятия сделаны, отдыхайте.'} Перед занятием измерьте давление.`;
   }
   for (const [re, ans] of FAQ) if (re.test(t)) return ans;
-  return 'В базовом режиме я отвечаю только на вопросы по курсу: упражнения, давление, боль, питание, сон. Для свободного разговора добавьте ключ API в настройках.';
+  return 'В базовом режиме я отвечаю только на вопросы по курсу: упражнения, давление, боль, питание, сон. Для свободного разговора подключите сервер или ключ API в настройках.';
 }

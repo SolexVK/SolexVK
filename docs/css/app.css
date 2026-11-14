@@ -390,3 +390,46 @@ tbody tr { cursor: pointer; }
   * { animation: none !important; }
   .s-ink { transition-duration: 0.01s !important; }
 }
+
+/* ---- беседа с мастером: знакомство, опрос, пересмотр ---- */
+body.focus .top, body.focus .tabs { display: none; }
+.iv { display: flex; flex-direction: column; gap: 16px; padding-top: calc(env(safe-area-inset-top, 0px) + 8px); }
+.iv-top { display: flex; align-items: center; gap: 12px; }
+.iv-dots { flex: 1; display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.iv-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.iv-dots i.done { background: var(--accent); }
+.iv-dots i.cur { background: var(--seal); }
+.iv-q { font: 600 clamp(22px, 6vw, 28px)/1.25 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
+.iv-input { display: flex; flex-direction: column; gap: 12px; }
+.iv-options { display: flex; flex-direction: column; gap: 10px; }
+.iv-options.multi { flex-direction: row; flex-wrap: wrap; }
+.iv-opt { min-height: 54px; padding: 10px 18px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); text-align: left; font-size: 17px; }
+.iv-options.multi .iv-opt { min-height: 46px; border-radius: 999px; font-size: 15px; }
+.iv-opt.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.iv-scale { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.iv-num { min-height: 52px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font: 700 20px var(--round); }
+.iv-num.on { border-color: var(--accent); background: var(--accent-soft); }
+.iv-scale-legend { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; }
+.iv-fields { display: flex; gap: 12px; flex-wrap: wrap; }
+.iv-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 140px; font-size: 14px; color: var(--ink-2); }
+.iv-field input { font: 600 22px var(--round) !important; text-align: center; }
+.iv-text { min-height: 80px; }
+.iv-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.iv-heard { color: var(--ink-2); font-size: 14px; min-height: 1.4em; }
+.iv-wait { align-items: center; text-align: center; padding-top: 30vh; }
+.iv-wait h2 { font: 600 24px var(--display); }
+.iv-wait .seal-mark { animation: pulse 1.6s ease-in-out infinite; }
+.reveal h2 { font: 600 28px/1.15 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
+.reveal h3 { margin-top: 4px; }
+.bullets { list-style: disc; padding-left: 22px; display: grid; gap: 4px; color: var(--ink-2); }
+.callout ul { list-style: disc; padding-left: 20px; margin-top: 6px; }
+.meter { height: 8px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.program-card { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 16px; }
+.program-card h2 { font: 600 22px/1.2 var(--display); }
+.memory { background: var(--surface); border-radius: var(--radius); padding: 12px 14px; font-size: 15px; }
+.memory summary { font-weight: 600; cursor: pointer; min-height: 28px; }
+.memory p { color: var(--ink-2); margin: 8px 0; white-space: pre-wrap; }
+.memory h4 { font: 600 14px var(--font); margin: 8px 0 4px; }
+.journal { display: grid; gap: 8px; font-size: 14px; color: var(--ink-2); }
+.journal span { display: block; color: var(--muted); font-size: 12px; }
