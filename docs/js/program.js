@@ -2,6 +2,7 @@
 // Правила — нижняя граница безопасности: нейросеть может сделать программу мягче, но не жёстче.
 import { LEVELS, DOSES, EXERCISES, PROGRESSION } from './kb.js';
 import { state, dateStr, addDays, daysBetween, peekDay, coreDone } from './store.js';
+import { t } from './i18n.js';
 
 const has = (arr, v) => Array.isArray(arr) && arr.includes(v);
 
@@ -29,30 +30,30 @@ export function assess(a) {
   if (a.female === 'pregnant') flags.add('pregnant');
   if (a.female === 'postpartum') flags.add('postpartum');
 
-  if (a.radiating === 'weakness') doctor.push('слабость или онемение в конечностях — нужен осмотр невролога');
-  if (flags.has('heart')) doctor.push('болезни сердца — нагрузку согласовать с кардиологом');
-  if (a.bp === 'often') doctor.push('часто высокое давление — нужна постоянная терапия от врача');
-  if (a.falls === 'falls') doctor.push('падения за последний год — проверить у терапевта');
-  if (flags.has('pregnant')) doctor.push('беременность — занятия только по согласованию с врачом и с инструктором для беременных');
-  if (flags.has('postpartum')) doctor.push('после родов — начать после разрешения врача, бережно к мышцам живота и тазового дна');
-  if (has(diag, 'surgery')) doctor.push('операции на позвоночнике или суставах — согласовать ограничения с хирургом');
+  if (a.radiating === 'weakness') doctor.push(t('слабость или онемение в конечностях — нужен осмотр невролога'));
+  if (flags.has('heart')) doctor.push(t('болезни сердца — нагрузку согласовать с кардиологом'));
+  if (a.bp === 'often') doctor.push(t('часто высокое давление — нужна постоянная терапия от врача'));
+  if (a.falls === 'falls') doctor.push(t('падения за последний год — проверить у терапевта'));
+  if (flags.has('pregnant')) doctor.push(t('беременность — занятия только по согласованию с врачом и с инструктором для беременных'));
+  if (flags.has('postpartum')) doctor.push(t('после родов — начать после разрешения врача, бережно к мышцам живота и тазового дна'));
+  if (has(diag, 'surgery')) doctor.push(t('операции на позвоночнике или суставах — согласовать ограничения с хирургом'));
 
   // Баллы «слабости»: чем больше, тем бережнее старт.
   let w = 0;
   const bmi = a.body?.weight && a.body?.height ? a.body.weight / ((a.body.height / 100) ** 2) : null;
   const chair = a.chairTest == null || a.chairTest === '' ? null : Number(a.chairTest);
-  if (chair != null) { if (chair < 8) { w += 2; reasons.push(`за 30 секунд ${chair} вставаний со стула`); } else if (chair < 12) w += 1; }
-  if (Number(a.balanceTest ?? 99) < 10) { w += 1; reasons.push('равновесие на одной ноге меньше 10 секунд'); }
-  if (painLevel >= 6) { w += 2; reasons.push(`боль ${painLevel} из 10`); } else if (painLevel >= 4) w += 1;
-  if (a.radiating === 'weakness') w += 2; else if (a.radiating === 'often') { w += 1; reasons.push('боль часто отдаёт в конечности'); }
-  if (bmi && bmi >= 35) { w += 1; reasons.push('индекс массы тела выше 35'); }
+  if (chair != null) { if (chair < 8) { w += 2; reasons.push(`${t('за 30 секунд')} ${chair} ${t('вставаний со стула')}`); } else if (chair < 12) w += 1; }
+  if (Number(a.balanceTest ?? 99) < 10) { w += 1; reasons.push(t('равновесие на одной ноге меньше 10 секунд')); }
+  if (painLevel >= 6) { w += 2; reasons.push(`${t('боль')} ${painLevel} ${t('из 10')}`); } else if (painLevel >= 4) w += 1;
+  if (a.radiating === 'weakness') w += 2; else if (a.radiating === 'often') { w += 1; reasons.push(t('боль часто отдаёт в конечности')); }
+  if (bmi && bmi >= 35) { w += 1; reasons.push(t('индекс массы тела выше 35')); }
   if (Number(a.age) >= 75) w += 2; else if (Number(a.age) >= 65) w += 1;
-  if (a.activity === 'sit') { w += 1; reasons.push('малоподвижный образ жизни'); }
+  if (a.activity === 'sit') { w += 1; reasons.push(t('малоподвижный образ жизни')); }
   if (flags.has('heart')) w += 2;
   if (a.bp === 'often') w += 1;
   if (flags.has('no_floor')) w += 1;
   if (a.falls !== 'no' && a.falls) w += 1;
-  if (a.flex === 'thighs' || a.flex === 'nobend') { w += 1; reasons.push('тугая подвижность спины'); }
+  if (a.flex === 'thighs' || a.flex === 'nobend') { w += 1; reasons.push(t('тугая подвижность спины')); }
 
   const level = flags.has('pregnant') ? 0 : (w >= 4 ? 1 : 2);
   return { level, weakness: w, flags: [...flags], reasons, doctor, bmi: bmi ? Math.round(bmi * 10) / 10 : null };
@@ -105,7 +106,7 @@ export function resolvePlan(prog = state.program) {
 export function allPlans() {
   const out = [];
   for (const level of [1, 2]) for (let stage = 1; stage <= 4; stage++) for (const flags of [[], ['no_floor'], ['balance', 'knee'], ['lumbar_radicular']]) {
-    out.push(resolvePlan({ level, stage, flags }));
+    for (const doseScale of [0.6, 0.7, 0.8, 0.9, 1]) out.push(resolvePlan({ level, stage, flags, doseScale }));
   }
   return out;
 }
@@ -120,21 +121,21 @@ export function checkinDecision(c) {
     if (order[m] > order[mode]) { mode = m; key = k; }
     reasons.push(why);
   };
-  if (c.warning === 'chest' || c.warning === 'numb') down('none', 'stop_emergency', c.warning === 'chest' ? 'давление или боль в груди' : 'онемение или слабость');
+  if (c.warning === 'chest' || c.warning === 'numb') down('none', 'stop_emergency', c.warning === 'chest' ? t('давление или боль в груди') : t('онемение или слабость'));
   const sys = Number(c.bp?.sys) || null;
   const dia = Number(c.bp?.dia) || null;
   if (sys && dia) {
-    if (sys > 170 || dia > 105) down('none', 'stop_bp', `давление ${sys}/${dia}`);
-    else if (sys >= 150 || dia >= 95) down('light', 'light', `давление ${sys}/${dia}`);
+    if (sys > 170 || dia > 105) down('none', 'stop_bp', `${t('давление')} ${sys}/${dia}`);
+    else if (sys >= 150 || dia >= 95) down('light', 'light', `${t('давление')} ${sys}/${dia}`);
   }
-  if (c.warning === 'dizzy') down('rest', 'rest', 'головокружение');
-  if (c.warning === 'new_pain') down('light', 'light', 'новая боль');
-  if (Number(c.pain) >= 8) down('rest', 'rest', `боль ${c.pain} из 10`);
-  else if (Number(c.pain) >= 6) down('light', 'light', `боль ${c.pain} из 10`);
-  if (c.muscles === 'joints') down('light', 'light', 'болят суставы');
-  if (c.muscles === 'sore') down('light', 'light', 'сильная крепатура');
-  if (Number(c.feel) <= 3) down('rest', 'rest', `самочувствие ${c.feel} из 10`);
-  else if (Number(c.feel) <= 5 && c.sleep === 'bad') down('light', 'light', 'плохой сон и слабое самочувствие');
+  if (c.warning === 'dizzy') down('rest', 'rest', t('головокружение'));
+  if (c.warning === 'new_pain') down('light', 'light', t('новая боль'));
+  if (Number(c.pain) >= 8) down('rest', 'rest', `${t('боль')} ${c.pain} ${t('из 10')}`);
+  else if (Number(c.pain) >= 6) down('light', 'light', `${t('боль')} ${c.pain} ${t('из 10')}`);
+  if (c.muscles === 'joints') down('light', 'light', t('болят суставы'));
+  if (c.muscles === 'sore') down('light', 'light', t('сильная крепатура'));
+  if (Number(c.feel) <= 3) down('rest', 'rest', `${t('самочувствие')} ${c.feel} ${t('из 10')}`);
+  else if (Number(c.feel) <= 5 && c.sleep === 'bad') down('light', 'light', t('плохой сон и слабое самочувствие'));
   return { mode, key, reasons };
 }
 
@@ -165,12 +166,12 @@ export function readiness(today = dateStr(), prog = state.program) {
   const w2 = windowStats(addDays(today, -13), 7);
   const levelDef = LEVELS.find((l) => l.n === lvl);
   const crit = target ? [
-    { id: 'time', ok: weeksOnLevel >= levelDef.minWeeks, text: `Не меньше ${levelDef.minWeeks} недель на уровне`, have: `${weeksOnLevel} нед.` },
-    { id: 'adherence', ok: w1.sessions >= target.weekSessions && w2.sessions >= target.weekSessions, text: `Не меньше ${target.weekSessions} занятий в неделю две недели подряд`, have: `${w2.sessions} и ${w1.sessions}` },
-    { id: 'stolb', ok: Math.max(w1.stolb, w2.stolb) >= target.stolbSec, text: `Столб ${Math.round(target.stolbSec / 60 * 10) / 10} мин без боли`, have: `${Math.max(w1.stolb, w2.stolb)} сек` },
-    { id: 'chair', ok: Math.max(w1.chair, w2.chair) >= target.chairReps, text: `${target.chairReps} вставаний со стула подряд`, have: `${Math.max(w1.chair, w2.chair)}` },
-    { id: 'pain', ok: w1.pain == null || (w1.pain <= target.maxPain && (w2.pain == null || w1.pain <= w2.pain + 0.5)), text: `Боль не выше ${target.maxPain} и не растёт`, have: w1.pain == null ? 'нет записей' : `${w1.pain.toFixed(1)}` },
-    { id: 'bp', ok: w1.bpBad === 0 && w2.bpBad === 0, text: 'Две недели без отмен из-за давления', have: `${w1.bpBad + w2.bpBad} отмен` },
+    { id: 'time', ok: weeksOnLevel >= levelDef.minWeeks, text: `${t('Не меньше')} ${levelDef.minWeeks} ${t('недель на уровне')}`, have: `${weeksOnLevel} ${t('нед.')}` },
+    { id: 'adherence', ok: w1.sessions >= target.weekSessions && w2.sessions >= target.weekSessions, text: `${t('Не меньше')} ${target.weekSessions} ${t('занятий в неделю две недели подряд')}`, have: `${w2.sessions} ${t('и')} ${w1.sessions}` },
+    { id: 'stolb', ok: Math.max(w1.stolb, w2.stolb) >= target.stolbSec, text: `${t('Столб')} ${Math.round(target.stolbSec / 60 * 10) / 10} ${t('мин без боли')}`, have: `${Math.max(w1.stolb, w2.stolb)} ${t('сек')}` },
+    { id: 'chair', ok: Math.max(w1.chair, w2.chair) >= target.chairReps, text: `${target.chairReps} ${t('вставаний со стула подряд')}`, have: `${Math.max(w1.chair, w2.chair)}` },
+    { id: 'pain', ok: w1.pain == null || (w1.pain <= target.maxPain && (w2.pain == null || w1.pain <= w2.pain + 0.5)), text: `${t('Боль не выше')} ${target.maxPain} ${t('и не растёт')}`, have: w1.pain == null ? t('нет записей') : `${w1.pain.toFixed(1)}` },
+    { id: 'bp', ok: w1.bpBad === 0 && w2.bpBad === 0, text: t('Две недели без отмен из-за давления'), have: `${w1.bpBad + w2.bpBad} ${t('отмен')}` },
   ] : [];
   const parts = {
     adherence: Math.min(1, (w1.sessions + w2.sessions) / (2 * (target?.weekSessions || 10))) * 30,

@@ -5,6 +5,7 @@ import { MODELS, prepareRequest, runRequest, responseText } from './ai-request.j
 import { state, getApiKey, dateStr, addDays, peekDay, save, logEntry } from './store.js';
 import { PRINCIPLES, LEVELS, EXERCISES, INTAKE, CHECKIN } from './kb.js';
 import { serverConfig, api } from './sync.js';
+import { t, aiLanguage } from './i18n.js';
 
 export class BrainError extends Error {
   constructor(kind, message) { super(message); this.kind = kind; }
@@ -19,38 +20,38 @@ async function call(params, { signal } = {}) {
   try {
     if (cfg) {
       const r = await api('/api/messages', { method: 'POST', body: JSON.stringify(req), signal });
-      if (r.status === 429) throw new BrainError('rate', 'Слишком много запросов. Подождите минуту.');
+      if (r.status === 429) throw new BrainError('rate', t('Слишком много запросов. Подождите минуту.'));
       if (!r.ok) {
         const info = await r.json().catch(() => ({}));
-        if (info.error === 'ai_not_configured') throw new BrainError('api', 'На сервере не задан ключ Claude API.');
-        throw new BrainError('api', info.message ? `Claude ${info.status ?? ''}: ${info.message}` : `Сервер ответил ошибкой ${r.status}.`);
+        if (info.error === 'ai_not_configured') throw new BrainError('api', t('На сервере не задан ключ Claude API.'));
+        throw new BrainError('api', info.message ? `Claude ${info.status ?? ''}: ${info.message}` : t('Сервер ответил ошибкой {n}.', { n: r.status }));
       }
       return await r.json();
     }
     const key = getApiKey();
-    if (!key) throw new BrainError('nokey', 'Нейросеть не подключена.');
+    if (!key) throw new BrainError('nokey', t('Нейросеть не подключена.'));
     const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 1 });
     return await runRequest(client, req, { signal });
   } catch (err) {
     if (err instanceof BrainError) throw err;
-    if (err?.name === 'AbortError' || err instanceof Anthropic.APIUserAbortError) throw new BrainError('aborted', 'Остановлено.');
-    if (err?.kind === 'auth' || err instanceof Anthropic.AuthenticationError) throw new BrainError('auth', 'Ключ доступа не принят. Проверьте настройки.');
-    if (err instanceof Anthropic.RateLimitError) throw new BrainError('rate', 'Слишком много запросов. Подождите минуту.');
-    if (err instanceof Anthropic.APIConnectionError || err instanceof TypeError) throw new BrainError('network', 'Нет связи. Проверьте интернет.');
-    if (err instanceof Anthropic.APIError) throw new BrainError('api', `Ошибка сервиса ${err.status ?? ''}.`);
-    throw new BrainError('unknown', 'Не получилось получить ответ.');
+    if (err?.name === 'AbortError' || err instanceof Anthropic.APIUserAbortError) throw new BrainError('aborted', t('Остановлено.'));
+    if (err?.kind === 'auth' || err instanceof Anthropic.AuthenticationError) throw new BrainError('auth', t('Ключ доступа не принят. Проверьте настройки.'));
+    if (err instanceof Anthropic.RateLimitError) throw new BrainError('rate', t('Слишком много запросов. Подождите минуту.'));
+    if (err instanceof Anthropic.APIConnectionError || err instanceof TypeError) throw new BrainError('network', t('Нет связи. Проверьте интернет.'));
+    if (err instanceof Anthropic.APIError) throw new BrainError('api', t('Ошибка сервиса {n}.', { n: err.status ?? '' }));
+    throw new BrainError('unknown', t('Не получилось получить ответ.'));
   }
 }
 
 async function callJSON(params, opts) {
   const res = await call(params, opts);
   const text = responseText(res);
-  if (text == null) throw new BrainError('refusal', 'Нейросеть не смогла ответить на этот запрос.');
-  try { return JSON.parse(text); } catch { throw new BrainError('format', 'Нейросеть ответила в неверном формате.'); }
+  if (text == null) throw new BrainError('refusal', t('Нейросеть не смогла ответить на этот запрос.'));
+  try { return JSON.parse(text); } catch { throw new BrainError('format', t('Нейросеть ответила в неверном формате.')); }
 }
 
 // ---- образ мастера ----
-const PERSONA = `Ты — мастер тай-чи и цигун в личном приложении одного ученика. Много лет учишь людей зрелого возраста, знаешь традицию стиля Ян и оздоровительного цигун «Ба Дуань Цзинь», понимаешь основы восточной медицины и современной реабилитации. Говоришь по-русски, на «вы», спокойно, тепло и внимательно, как наставник, а не как врач и не как продавец. Ты ИИ-наставник; если спросят — так и скажи.
+const PERSONA = `Ты — мастер тай-чи и цигун в личном приложении одного ученика. Много лет учишь людей зрелого возраста, знаешь традицию стиля Ян и оздоровительного цигун «Ба Дуань Цзинь», понимаешь основы восточной медицины и современной реабилитации. Всё, что ученик видит и слышит, пиши на ${aiLanguage()} языке. Обращайся на «вы» (в английском — вежливо и тепло), спокойно, тепло и внимательно, как наставник, а не как врач и не как продавец. Ты ИИ-наставник; если спросят — так и скажи.
 
 Принципы, которым ты следуешь:
 ${PRINCIPLES.map((p) => `- ${p}`).join('\n')}
@@ -60,7 +61,7 @@ ${LEVELS.map((l) => `- Уровень ${l.n} «${l.name}»: ${l.who} Цель: $
 
 Безопасность важнее прогресса. Ты не ставишь диагнозов, не назначаешь лекарств. При боли или давлении в груди, внезапной слабости или онемении, нарушении речи, проблемах с мочеиспусканием — прекратить занятие и звонить 103 или 112. Шее не нужны круги и запрокидывание, пояснице — наклоны с круглой спиной и глубокие скручивания, при давлении — задержки дыхания и положение головой вниз.`;
 
-const VOICE_RULES = 'Твой ответ прозвучит вслух через синтез речи. Пиши простыми фразами, без списков, скобок, эмодзи и разметки. Числа пиши словами, если их удобнее произнести.';
+const VOICE_RULES = `Пиши на ${aiLanguage()} языке. Твой ответ прозвучит вслух через синтез речи. Пиши простыми фразами, без списков, скобок, эмодзи и разметки. Числа пиши словами, если их удобнее произнести.`;
 
 // Сводка об ученике для нейросети: анкета, программа, память, последние дни.
 export function studentContext({ days = 7 } = {}) {
@@ -152,7 +153,7 @@ export async function updateMemory(event) {
   const out = await callJSON({
     model: MODELS.daily, effort: 'low', maxTokens: 4000,
     schema: { type: 'object', additionalProperties: false, required: ['summary'], properties: { summary: { type: 'string' } } },
-    system: 'Ты ведёшь краткие заметки мастера тай-чи об ученике. Пиши по-русски, сжато, по делу.',
+    system: 'Ты ведёшь краткие заметки мастера тай-чи об ученике. Пиши по-русски, сжато, по делу.', // заметки внутренние, всегда по-русски
     messages: [{ role: 'user', content: `Прежние заметки:\n${state.memory?.summary || '(пусто)'}\n\nНовое событие:\n${event}\n\nСвежие данные:\n${studentContext({ days: 3 })}\n\nОбнови заметки: состояние здоровья и его динамика, что получается и что трудно, реакция на нагрузку, особенности характера и мотивации, договорённости. Не больше 1500 знаков. Сохраняй важное из прежних заметок.` }],
   });
   state.memory = { summary: String(out.summary || '').slice(0, 2000), updatedAt: Date.now() };
@@ -196,7 +197,7 @@ export async function chatReply(text, { extra = '', image = null, signal } = {})
     messages: [...history, { role: 'user', content }],
   }, { signal });
   const out = responseText(res);
-  if (out == null) throw new BrainError('refusal', 'На это мастер ответить не может. Спросите иначе или обратитесь к врачу.');
+  if (out == null) throw new BrainError('refusal', t('На это мастер ответить не может. Спросите иначе или обратитесь к врачу.'));
   return out;
 }
 

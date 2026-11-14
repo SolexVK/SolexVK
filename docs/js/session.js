@@ -7,6 +7,7 @@ import * as voice from './voice.js';
 import * as ambient from './ambient.js';
 import * as pose from './pose.js';
 import { askMaster, hasKey } from './master.js';
+import { t } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const SPEED = Math.max(1, Number(params.get('speed')) || 1);
@@ -52,10 +53,10 @@ export class SessionRunner {
         <div class="s-ink" aria-hidden="true"></div>
       </div>
       <div class="s-top">
-        <button class="s-icon" data-act="exit" aria-label="Закончить занятие">✕</button>
-        <div class="s-progress" role="progressbar" aria-label="Ход занятия"><i></i></div>
+        <button class="s-icon" data-act="exit" aria-label="${t('Закончить занятие')}">✕</button>
+        <div class="s-progress" role="progressbar" aria-label="${t('Ход занятия')}"><i></i></div>
         <span class="s-count"></span>
-        <button class="s-chip" data-act="cam" aria-pressed="false">Камера</button>
+        <button class="s-chip" data-act="cam" aria-pressed="false">${t('Камера')}</button>
       </div>
       <p class="s-cue" aria-live="assertive"></p>
       <div class="s-panel">
@@ -64,14 +65,14 @@ export class SessionRunner {
         <p class="s-text"></p>
         <div class="s-big"><span class="s-num"></span><span class="s-unit"></span></div>
         <div class="s-controls">
-          <button class="s-btn" data-act="prev">Назад</button>
-          <button class="s-btn s-main" data-act="pause">Пауза</button>
-          <button class="s-btn" data-act="next">Дальше</button>
+          <button class="s-btn" data-act="prev">${t('Назад')}</button>
+          <button class="s-btn s-main" data-act="pause">${t('Пауза')}</button>
+          <button class="s-btn" data-act="next">${t('Дальше')}</button>
         </div>
         <div class="s-extra">
-          <button class="s-chip" data-act="ask">Сказать мастеру</button>
-          <button class="s-chip" data-act="look">Мастер, посмотри</button>
-          <button class="s-chip s-danger" data-act="sos">Мне нехорошо</button>
+          <button class="s-chip" data-act="ask">${t('Сказать мастеру')}</button>
+          <button class="s-chip" data-act="look">${t('Мастер, посмотри')}</button>
+          <button class="s-chip s-danger" data-act="sos">${t('Мне нехорошо')}</button>
         </div>
       </div>
       <div class="s-overlay" hidden></div>`;
@@ -109,7 +110,7 @@ export class SessionRunner {
     this.preparing = true;
     this.go(0);
     const texts = this.steps.flatMap((st) => st.items.flatMap((it) => [it.text, ...(it.cues || []).map((c) => c.text)])).filter(Boolean);
-    const pre = voice.preload([...texts, ...COACH_TEXTS], (d, n) => { if (this.preparing) this.el.unit.textContent = `готовлю голос мастера: ${Math.round((d / n) * 100)}%`; });
+    const pre = voice.preload([...texts, ...COACH_TEXTS], (d, n) => { if (this.preparing) this.el.unit.textContent = `${t('готовлю голос мастера:')} ${Math.round((d / n) * 100)}%`; });
     Promise.race([pre, new Promise((r) => setTimeout(r, 12000))]).catch(() => {}).then(() => {
       if (this.ended) return;
       this.preparing = false;
@@ -123,24 +124,24 @@ export class SessionRunner {
   }
 
   async enableCamera() {
-    this.el.cam.textContent = 'Камера…';
+    this.el.cam.textContent = t('Камера…');
     try {
       await pose.startCamera(this.video);
       if (this.ended) return pose.stopCamera();
       this.camOn = true;
       this.root.classList.add('cam');
       this.el.cam.setAttribute('aria-pressed', 'true');
-      this.el.cam.textContent = 'Загружаю зрение…';
+      this.el.cam.textContent = t('Загружаю зрение…');
       await pose.loadModel();
       if (this.ended || !this.camOn) return;
       this.modelReady = true;
       pose.startLoop(this.video, this.canvas, (lm, world, now, aspect) => this.onFrame(lm, world, now, aspect));
-      this.el.cam.textContent = 'Камера вкл.';
+      this.el.cam.textContent = t('Камера вкл.');
     } catch (err) {
       this.disableCamera();
       this.flash(err?.name === 'NotAllowedError'
-        ? 'Нет доступа к камере. Занимаемся без неё.'
-        : 'Камера недоступна. Занимаемся без неё.');
+        ? t('Нет доступа к камере. Занимаемся без неё.')
+        : t('Камера недоступна. Занимаемся без неё.'));
     }
   }
 
@@ -150,7 +151,7 @@ export class SessionRunner {
     this.modelReady = false;
     this.root.classList.remove('cam');
     this.el.cam.setAttribute('aria-pressed', 'false');
-    this.el.cam.textContent = 'Камера выкл.';
+    this.el.cam.textContent = t('Камера выкл.');
     const ctx = this.canvas.getContext('2d');
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
@@ -161,9 +162,9 @@ export class SessionRunner {
     const s = this.cur;
     this.coach = s.pose && POSES[s.pose] ? new Coach(s.pose) : null;
     this.st = { j: 0, token: 0, rep: 0, maxRep: 0, breath: null, holdT: 0, firedCues: new Set(), pendingCue: null, speaking: false };
-    this.el.group.textContent = s.group || SESSION_META[this.plan.kind].title;
-    this.el.title.textContent = s.title;
-    this.el.text.textContent = s.text || '';
+    this.el.group.textContent = t(s.group || SESSION_META[this.plan.kind].title);
+    this.el.title.textContent = t(s.title);
+    this.el.text.textContent = t(s.text || '');
     this.el.count.textContent = `${this.i + 1}/${this.steps.length}`;
     this.el.cue.textContent = '';
     this.root.dataset.kind = s.kind;
@@ -211,7 +212,7 @@ export class SessionRunner {
         this.ink.style.transitionDuration = `${it.dur / SPEED}s`;
         this.ink.className = `s-ink breathing ${it.breath}`;
       }
-      if (it.text) { this.sayNow(it.text); this.showCue(it.text, false); }
+      if (it.text) { this.sayNow(it.text); this.showCue(t(it.text), false); }
     } else if (it.t === 'hold') {
       // Удержание продолжается с того места, где остановились (после паузы).
     }
@@ -250,7 +251,7 @@ export class SessionRunner {
       if (!st.speaking) {
         const due = (it.cues || []).find((c) => st.holdT >= c.at && !st.firedCues.has(c.at));
         if (st.pendingCue) { const c = st.pendingCue; st.pendingCue = null; this.sayNow(c); }
-        else if (due) { st.firedCues.add(due.at); this.sayNow(due.text); this.showCue(due.text, false); }
+        else if (due) { st.firedCues.add(due.at); this.sayNow(due.text); this.showCue(t(due.text), false); }
       }
       if (st.holdT >= it.dur) { st.holdT = it.dur; this.nextItem(); }
     }
@@ -264,7 +265,7 @@ export class SessionRunner {
     if (!this.coach || this.paused || this.overlayOpen || !st || !it || (it.t !== 'beat' && it.t !== 'hold')) return { bad: false };
     const r = this.coach.update(lm, world, now, aspect);
     for (const e of r.ev) {
-      if (e.type === 'cue') { this.results.cues++; this.showCue(e.say, true); st.pendingCue = e.say; }
+      if (e.type === 'cue') { this.results.cues++; this.showCue(t(e.say), true); st.pendingCue = e.say; }
     }
     return { bad: r.bad };
   }
@@ -285,12 +286,12 @@ export class SessionRunner {
     const it = this.item;
     let num = '';
     let unit = '';
-    if (this.preparing) { unit = 'готовлю голос мастера'; }
-    else if (!it || it.t === 'say' || st.phase === 'cue') { unit = s.kind === 'talk' ? '' : 'слушайте мастера'; }
-    else if (it.t === 'hold') { num = mmss(it.dur - st.holdT); unit = 'осталось'; }
+    if (this.preparing) { unit = t('готовлю голос мастера'); }
+    else if (!it || it.t === 'say' || st.phase === 'cue') { unit = s.kind === 'talk' ? '' : t('слушайте мастера'); }
+    else if (it.t === 'hold') { num = mmss(it.dur - st.holdT); unit = t('осталось'); }
     else if (it.t === 'beat' && !it.rep) { num = mmss(st.beatLeft ?? it.dur); unit = it.label || ''; }
-    else if (s.kind === 'breath') { num = it.breath === 'out' ? 'выдох' : 'вдох'; unit = `дыхание ${it.rep} из ${s.reps}`; }
-    else if (it.t === 'beat') { num = `${it.rep} / ${s.reps}`; unit = it.breath === 'in' ? 'вдох' : it.breath === 'out' ? 'выдох' : 'повтор'; }
+    else if (s.kind === 'breath') { num = it.breath === 'out' ? t('выдох') : t('вдох'); unit = `${t('дыхание')} ${it.rep} ${t('из')} ${s.reps}`; }
+    else if (it.t === 'beat') { num = `${it.rep} / ${s.reps}`; unit = it.breath === 'in' ? t('вдох') : it.breath === 'out' ? t('выдох') : t('повтор'); }
     if (this.el.num.textContent !== num) this.el.num.textContent = num;
     if (this.el.unit.textContent !== unit) this.el.unit.textContent = unit;
     const frac = s.items.length ? Math.min(1, (st.j + (it?.t === 'hold' ? st.holdT / it.dur : 0)) / s.items.length) : 0;
@@ -345,7 +346,7 @@ export class SessionRunner {
     ambient.setPaused(true);
     voice.cancel();
     if (this.st) { this.st.token++; this.st.speaking = false; }
-    this.el.pause.textContent = 'Продолжить';
+    this.el.pause.textContent = t('Продолжить');
     this.root.classList.add('paused');
   }
 
@@ -353,7 +354,7 @@ export class SessionRunner {
     this.paused = false;
     ambient.setPaused(false);
     this.lastTick = performance.now();
-    this.el.pause.textContent = 'Пауза';
+    this.el.pause.textContent = t('Пауза');
     this.root.classList.remove('paused');
     // Текущий такт или фразу повторяем с начала, удержание продолжается.
     if (!this.overlayOpen) this.startItem();
@@ -363,17 +364,17 @@ export class SessionRunner {
   // Короткая голосовая команда после нажатия «Сказать мастеру». Возвращает true, если это была команда.
   // Микрофон включается только по нажатию: постоянное прослушивание на айфоне прерывает звук занятия.
   command(raw) {
-    const p = String(raw || '').toLowerCase().replace(/^(?:мастер|учитель)[,.!\s]*/, '').trim();
+    const p = String(raw || '').toLowerCase().replace(/^(?:мастер|учитель|master|teacher)[,.!\s]*/, '').trim();
     if (!p || p.split(/\s+/).length > 3) return false;
     const run = (fn) => { this.closeOverlay(); fn(); return true; };
-    if (/посмотри/.test(p)) { this.ask({ look: true }); return true; }
-    if (/нехорошо|плохо|кружится/.test(p)) { this.sos(); return true; }
-    if (/пауза|подожди|стоп/.test(p)) return run(() => { if (!this.paused) this.pause(); });
-    if (/продолж|поехали/.test(p)) return run(() => { if (this.paused) this.resume(); });
-    if (/дальше|следующ|пропус/.test(p)) return run(() => (this.paused ? this.resume() : this.finishStep(true)));
-    if (/назад|предыдущ/.test(p)) return run(() => this.go(this.i - 1));
-    if (/повтори/.test(p)) return run(() => this.repeatInstruction());
-    if (/закончи|хватит/.test(p)) { this.exitDialog(); return true; }
+    if (/посмотри|look/.test(p)) { this.ask({ look: true }); return true; }
+    if (/нехорошо|плохо|кружится|unwell|dizzy|sick/.test(p)) { this.sos(); return true; }
+    if (/пауза|подожди|стоп|pause|wait|stop/.test(p)) return run(() => { if (!this.paused) this.pause(); });
+    if (/продолж|поехали|continue|resume|go on/.test(p)) return run(() => { if (this.paused) this.resume(); });
+    if (/дальше|следующ|пропус|next|skip/.test(p)) return run(() => (this.paused ? this.resume() : this.finishStep(true)));
+    if (/назад|предыдущ|back|previous/.test(p)) return run(() => this.go(this.i - 1));
+    if (/повтори|repeat|again/.test(p)) return run(() => this.repeatInstruction());
+    if (/закончи|хватит|finish|enough|end/.test(p)) { this.exitDialog(); return true; }
     return false;
   }
 
@@ -399,40 +400,40 @@ export class SessionRunner {
 
   stepContext() {
     const s = this.cur;
-    const parts = [`Сейчас идёт занятие «${SESSION_META[this.plan.kind].title}», упражнение «${s.title}»: ${s.text || ''}`];
-    if (this.coach?.m) parts.push(`Камера измерила: ${describe(this.coach.m)}.`);
-    else if (s.pose) parts.push('Камера сейчас не видит ученика целиком.');
+    const parts = [`${t('Сейчас идёт занятие «')}${SESSION_META[this.plan.kind].title}${t('», упражнение «')}${s.title}»: ${s.text || ''}`];
+    if (this.coach?.m) parts.push(`${t('Камера измерила:')} ${describe(this.coach.m)}.`);
+    else if (s.pose) parts.push(t('Камера сейчас не видит ученика целиком.'));
     return parts.join('\n');
   }
 
   async ask({ text, look }) {
     if (look && !hasKey()) {
-      return this.openOverlay(`<div class="ov-card"><h3>Нужен ключ</h3><p>Чтобы наставник посмотрел на кадр с камеры и разобрал осанку, добавьте ключ API в настройках. Без ключа осанку проверяет только встроенный контроль углов.</p><button class="btn" data-act="ov-close">Продолжить занятие</button></div>`);
+      return this.openOverlay(`<div class="ov-card"><h3>${t('Нужен ключ')}</h3><p>${t('Чтобы наставник посмотрел на кадр с камеры и разобрал осанку, добавьте ключ API в настройках. Без ключа осанку проверяет только встроенный контроль углов.')}</p><button class="btn" data-act="ov-close">${t('Продолжить занятие')}</button></div>`);
     }
     if (look && !(this.camOn && this.video.videoWidth)) {
-      return this.openOverlay(`<div class="ov-card"><h3>Камера выключена</h3><p>Включите камеру кнопкой вверху и встаньте так, чтобы были видны голова и стопы.</p><button class="btn" data-act="ov-close">Продолжить занятие</button></div>`);
+      return this.openOverlay(`<div class="ov-card"><h3>${t('Камера выключена')}</h3><p>${t('Включите камеру кнопкой вверху и встаньте так, чтобы были видны голова и стопы.')}</p><button class="btn" data-act="ov-close">${t('Продолжить занятие')}</button></div>`);
     }
     const image = look ? pose.snapshot(this.video) : null;
-    let question = text || (look ? 'Посмотрите, пожалуйста, как я выполняю это упражнение, и поправьте меня.' : '');
+    let question = text || (look ? t('Посмотрите, пожалуйста, как я выполняю это упражнение, и поправьте меня.') : '');
     if (!question) {
       if (voice.sttSupported) {
-        this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">Слушаю</p><p class="ov-live">Говорите…</p><p class="note">Вопрос или команда: «пауза», «дальше», «назад», «повтори», «посмотри».</p><button class="btn ghost" data-act="ov-close">Отмена</button></div>`);
+        this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">${t('Слушаю')}</p><p class="ov-live">${t('Говорите…')}</p><p class="note">${t('Вопрос или команда: «пауза», «дальше», «назад», «повтори», «посмотри».')}</p><button class="btn ghost" data-act="ov-close">${t('Отмена')}</button></div>`);
         const live = this.el.overlay.querySelector('.ov-live');
         try {
-          question = await voice.listenOnce({ onInterim: (t) => { if (live.isConnected) live.textContent = t || 'Говорите…'; } });
+          question = await voice.listenOnce({ onInterim: (t) => { if (live.isConnected) live.textContent = t || t('Говорите…'); } });
         } catch { question = null; }
         if (!this.overlayOpen) return undefined;
         if (question && this.command(question)) return undefined;
       }
-      if (!question) return this.typedPrompt(question === '' ? 'Не расслышал. Напишите вопрос или попробуйте ещё раз.' : 'Напишите вопрос. Можно надиктовать кнопкой микрофона на клавиатуре.');
+      if (!question) return this.typedPrompt(question === '' ? t('Не расслышал. Напишите вопрос или попробуйте ещё раз.') : t('Напишите вопрос. Можно надиктовать кнопкой микрофона на клавиатуре.'));
     }
     return this.answer(question, image);
   }
 
   typedPrompt(hint) {
-    this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">Вопрос наставнику</p><p>${esc(hint)}</p>
-      <textarea class="ov-input" id="s-ask-input" rows="3" placeholder="Например: как держать руки в столбе?"></textarea>
-      <div class="ov-row"><button class="btn" data-act="ov-send">Спросить</button>${voice.sttSupported ? '<button class="btn ghost" data-act="ov-ask">Голосом</button>' : ''}<button class="btn ghost" data-act="ov-close">Отмена</button></div></div>`);
+    this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">${t('Вопрос наставнику')}</p><p>${esc(hint)}</p>
+      <textarea class="ov-input" id="s-ask-input" rows="3" placeholder="${t('Например: как держать руки в столбе?')}"></textarea>
+      <div class="ov-row"><button class="btn" data-act="ov-send">${t('Спросить')}</button>${voice.sttSupported ? `<button class="btn ghost" data-act="ov-ask">${t('Голосом')}</button>` : ''}<button class="btn ghost" data-act="ov-close">${t('Отмена')}</button></div></div>`);
   }
 
   sendTyped() {
@@ -441,8 +442,8 @@ export class SessionRunner {
   }
 
   async answer(question, image) {
-    this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">Вы спросили</p><p class="ov-q"></p><p class="ov-eyebrow">Наставник</p><p class="ov-a">Думаю…</p>
-      <div class="ov-row"><button class="btn" data-act="ov-close">Продолжить занятие</button><button class="btn ghost" data-act="ov-ask">Ещё вопрос</button></div></div>`);
+    this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">${t('Вы спросили')}</p><p class="ov-q"></p><p class="ov-eyebrow">${t('Наставник')}</p><p class="ov-a">${t('Думаю…')}</p>
+      <div class="ov-row"><button class="btn" data-act="ov-close">${t('Продолжить занятие')}</button><button class="btn ghost" data-act="ov-ask">${t('Ещё вопрос')}</button></div></div>`);
     this.el.overlay.querySelector('.ov-q').textContent = question;
     const out = this.el.overlay.querySelector('.ov-a');
     const say = voice.sentenceStream();
@@ -460,26 +461,26 @@ export class SessionRunner {
       if (this.overlayOpen) say.end();
     } catch (err) {
       if (err.kind === 'aborted') return;
-      if (out.isConnected) out.textContent = err.message || 'Не получилось получить ответ.';
+      if (out.isConnected) out.textContent = err.message || t('Не получилось получить ответ.');
     }
   }
 
   sos() {
     this.pause();
-    this.openOverlay(`<div class="ov-card ov-sos"><h3>Остановитесь</h3><p>Сядьте или лягте. Дышите спокойно, без задержек.</p>
-      <p><strong>Сразу звоните 103 или 112</strong>, если есть хотя бы одно:</p>
+    this.openOverlay(`<div class="ov-card ov-sos"><h3>${t('Остановитесь')}</h3><p>${t('Сядьте или лягте. Дышите спокойно, без задержек.')}</p>
+      <p><strong>${t('Сразу звоните 103 или 112')}</strong>${t(', если есть хотя бы одно:')}</p>
       <ul>${RED_FLAGS.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
-      <p>Если просто закружилась голова или стало больно, на сегодня достаточно. Измерьте давление и запишите в дневник, что случилось.</p>
-      <div class="ov-row"><button class="btn" data-act="finish-save">Закончить занятие</button><button class="btn ghost" data-act="ov-close">Мне лучше, вернуться</button></div></div>`);
+      <p>${t('Если просто закружилась голова или стало больно, на сегодня достаточно. Измерьте давление и запишите в дневник, что случилось.')}</p>
+      <div class="ov-row"><button class="btn" data-act="finish-save">${t('Закончить занятие')}</button><button class="btn ghost" data-act="ov-close">${t('Мне лучше, вернуться')}</button></div></div>`);
     voice.speak(SESSION_LINES.sos, { interrupt: true });
   }
 
   exitDialog() {
     this.pause();
-    this.openOverlay(`<div class="ov-card"><h3>Закончить занятие?</h3><p>Пройдено шагов: ${this.i} из ${this.steps.length}.</p>
-      <div class="ov-col"><button class="btn" data-act="ov-close">Вернуться к занятию</button>
-      <button class="btn ghost" data-act="finish-save">Закончить и засчитать</button>
-      <button class="btn ghost" data-act="finish-drop">Выйти без записи</button></div></div>`);
+    this.openOverlay(`<div class="ov-card"><h3>${t('Закончить занятие?')}</h3><p>${t('Пройдено шагов:')} ${this.i} ${t('из')} ${this.steps.length}.</p>
+      <div class="ov-col"><button class="btn" data-act="ov-close">${t('Вернуться к занятию')}</button>
+      <button class="btn ghost" data-act="finish-save">${t('Закончить и засчитать')}</button>
+      <button class="btn ghost" data-act="finish-drop">${t('Выйти без записи')}</button></div></div>`);
   }
 
   complete() {
@@ -489,17 +490,17 @@ export class SessionRunner {
     const q = r.quality.length ? Math.round(r.quality.reduce((a, b) => a + b, 0) / r.quality.length) : null;
     const dur = Math.round((Date.now() - this.startedAt) / 1000);
     const rows = [
-      ['Длительность', mmss(dur)],
-      r.repsTotal ? ['Повторов', String(r.repsTotal)] : null,
-      r.stolbSec ? ['Столб', mmss(r.stolbSec)] : null,
-      q != null ? ['Без замечаний камеры', `${q}% времени`] : null,
+      [t('Длительность'), mmss(dur)],
+      r.repsTotal ? [t('Повторов'), String(r.repsTotal)] : null,
+      r.stolbSec ? [t('Столб'), mmss(r.stolbSec)] : null,
+      q != null ? [t('Без замечаний камеры'), `${q}${t('% времени')}`] : null,
     ].filter(Boolean);
     const cur = day().pain?.back;
-    this.openOverlay(`<div class="ov-card ov-summary"><div class="stamp done big">${SESSION_META[this.plan.kind].seal}</div><h3>Занятие окончено</h3>
+    this.openOverlay(`<div class="ov-card ov-summary"><div class="stamp done big">${SESSION_META[this.plan.kind].seal}</div><h3>${t('Занятие окончено')}</h3>
       <dl class="ov-stats">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
-      <label class="ov-label" for="s-pain">Боль в пояснице сейчас: <output id="s-pain-out">${cur ?? '—'}</output></label>
+      <label class="ov-label" for="s-pain">${t('Боль в пояснице сейчас:')} <output id="s-pain-out">${cur ?? '—'}</output></label>
       <input type="range" id="s-pain" min="0" max="10" step="1" value="${cur ?? 0}" data-touched="${cur != null ? 1 : 0}">
-      <button class="btn" data-act="summary-save">Сохранить</button></div>`);
+      <button class="btn" data-act="summary-save">${t('Сохранить')}</button></div>`);
     const range = this.el.overlay.querySelector('#s-pain');
     range.addEventListener('input', () => { range.dataset.touched = '1'; this.el.overlay.querySelector('#s-pain-out').textContent = range.value; });
   }

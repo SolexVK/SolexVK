@@ -1,0 +1,280 @@
+ · Monday
+ AI on the server is not configured.
+ AI connected.
+ partly
+% of the time
+), program built by the rules.
+, if there is at least one:
+, week
+0 — none
+10 — very strong
+15 minutes in the morning and afternoon
+{min}, exercises: {n}. Level {level}, stage {stage}.
+Adapted “Eight Pieces of Brocade”, tai chi stepping, first movements of the form, more time in the stance.
+“Diary”
+“Dead bug”, easy version
+“Tai Chi Commencement”
+“Holding up the sky”
+“Bird-dog”
+ · no corrections
+ · standing
+”, exercise “
+BP
+Server address
+Small range of motion, no pain.
+Osteoarthritis of the joints
+Basic mode
+Bamboo
+No deep squats. High stance, knees point the same way as the toes.
+No breath-holding or straining, head never below the heart. Exhale on effort, get up from the floor slowly, rolling onto your side.
+No camera corrections
+Without a key the master answers only questions about the course. Free conversation is turned on in settings.
+No head circles, tilting back or jerks. Slow turns and nods at half range.
+No forward bends with a rounded back and no deep twists. Bend only at the hips.
+Without a server, data is stored only in this browser. Clearing site data erases it — save a copy once a week.
+No server: Claude API key on the phone
+Gentle start
+Pregnant
+Heart disease
+My lower back hurts, what should I do?
+Pain
+Lower back pain now:
+Pain not above
+Pain, 0 to 10
+Pain: lower back {a}, between shoulder blades {b}, into the legs at night {c}.
+My joints ache
+I get dizzy sometimes
+In the last year, have you had falls or frequent dizziness?
+I have fallen
+In basic mode I only answer questions about the course: exercises, blood pressure, pain, food, sleep. For free conversation connect the server or an API key in settings.
+Your question
+Your tai chi master
+Your server
+Your program
+Your program is ready. Listen to where we begin.
+Enter the server address.
+Up.
+Breathe in for four counts, out for six. The lower back relaxes and settles to the floor.
+Breathe in through the nose for four counts, the belly softly expands. Breathe out for six counts. Do not hold the breath. If it gets out of rhythm, the pace is too fast.
+Breathe in.
+Breathe in. Elbows back, shoulder blades together.
+Breathe in. Arms float up.
+Breathe in. Arms rise up.
+Come back to the centre, weight on both legs.
+Back to start.
+Restore mobility to the joints, learn to breathe and stand without provoking pain. Everything with support and in a small range.
+Back to the session
+Systolic
+Systolic pressure
+Weight
+Weight, kg
+Weight: {w} kg. Waist: {c} cm.
+Evening
+Evening lower-back release. This is not a workout, it is rest.
+In the evening
+Turn on the camera with the button at the top and stand so that your head and feet are visible.
+Left.
+Down.
+At the bottom, bend the knees slightly.
+Question
+A question or a command: “pause”, “next”, “back”, “repeat”, “look”.
+Question for the master
+Eight.
+Restore
+Restore from a copy
+Forward.
+Rotate the wrists outward.
+Circle the pelvis clockwise. Keep the circle small, the shoulders stay in place.
+Pelvis circles anticlockwise.
+Wrist circles out and in, then make fists and open the hands.
+All three sessions are done, rest now.
+All numbers as a table — in the tab
+Sit-to-stand from a chair
+Sit-to-stand. Sit on the edge of the chair, feet shoulder-width apart, right under the knees.
+Paste the text of the saved copy. Current data will be replaced.
+Stand higher. We do not sink deep.
+Stand up straight. Feet shoulder-width apart, toes pointing forward.
+Stand next to a support and lift one leg. How many seconds can you keep your balance without touching the support?
+Stand next to the back of a chair so you can hold on if needed.
+You are ready to move to the next level. Congratulations.
+You answered the questions
+You asked
+You have worked well. We will add a little load: a few more repetitions and more time in the stance.
+Always exhale on effort. Do not hold the breath.
+Breathe out, down.
+Breathe out.
+Breathe out. Elbows forward, round the upper back.
+Breathe out. Sink down.
+Breathe out. Arms down through the sides.
+Exit without saving
+Straighten the torso. Weight evenly on both feet.
+Reach the right arm forward and the left leg back, up to back level, no higher. The pelvis does not tip.
+Where does it hurt now? Mark everything that bothers you.
+Flexibility
+Speak…
+Speak aloud
+Shins on a chair
+Dizziness
+Voice
+In sessions the master's voice is Russian for now. AI answers are in the selected language.
+Master's voice
+By voice
+Readiness for the next level:
+Readiness will appear after you meet the master.
+Music volume:
+Herniated or bulging disc in the lower back
+Herniated or bulging disc in the neck
+Yes, easily
+Yes, regularly
+Blood pressure
+Blood pressure 160 over 100, can I train?
+Blood pressure within working range: full session.
+Pressure or pain in the chest
+Blood pressure not measured. Measure sitting down after five minutes of rest.
+Blood pressure before the session
+Blood pressure is raised: today only breathing, joint warm-up and a calm walk.
+Your blood pressure is too high today. We cancel the session. Take your medicine as your doctor prescribed and rest.
+Blood pressure now
+Blood pressure is too high: no training today. Medicine as prescribed by your doctor, and rest.
+Morning blood pressure, mmHg
+Morning blood pressure:
+Blood pressure, sitting after 5 minutes of rest
+Next
+Data
+Data restored
+Data erased
+Data is stored on the phone and on your server.
+Date
+Two.
+Two weeks without cancellations because of blood pressure
+Move slowly and without pain. Dizziness or sharp pain — stop.
+Move slowly, without pain. If you feel dizzy or a sharp pain appears, stop.
+Move only to a light stretch. Pain above 3 out of 10 — reduce the range or skip the exercise.
+To do at the start
+Making it gentler
+Afternoon
+Day {n}
+Day {n} ({date}). Morning: {m}. Afternoon: {d}. Evening: {e}.
+Recovery day
+Holding the back of a chair: roll from heel to toe, then circle each foot.
+Hold for five seconds and switch sides. If your knees or wrists hurt, extend only the leg.
+Hold.
+Diabetes
+Duration
+For the tests you will need a sturdy chair and a support nearby. It takes about ten minutes.
+To build the program it is important to know: are you pregnant, after childbirth or in menopause?
+Diary
+Afternoon session
+Afternoon session. First a walk, then exercises for the back and legs, and finally a lower-back release.
+To the thighs
+To the knees
+To mid-shin
+To the feet and lower
+Add the app to the Home Screen: “Share” → “Add to Home Screen”
+Good morning. We begin the morning set.
+Good morning. Today is a recovery day: only breathing and a gentle finish.
+Good morning. Today we work gently: breathing and joint warm-up.
+Thinking…
+Breathing, warm-up, qigong, standing
+If your back hurts — see a neurologist before increasing the load
+If there is chest pain, shortness of breath, weakness in an arm or leg, or trouble speaking — call emergency services.
+If you have back pain radiating to the legs, high blood pressure or heart disease, see a doctor in the first weeks of training.
+If you can, measure your waist at the level of the navel.
+If you feel unsteady, hold the back of a chair.
+If you just felt dizzy or got pain, that is enough for today. Measure your blood pressure and write down in the diary what happened.
+If there is no server, you can enter a key from console.anthropic.com right here; it is stored only on this phone. Without a server and a key the master works by built-in rules. When the AI is used, your answers, two weeks of diary entries, the questionnaire and the master's notes are sent to Anthropic's servers; with “Master, look” — also one camera frame.
+If interlacing the fingers is hard, raise the arms in parallel.
+Is there any new or unusual pain, numbness, dizziness or chest pressure right now?
+I have weakness or numbness
+Another question
+Ten more seconds.
+Again
+Female
+Live conversation
+Finish
+Finish. Place your palms on the belly, below the navel.
+Loading vision…
+End session
+End the session?
+End and count it
+Close
+No notes yet: they will appear when the AI is connected.
+Have you practised tai chi, qigong or yoga before?
+Session saved to the diary
+Session complete
+Session complete. You have worked well. Drink some water and note how you feel in the diary.
+Sessions per week
+Sessions
+Sessions of the day
+Today's sessions
+Entries
+Wrists
+Your entries will appear here. The first one — tonight.
+A healthy back
+Hello. Before we begin, tell me, how did you sleep?
+Hello. I am your tai chi master. Before I build your program I need to get to know you. How should I address you?
+Meeting the master
+And the last one. What do you want to achieve?
+Walk calmly, without speeding up.
+Measure your blood pressure sitting down and enter the numbers. If there is no monitor nearby, skip this.
+Name
+Sometimes
+Sometimes rises
+Total for the course week:
+Same as system
+How do you move in everyday life?
+How do you feel overall? Rate from zero to ten, where ten is excellent.
+How do your muscles feel after the last session?
+How are your back and joints? Rate the pain from zero to ten.
+How do I stand in the post?
+What diagnoses has a doctor given you? Mark everything that applies.
+What is your usual blood pressure?
+Camera
+Camera on
+Camera off
+Camera is off
+The camera measured:
+Camera unavailable. We continue without it.
+The camera does not see the student fully right now.
+The camera watches your posture and gives hints
+Camera…
+Wrists
+Wrists. Bend the arms at the elbows, hands in front of you.
+API key
+Server access key
+Access key was not accepted. Check the settings.
+Knees
+Knees soft, tailbone slightly tucked, crown up. Arms in front of the belly as if hugging a big ball. Trembling and warmth in the legs are normal.
+Knees soft, do not lock them straight.
+Knees soft. Weight evenly on both feet.
+Do not let the knees cave in, point them over the toes.
+Knees bent, feet hip-width apart, arms along the body.
+Knees slightly bent. Crown reaching up, chin slightly tucked, shoulders relaxed.
+Knees. Place your palms on the thighs, back straight.
+Torso upright. The pelvis moves, not the shoulders.
+Keep the torso straight, do not lean sideways.
+Torso straight.
+Red lacquer
+Shoulder circles back, then forward. Arms hang freely.
+Shoulder circles back: up, back and down.
+Palms on the belly below the navel, five calm breaths. Then rub the palms and warm the lower back.
+Palms on the wall at chest level, slightly wider than the shoulders. Body straight from heels to crown, belly slightly drawn in.
+Palms on the wall at chest level. Body straight from heels to crown. Stand sideways to the camera.
+Palms on the wall at chest level. Body straight from heels to crown. Breathe in towards the wall, out away from it.
+Palms under the shoulders, knees under the hips, back flat like a table.
+Left heel down.
+Left arm, right leg.
+Left knee.
+Easy
+Face relaxed. We simply stand and breathe.
+Elbows at shoulder level, fists. Elbows back — shoulder blades together. Elbows forward in front of the face — gently round the upper back.
+Shoulder blades
+Shoulder blades. Raise the elbows to shoulder level, make fists.
+Lie on your back and rest your shins on the seat of a chair, thighs vertical.
+Lie on your back on the bed and rest your shins on a chair or pillows, thighs vertical.
+Lying on the back, shins on the seat of a chair, thighs vertical. Breathe in for 4 counts, out for 6. Get up by rolling onto your side.
+Lying on the back, knees bent. As you breathe out, lift the pelvis to a straight line from shoulders to knees, hold for two seconds and lower.
+Lying on the back, knees bent. Pelvis up to a straight shoulders–knees line, hold 2 seconds, slowly down.
+Lying on the back, legs bent and lifted. Lower one heel to the floor in turn and bring it back. The lower back stays pressed to the floor the whole time.
+Lying on the back, legs bent and lifted. Lower one heel to the floor in turn, lower back pressed down.
+Crown reaching up, tailbone slightly tucked.

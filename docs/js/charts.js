@@ -1,4 +1,5 @@
 // Графики на чистом SVG: тонкие линии, одна ось, подписи только на концах, подсказка по касанию.
+import { t } from './i18n.js';
 const NS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs = {}, text) => {
   const n = document.createElementNS(NS, tag);
@@ -29,13 +30,13 @@ const fmt = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', 
 const shortDate = (s) => { const [, m, d] = s.split('-'); return `${Number(d)}.${m}`; };
 
 // series: [{ name, color: 'var(--series-1)', points: [{date, value}] }]
-export function lineChart(host, { series, unit = '', empty = 'Появится после двух записей в дневнике.' }) {
+export function lineChart(host, { series, unit = '', empty = t('Появится после двух записей в дневнике.') }) {
   host.textContent = '';
   const all = series.flatMap((s) => s.points);
   const dates = [...new Set(all.map((p) => p.date))].sort();
   if (dates.length < 2) {
     const box = h('p', 'chart-empty');
-    box.textContent = all.length ? `Пока одна запись: ${fmt(all[all.length - 1].value)}${unit ? ' ' + unit : ''}. ${empty}` : empty;
+    box.textContent = all.length ? `${t('Пока одна запись:')} ${fmt(all[all.length - 1].value)}${unit ? ' ' + unit : ''}. ${empty}` : empty;
     host.append(box);
     return;
   }
@@ -134,7 +135,7 @@ export function lineChart(host, { series, unit = '', empty = 'Появится �
 // Столбики по неделям: значение на шапке, подсказка на каждом столбике.
 export function weekBars(host, { weeks, max = 14, color = 'var(--series-1)' }) {
   host.textContent = '';
-  if (!weeks.length) { host.append(h('p', 'chart-empty', 'Появится после первого занятия.')); return; }
+  if (!weeks.length) { host.append(h('p', 'chart-empty', t('Появится после первого занятия.'))); return; }
   const W = 340;
   const H = 150;
   const pad = { l: 10, r: 10, t: 20, b: 22 };
@@ -142,10 +143,10 @@ export function weekBars(host, { weeks, max = 14, color = 'var(--series-1)' }) {
   const bw = Math.min(24, band - 8);
   const y = (v) => pad.t + (1 - v / max) * (H - pad.t - pad.b);
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart-svg', role: 'img' });
-  svg.setAttribute('aria-label', weeks.map((w) => `${w.label}: ${w.value} из ${max}`).join(', '));
+  svg.setAttribute('aria-label', weeks.map((w) => `${w.label}: ${w.value} ${t('из')} ${max}`).join(', '));
   const yGoal = y(10);
   svg.append(el('line', { x1: pad.l, x2: W - pad.r, y1: yGoal, y2: yGoal, class: 'chart-grid' }));
-  svg.append(el('text', { x: W - pad.r, y: yGoal - 4, class: 'chart-tick', 'text-anchor': 'end' }, 'цель 10'));
+  svg.append(el('text', { x: W - pad.r, y: yGoal - 4, class: 'chart-tick', 'text-anchor': 'end' }, t('цель 10')));
   svg.append(el('line', { x1: pad.l, x2: W - pad.r, y1: H - pad.b, y2: H - pad.b, class: 'chart-axis' }));
   const tip = h('div', 'chart-tip');
   tip.hidden = true;
@@ -167,7 +168,7 @@ export function weekBars(host, { weeks, max = 14, color = 'var(--series-1)' }) {
     const show = () => {
       tip.textContent = '';
       const row = h('div', 'chart-tip-row');
-      row.append(h('b', '', `${w.value} из ${max}`), h('span', '', `неделя ${w.label}`));
+      row.append(h('b', '', `${w.value} ${t('из')} ${max}`), h('span', '', `${t('неделя')} ${w.label}`));
       tip.append(row);
       tip.hidden = false;
       tip.style.left = `${Math.min(64, Math.max(2, (cx / W) * 100 - 16))}%`;

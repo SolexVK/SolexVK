@@ -1,13 +1,14 @@
 // Цветовые темы в восточном стиле. auto — бумага днём и тушь ночью, по настройке айфона.
 import { state } from './store.js';
+import { t } from './i18n.js';
 
 export const PALETTES = [
-  { id: 'paper', name: 'Рисовая бумага', bg: '#f2ebdd', accent: '#2e5b4e', seal: '#b0362a', ink: '#1f1a14', dark: false },
-  { id: 'ink', name: 'Ночная тушь', bg: '#121110', accent: '#cfa95e', seal: '#d4553f', ink: '#ede6d9', dark: true },
-  { id: 'jade', name: 'Нефрит', bg: '#e4ede7', accent: '#1d6b58', seal: '#b23a2b', ink: '#11241c', dark: false },
-  { id: 'celadon', name: 'Селадон', bg: '#e2eaec', accent: '#2b6880', seal: '#b23a2b', ink: '#13232a', dark: false },
-  { id: 'lacquer', name: 'Красный лак', bg: '#22100e', accent: '#dcb05e', seal: '#e8603f', ink: '#f4e7d6', dark: true },
-  { id: 'bamboo', name: 'Бамбук', bg: '#ebe8d7', accent: '#4f6e27', seal: '#a8402c', ink: '#252914', dark: false },
+  { id: 'paper', name: t('Рисовая бумага'), bg: '#f2ebdd', accent: '#2e5b4e', seal: '#b0362a', ink: '#1f1a14', dark: false },
+  { id: 'ink', name: t('Ночная тушь'), bg: '#121110', accent: '#cfa95e', seal: '#d4553f', ink: '#ede6d9', dark: true },
+  { id: 'jade', name: t('Нефрит'), bg: '#e4ede7', accent: '#1d6b58', seal: '#b23a2b', ink: '#11241c', dark: false },
+  { id: 'celadon', name: t('Селадон'), bg: '#e2eaec', accent: '#2b6880', seal: '#b23a2b', ink: '#13232a', dark: false },
+  { id: 'lacquer', name: t('Красный лак'), bg: '#22100e', accent: '#dcb05e', seal: '#e8603f', ink: '#f4e7d6', dark: true },
+  { id: 'bamboo', name: t('Бамбук'), bg: '#ebe8d7', accent: '#4f6e27', seal: '#a8402c', ink: '#252914', dark: false },
 ];
 
 export function applyPalette(id = state.settings.palette || 'auto') {

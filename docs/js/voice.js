@@ -1,6 +1,7 @@
 // Голос: синтез речи (говорит наставник) и распознавание (говорит ученик).
 // Оба работают средствами самого телефона, без сторонних сервисов.
 import { state } from './store.js';
+import { speechLang } from './i18n.js';
 
 const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
 const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
@@ -24,7 +25,12 @@ if (ttsSupported) {
   synth.addEventListener?.('voiceschanged', loadVoices);
 }
 export function ruVoices() { if (!voices.length) loadVoices(); return voices; }
-function pickVoice() {
+function pickVoice(text = '') {
+  if (!/[А-Яа-яЁё]/.test(text) && !speechLang().startsWith('ru')) {
+    const l2 = speechLang().slice(0, 2);
+    const other = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith(l2));
+    return other.find((v) => /enhanced|premium/i.test(v.name)) || other.find((v) => v.localService) || other[0] || null;
+  }
   const list = ruVoices();
   if (!list.length) return null;
   return list.find((v) => v.voiceURI === state.settings.voiceURI)
@@ -210,8 +216,8 @@ function run() {
 function speakSynth(item, finish, setStop, setWd) {
   if (!ttsSupported) { finish(false); return; }
   const u = new SpeechSynthesisUtterance(item.text);
-  u.lang = 'ru-RU';
-  const v = pickVoice();
+  u.lang = /[А-Яа-яЁё]/.test(item.text) ? 'ru-RU' : speechLang();
+  const v = pickVoice(item.text);
   if (v) u.voice = v;
   u.rate = state.settings.rate || 0.95;
   u.onend = () => finish(true);
@@ -266,7 +272,7 @@ export function listenOnce({ onInterim, maxMs = 15000 } = {}) {
     stopListening();
     const r = new SR();
     rec = r;
-    r.lang = 'ru-RU';
+    r.lang = speechLang();
     r.interimResults = true;
     r.continuous = false;
     r.maxAlternatives = 1;
@@ -319,7 +325,7 @@ export function startCommands(onPhrase, onError) {
     if (!me.active || busy || me.r) return;
     const r = new SR();
     me.r = r;
-    r.lang = 'ru-RU';
+    r.lang = speechLang();
     r.continuous = true;
     r.interimResults = false;
     r.onresult = (e) => {

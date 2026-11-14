@@ -1,0 +1,272 @@
+The server is unreachable. Check the address: it must start with https://
+Server responded
+The server returned an error
+The server returned error {n}.
+The server responds, but the access key does not match. Check the APP_TOKEN line.
+Server connected.
+Squeeze the fingers into a fist and open the palms wide.
+Sitting on the edge of a chair, back straight. Lift the knees in turn, the arms move as when walking.
+Sitting on the edge of a chair: gently tilt the pelvis back, rounding the lower back, then return to neutral.
+Muscles are very sore
+Syncing…
+Synced
+Say it by voice
+Speak to the master
+How old are you?
+How much time a day are you ready to practise?
+Copied. Paste it into the chat with your mentor.
+Copy backup
+Copy the day's report
+Copy manually
+Next day
+Too many requests. Wait a minute.
+The master's word
+Listening
+Listening…
+First see how many steps you take now. Then add a thousand a week until you reach seven to eight thousand. A pace at which you can talk in sentences.
+Lose weight
+Very shallow half-squats, just a few centimetres. The knees point the same way as the toes.
+Saved
+Save
+Sleep on your side with a pillow between the knees, or on your back with a roll under the knees. Before sleep lie for five minutes with your shins on a chair. Get out of bed by rolling onto your side.
+Calm and sleep
+Ask
+Call emergency services immediately
+Call emergency services urgently:
+Starting waist, cm
+Starting weight, kg
+Erase all data
+High stance, do not sink deep. The knees point the same way as the toes and do not cave in. If it hurts, stand even higher.
+High stance, knees only slightly bent. A chair nearby in case you need support.
+Post
+Feet
+Feet shoulder-width apart, knees soft, tailbone slightly tucked, crown up. Arms in front of the belly as if hugging a big ball, shoulders down. Trembling and warmth in the legs are normal, but pain in the lower back or knees means you should stand higher.
+Feet shoulder-width apart, knees soft, tailbone slightly tucked, crown reaching up.
+Feet shoulder-width apart, knees soft. Interlace the fingers in front of the belly, palms facing up.
+Feet shoulder-width apart, knees slightly bent, palms on the belly. Breathe in through the nose for 4 counts, out for 6.
+Feet slightly wider than the shoulders. Slowly shift the weight from leg to leg, torso upright.
+Feet slightly wider than the shoulders. Slowly shift the weight from one leg to the other, the torso stays upright. Feel which leg is full and which is empty.
+Feet. Hold the back of a chair with one hand.
+Standing, knees straight, slowly bend forward if your back allows. Where do your fingers reach? If bending causes pain, choose “I don't bend down”.
+Standing post
+Standing post, minutes.
+Standing post, 45 seconds.
+Standing post, two minutes.
+Standing post, one minute.
+Standing post, a minute and a half.
+Standing post, three minutes.
+Standing post, four and a half minutes.
+Stage
+The load stage within a level changes once a week at the review with the master. A new level is decided only when all conditions are met.
+Joint warm-up
+Count repetitions aloud
+Sit or lie down. Breathe calmly, without holding the breath.
+Sit on the edge of a chair, feet under the knees. Stand up without using your hands as you breathe out, sit down slowly.
+Sit on the edge of a chair, feet under the knees. Stand up without using your hands as you breathe out, and slowly sit down. Do not let the knees cave in.
+Pelvis
+The pelvis moves horizontally, the torso is upright, the shoulders do not tilt.
+Pelvis. Hands on the hips, feet shoulder-width apart, knees soft.
+Hip joints
+Tai Chi
+So-so
+Waist
+Waist reflects visceral fat more accurately than weight.
+Waist, cm
+Body in a straight line from heels to crown. Do not sag in the lower back.
+Speech rate:
+A pace that makes you warm, but you can still talk in sentences.
+A pace that makes you warm, but you can still talk in sentences. You can take the phone with you.
+Now inward.
+Now shoulder circles forward.
+Now the left foot.
+Now small nods. Chin slightly to the chest, then the head comes back upright.
+Muscle tone
+I work out
+For three days check on your phone how many steps you take now
+Three.
+Stretch up through the whole spine. Look straight ahead, do not tilt the head back, heels on the floor.
+Stretch.
+I already have a server with data
+Please state your sex.
+Reduce the range and keep the back straight. Pain above three out of ten — skip the exercise. Lying with the shins on a chair for three to five minutes helps a lot.
+Level
+Level {n} “{name}” · stage {s} of 4
+Level {n} · “{name}”
+Levels
+I heard: “
+Morning set
+Morning
+Morning and afternoon, maximum 14. The evening release does not count.
+In the morning
+In the morning on an empty stomach, weigh yourself and measure your waist at the navel, write it in the diary.
+Taken into account:
+Background music
+Form
+The full 8-movement Yang-style form, walking up to 30 minutes, strength block every other day.
+Session plan
+Walking
+Walk complete.
+Walking, eight minutes.
+Walking, ten minutes.
+Walking, five minutes.
+Walking, five exercises, release
+Walking, exercises for the back and legs, lower-back release.
+Walking, six minutes.
+Good
+Good. Get up slowly, rolling onto your side, leaning on the chair.
+Good. You feel well enough to train at full strength. Let us begin.
+Colour theme
+Qigong
+An hour or more
+Often
+Often high
+Four.
+What bothers you and what your doctor forbade
+What was hard, what you noticed
+What was hard:
+What the master remembers about you
+What to observe
+What do I have today?
+For the mentor to look at a camera frame and check your posture, add an API key in settings. Without a key, posture is checked only by the built-in angle control.
+To open the app from the Home Screen: in Safari tap “Share” and choose “Add to Home Screen”.
+Bend the knees slightly.
+Steps
+Steps:
+Steps per day
+Six.
+We protect the neck: only slow turns and small nods at half range. No circles and no tilting back. The crown reaches up.
+Neck
+Neck. We move very gently, at half range.
+This is an important signal. No exercises today. If you feel pressure in the chest, numbness or weakness, call emergency services immediately.
+This is not a workout, it is rest for the lower back.
+This browser cannot speak aloud.
+This browser cannot speak aloud: hints will appear only on the screen.
+I cannot see your whole side. Stand sideways to the camera so that your shoulder, pelvis and foot are visible.
+I cannot see all of you. Step back two or three paces so that your head and feet are in the frame.
+I am here. Ask about any exercise, tell me how the session went or what hurts.
+I took into account:
+Glute bridge
+Glute bridge. Lie on your back, getting down by rolling over your side, without jerks.
+Language
+Interface language
+August
+April
+no session
+no change
+no loaded forward bending of the spine
+no floor exercises
+gentle on the wrists
+gentle on the shoulders
+gentle on the lower back
+gentle on the neck
+pregnancy
+pregnancy — training only with a doctor's approval and with an instructor for pregnant women
+conversation
+heart disease — agree the load with a cardiologist
+pain
+chest pain or pressure, shortness of breath at rest
+pain often radiates into the limbs
+joints ache
+in
+sudden weakness of an arm or leg, facial droop, trouble speaking
+Sunday
+recovery after childbirth
+chair stands
+chair stands in a row
+Tuesday
+out
+dizziness
+preparing the master's voice
+preparing the master's voice:
+yes
+blood pressure
+chest pressure or pain
+December
+day
+day {n}
+recovery day
+d.
+days in a row
+breath
+е
+in 30 seconds
+session
+sessions a week for two weeks in a row
+sessions this week
+of 14 sessions, streak
+meeting
+and
+and not increasing
+of
+of 10
+of 100
+of 4
+of 84
+body mass index above 35
+July
+June
+kg
+blood pressure control
+копи
+of the course
+y.o.
+easy mode
+sedentary lifestyle
+March
+May
+min
+min without pain
+gentle mode
+load under a doctor's supervision
+increasing weakness in the leg, foot “slaps”
+do not train
+not measured
+wk
+weeks at the level
+week
+no
+no entries
+new pain
+November
+October
+numbness in the groin or perineum, problems urinating
+numbness or weakness
+surgery on the spine or joints — agree restrictions with the surgeon
+left
+acute lower-back pain
+since start
+cancellations
+falls in the last year — check with a GP
+before the session
+review
+poor sleep and feeling weak
+rep
+full session
+Monday
+after childbirth — start after a doctor's approval, gentle on the abdominal and pelvic floor muscles
+program from the questionnaire
+Friday
+balance on one leg under 10 seconds
+times
+wellbeing
+s
+September
+severe muscle soreness
+weakness or numbness in the limbs — a neurologist's examination is needed
+listen to the master
+cm
+Wednesday
+post
+Saturday
+scripts in progress
+stiff back mobility
+supported exercises
+morning without camera remarks
+February
+goal 10
+often high blood pressure — ongoing treatment from a doctor is needed
+Thursday
+steps today
+knee-friendly mode
+hip-friendly mode
+January

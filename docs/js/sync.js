@@ -1,6 +1,7 @@
 // Синхронизация с собственным сервером ученика: дневник, анкета, программа, диалоги и память мастера.
 // Приложение работает и без сервера; при настроенном сервере данные хранятся там и на телефоне.
 import { state, replaceState, subscribe } from './store.js';
+import { t } from './i18n.js';
 
 const KEY = 'taichi.server';
 let cfg = load();
@@ -40,7 +41,7 @@ export async function api(path, init = {}) {
     ...init,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.token}`, ...(init.headers || {}) },
   });
-  if (r.status === 401) throw Object.assign(new Error('Сервер не принял ключ доступа.'), { kind: 'auth' });
+  if (r.status === 401) throw Object.assign(new Error(t('Сервер не принял ключ доступа.')), { kind: 'auth' });
   return r;
 }
 
@@ -65,7 +66,7 @@ export async function pull() {
   setStatus({ state: 'syncing' });
   try {
     const r = await api('/api/state');
-    if (!r.ok) throw new Error(`Сервер ответил ${r.status}`);
+    if (!r.ok) throw new Error(`${t('Сервер ответил')} ${r.status}`);
     const data = await r.json();
     let changed = false;
     if (data.state && data.rev !== rev) {
@@ -81,7 +82,7 @@ export async function pull() {
     return true;
   } catch (e) {
     applying = false;
-    setStatus({ state: 'error', error: e.message || 'Нет связи с сервером' });
+    setStatus({ state: 'error', error: e.message || t('Нет связи с сервером') });
     return false;
   }
 }
@@ -101,14 +102,14 @@ async function push() {
       pushing = false;
       return push();
     }
-    if (!r.ok) throw new Error(`Сервер ответил ${r.status}`);
+    if (!r.ok) throw new Error(`${t('Сервер ответил')} ${r.status}`);
     rev = (await r.json()).rev;
     dirty = false;
     remember();
     setStatus({ state: 'ok', at: Date.now(), error: '', changed: false });
   } catch (e) {
     applying = false;
-    setStatus({ state: 'error', error: e.message || 'Нет связи с сервером' });
+    setStatus({ state: 'error', error: e.message || t('Нет связи с сервером') });
   } finally {
     pushing = false;
   }

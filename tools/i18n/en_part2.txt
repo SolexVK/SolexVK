@@ -1,0 +1,270 @@
+Seated march
+Seated march. Sit on the edge of the chair, back straight, feet on the floor.
+Master
+The master is studying the diary
+The master begins by getting to know you: he will ask about twenty questions by voice about your health, mobility and goals, run three simple checks and choose a program for you. You can answer with buttons or by voice.
+The master is thinking about the answer
+The master today:
+The master is building the program
+The master wants to look at your diary and decide how to move on.
+Master, look
+Slower. Rise for the whole in-breath, sink for the whole out-breath.
+Slower. The arms float up by themselves, without effort.
+Slowly straighten the knees and lower the arms.
+Slowly shift the weight onto the right leg. The left leg becomes empty, but the foot stays on the floor.
+Between the shoulder blades
+Menopause
+The microphone turns on only with the “Speak to the master” button: ask a question or say “pause”, “next”, “repeat”.
+I feel better, go back
+I feel unwell
+Can you lie down on the floor and get up without help?
+You can dictate: microphone on the keyboard
+Male or female vitality
+Male
+Gentle quarter-depth half-squats. The knees point over the toes and do not go past them.
+Gentle quarter-depth half-squats. The knees point the same way as the toes and do not go past them.
+Gentle mode
+Dead bug. Turn onto your back.
+Breathing in, open the elbows back, bring the shoulder blades together.
+Breathing in, the relaxed arms float forward to shoulder level. Breathing out, the elbows sink, the knees bend softly, the palms lower to the thighs.
+Breathing in, the relaxed arms float up in front of you to shoulder level, no higher. Breathing out, the palms press gently down to the thighs, the knees bend slightly. The shoulders stay down.
+Breathing in, the arms slowly float forward to shoulder level, palms facing down. The wrists lead, the fingers are relaxed.
+Breathing in, the arms rise in front of the body. At the chest turn the palms and push them up towards the sky.
+Breathing in, arms up through the sides, fingers interlaced, palms to the ceiling. Reach with the crown, look straight ahead, do not arch back. Breathing out, arms down through the sides. Eight times, slowly.
+Breathing in, bend the arms, the chest comes towards the wall. Breathing out, push away.
+Breathing out, the elbows sink, the knees bend softly, the palms lower smoothly to the thighs.
+Breathing out, slowly lower one heel to the floor; breathing in, bring it back.
+Breathing out, gently tilt the pelvis back, the lower back rounds slightly. Breathing in, return to neutral.
+Breathing out, lift the pelvis to a straight line from shoulders to knees. Do not arch the lower back.
+Breathing out, unlace the fingers, the arms slowly lower through the sides, the knees bend slightly.
+Breathing out, bring the elbows together in front of the face, forearms touching, gently round the upper back.
+Onto the heels.
+That is all for today. Sleep on your side with a pillow between the knees, or on your back with a roll under the knees. Good night.
+The Claude API key is not set on the server.
+The server stores the diary, questionnaire, program, conversations and the master's memory, as well as the Claude API key. Through it the master reaches the AI: Claude Haiku 5.5 for daily conversations, Claude Sonnet 5.5 for the program and reviews.
+On all fours, reach out the right arm and the left leg and hold for five seconds, the back still. Then switch sides. If your wrists or knees hurt, extend only the leg.
+On all fours, reach out an arm and the opposite leg, hold 5 seconds, the back still. If your knees or wrists hurt, extend only the leg.
+What we will focus on
+The master cannot answer this. Ask differently or see a doctor.
+Hold at the top for two seconds without holding the breath. Breathing in, slowly lower.
+We will add load gradually, once a week, depending on how you feel.
+Press “Save”.
+Press again to erase permanently
+Back
+Do not tilt the head back.
+Tell me your height and weight.
+Seated pelvic tilts
+Seated pelvic tilts. Sit on the edge of the chair, palms on the thighs.
+Type your question. You can dictate with the microphone button on the keyboard.
+For example: how do I hold my arms in the standing post?
+Mentor
+Setup
+Setup and breathing
+Settings
+Begin.
+Tai Chi Commencement. Feet shoulder-width apart, arms hanging freely along the body.
+Start
+Start session
+Start meeting
+Begin the path
+We start at level
+At least
+I don't bend down
+Could not get an answer.
+Could not read the copy.
+Do not arch back. Reach up with the crown, look straight ahead.
+I didn't catch that. Choose an answer on the screen.
+I didn't catch that. Type your question or try again.
+I didn't catch that. Please try again.
+Cannot save data: check that the browser is not in private mode.
+A short check. Sit on the edge of a chair and count how many times you can stand up in thirty seconds without using your hands. If you cannot do it without hands, enter zero.
+Week {n}
+The AI did not answer (
+The AI is not connected.
+The AI could not answer this request.
+The AI answered in the wrong format.
+A little
+I walk a little
+No
+No access to the camera. We continue without it.
+No access to the microphone. Allow it in the browser settings.
+No connection to the server
+No connection to the server:
+No connection. Check the internet.
+Jade
+Lower
+Diastolic pressure
+None of these
+Nothing hurts
+New pain
+Normal
+Normal blood pressure
+Night ink
+Into the legs at night
+Key required
+Doctor's advice needed
+About you
+Discuss the week
+It usually takes up to a minute.
+One missed day is not a problem. Continue from where you left off and do not try to catch up with a double load. There is one rule: do not miss two days in a row.
+About 15 minutes
+He will ask about twenty questions about your health and fitness and choose a program for you.
+Numbness or weakness
+Surgery on the spine or joints
+Support
+Lower your shoulders, keep the neck free.
+Lower the arms, shake out the hands.
+Special attention:
+One minute left.
+Remaining:
+Stop
+Stop and sit down. Breathe calmly, drink some water, measure your blood pressure. No more training today, and if this happens again, tell your doctor.
+Stopped.
+Osteoporosis
+Away from the wall.
+Answer by voice
+Does the pain radiate into an arm or a leg? Do you have numbness or weakness in your limbs?
+Wall push-ups
+Wall push-ups. Stand sideways to the camera, facing the wall, at arm's length.
+Open
+Open the diary
+Cancel
+Note how you feel in the diary.
+Select at least one option.
+Weekly report
+Appearance
+Rate your worst pain from zero to ten.
+Service error {n}.
+Fingers interlaced in front of the belly. Breathing in, the arms rise up, palms to the sky. Breathing out, the arms lower through the sides, the knees bend slightly.
+Pause
+The first movement of the “Eight Pieces of Brocade”: holding up the sky.
+First day of the course
+Before the session
+Measure your blood pressure before the session.
+See a doctor before exercising:
+Before sleep
+Weight shift
+Weight shift. Feet slightly wider than the shoulders, knees soft, hands on the hips.
+Weekly review · readiness
+Shoulders
+Shoulders level.
+Shoulders down, breathing calm.
+Shoulders down, back straight, knees do not go past the toes.
+Shoulders. Arms hang freely along the body.
+Bad
+According to your answers, you should start only after a doctor's approval. I will prepare a gentle program once the doctor agrees.
+Turn the head right and left. Chin level, shoulders still.
+Head turns and small nods at half range. No circles and no tilting back.
+Repeat the question
+Repetitions
+High blood pressure
+Rise onto the toes and lower onto the heels.
+Raise both arms evenly.
+Lift the bent legs: knees above the hips, shins parallel to the floor. Arms reach to the ceiling.
+Meet the master
+Meet the master.
+For now you may help yourself with your hands, pressing the palms on the thighs. Lean forward with a straight back and stand up as you breathe out.
+So far one entry:
+Leave as it is for now
+Measurements:
+See a general practitioner: blood pressure, ECG, basic tests
+Full session
+Full morning set: breathing, warm-up, three qigong movements, standing post. In the afternoon a walk and five exercises for the back and legs.
+Place your palms on the belly. Breathe through the nose: breathing in, the belly gently expands; the out-breath is longer than the in-breath.
+Place your warm palms on the lower back and warm it.
+Keep the blood pressure monitor where you train
+Monday.
+Got it
+Lift the knees in turn, as when walking. The arms help in rhythm. Belly slightly drawn in, breathe freely.
+After childbirth, less than a year
+Recent conversations
+Listen again
+Please watch how I do this exercise and correct me.
+Put the right foot on its toes and circle the ankle.
+Stand the phone upright at waist height two to three metres away, so your head and feet are in the frame. The video is processed on the phone and is not sent anywhere.
+I take medication regularly
+I sit almost all the time
+Will appear after two diary entries.
+Will appear after the first session.
+L. back
+Lower back
+The lower back stays pressed to the floor the whole time.
+Your lower back needs care now: a very small circle, without pain.
+Safety rules
+The rule is simple. Up to one hundred fifty over ninety-five — full session. From one hundred fifty to one hundred seventy — only breathing, warm-up and a calm walk. Above one hundred seventy over one hundred five — no training, medicine as prescribed by your doctor, and rest.
+Previous day
+Before we begin, a few short questions about how you feel.
+Before increasing the load, be sure to see a doctor. This is important.
+Stop the session. Chest pain, shortness of breath at rest, trouble speaking, sudden weakness or numbness in the groin — call emergency services immediately.
+The app does not replace a doctor.
+Accept
+Pleasant tiredness
+Awakening
+Test the voice
+Check connection
+Check the answer: the number is outside reasonable limits.
+Checking the connection to the server…
+Checking…
+Progress
+We continue at the same pace
+We continue at the same pace. There is no hurry in tai chi; the body must get used to it.
+Continue
+Continue the session
+Steps completed:
+Meet the master again
+Skip
+A week has passed.
+A week has passed. Let us see how the work is going.
+Two minutes have passed. Keep a pace at which you can talk.
+Four minutes have passed. Keep a pace at which you can talk.
+Eight minutes have passed. Keep a pace at which you can talk.
+Six minutes have passed. Keep a pace at which you can talk.
+Bird-dog. Roll over onto your side and come onto all fours.
+Five rules for the first month. Cut out sugary drinks and alcohol. Protein at every meal. Half the plate is vegetables. Sweets no more than twice a week. Last meal three hours before sleep.
+Five exercises
+Five.
+Balance
+One.
+Release
+Lower-back release
+Lower-back release before sleep
+Lower-back release. Lie on your back and rest your shins on the seat of a chair, thighs vertical.
+Lower-back release. Lie on your back on the bed and rest your shins on a chair or pillows, thighs vertical.
+Sections
+Rub the palms until warm.
+Speech recognition is unavailable. Dictate with the keyboard.
+I move regularly
+A sharp shooting pain into the leg is a signal to stop. Lie on your back, rest your shins on a chair and breathe for three minutes. If the pain or numbness does not pass, see a neurologist.
+Rice paper
+Level.
+Height, cm
+Hands on the hips, knees soft. Small circles of the pelvis clockwise and anticlockwise.
+Arms no higher than the shoulders.
+The arms hug a big ball. Elbows slightly below the shoulders.
+Arms in front of the belly, as if hugging a big ball.
+Raise the arms in front of the belly as if hugging a big ball. Shoulders down, elbows slightly out.
+Cross the arms on the chest. Lean forward with a straight back and stand up as you breathe out, pressing through the heels.
+Stream, strings, bell and bamboo. Quiet, fades under the master's voice
+With difficulty
+Sit down slowly, for a count of three. Do not let the knees cave in.
+Sit down.
+Sit down more slowly, do not drop onto the chair.
+Connected.
+We will make the sessions gentler. This is not a step back, it is care for the body.
+Today do half: breathing and warm-up. The main rule of the course is not to miss two days in a row. A small session is better than a big gap.
+Done
+Today
+No session today
+No session today.
+Today is day
+Today is a recovery day.
+Today is a recovery day. Only the lower-back release.
+Today we work gently: fewer repetitions, smaller range, more attention to breathing.
+Today we work gently: only a calm walk and rest for the lower back.
+Today the body needs rest. We will do only breathing and a gentle lower-back release.
+A session is in progress: “
+Celadon
+Seven.
+The server did not answer within 12 seconds.
+The server is not connected.
+The server did not accept the access key.

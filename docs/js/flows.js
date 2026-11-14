@@ -8,15 +8,16 @@ import { runInterview } from './interview.js';
 import * as voice from './voice.js';
 import { TAIJI } from './theme.js';
 import * as ambient from './ambient.js';
+import { t } from './i18n.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const FLAG_TEXT = {
-  cervical: 'бережно к шее', lumbar_radicular: 'бережно к пояснице', lumbar_acute: 'острая боль в пояснице', knee: 'щадящий режим для коленей',
-  hip: 'щадящий режим для тазобедренных суставов', shoulder: 'бережно к плечам', wrist: 'бережно к запястьям', hypertension: 'контроль давления',
-  heart: 'нагрузка под контролем врача', osteo: 'без нагрузки на позвоночник в наклоне', balance: 'упражнения с опорой', no_floor: 'без упражнений на полу',
-  pregnant: 'беременность', postpartum: 'восстановление после родов',
+  cervical: t('бережно к шее'), lumbar_radicular: t('бережно к пояснице'), lumbar_acute: t('острая боль в пояснице'), knee: t('щадящий режим для коленей'),
+  hip: t('щадящий режим для тазобедренных суставов'), shoulder: t('бережно к плечам'), wrist: t('бережно к запястьям'), hypertension: t('контроль давления'),
+  heart: t('нагрузка под контролем врача'), osteo: t('без нагрузки на позвоночник в наклоне'), balance: t('упражнения с опорой'), no_floor: t('без упражнений на полу'),
+  pregnant: t('беременность'), postpartum: t('восстановление после родов'),
 };
-const MODE_TEXT = { full: 'Полное занятие', light: 'Мягкий режим', rest: 'День восстановления', none: 'Сегодня без занятия' };
+const MODE_TEXT = { full: t('Полное занятие'), light: t('Мягкий режим'), rest: t('День восстановления'), none: t('Сегодня без занятия') };
 
 const focusOn = () => { document.body.classList.add('focus'); ambient.start(); ambient.setScene('talk'); };
 const focusOff = () => { document.body.classList.remove('focus'); ambient.setScene('home'); };
@@ -37,7 +38,7 @@ export function todayCheckin(date = dateStr()) {
 export async function startIntake(root, onDone) {
   focusOn();
   voice.unlock();
-  const answers = await runInterview(root, { title: 'Знакомство с мастером', questions: INTAKE, answers: { ...(state.intake || {}) } });
+  const answers = await runInterview(root, { title: t('Знакомство с мастером'), questions: INTAKE, answers: { ...(state.intake || {}) } });
   if (!answers) { focusOff(); return onDone(false); }
   const p = state.profile;
   state.intake = { ...answers, at: dateStr() };
@@ -53,7 +54,7 @@ export async function startIntake(root, onDone) {
   logEntry('intake', 'user', JSON.stringify(answers));
   save();
 
-  root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>Мастер составляет программу</h2><p class="note">Обычно это занимает до минуты.</p></section>`;
+  root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>${t('Мастер составляет программу')}</h2><p class="note">${t('Обычно это занимает до минуты.')}</p></section>`;
   voice.speak(INTAKE_DONE, { interrupt: true });
   const base = newProgram(state.intake);
   let program = { ...base };
@@ -67,7 +68,7 @@ export async function startIntake(root, onDone) {
   }
   if (!program.rationale) program.rationale = ruleRationale(program);
   program.updatedAt = Date.now();
-  program.history = [{ date: dateStr(), level: program.level, stage: 1, reason: 'программа по анкете' }];
+  program.history = [{ date: dateStr(), level: program.level, stage: 1, reason: t('программа по анкете') }];
   state.program = program;
   logEntry('intake', 'assistant', program.rationale);
   save();
@@ -78,13 +79,13 @@ export async function startIntake(root, onDone) {
 }
 
 function ruleRationale(pr) {
-  if (pr.level === 0) return 'По вашим ответам занятия сейчас можно начинать только после разрешения врача. Я подготовлю бережную программу, когда врач даст согласие.';
+  if (pr.level === 0) return t('По вашим ответам занятия сейчас можно начинать только после разрешения врача. Я подготовлю бережную программу, когда врач даст согласие.');
   const L = levelInfo(pr.level);
-  const parts = [`Начинаем с уровня ${pr.level}, «${L.name}».`, L.goal];
-  if (pr.reasons?.length) parts.push(`Я учёл: ${pr.reasons.slice(0, 3).join(', ')}.`);
+  const parts = [`${t('Начинаем с уровня')} ${pr.level}, «${L.name}».`, L.goal];
+  if (pr.reasons?.length) parts.push(`${t('Я учёл:')} ${pr.reasons.slice(0, 3).join(', ')}.`);
   const fl = (pr.flags || []).map((f) => FLAG_TEXT[f]).filter(Boolean);
-  if (fl.length) parts.push(`Особое внимание: ${fl.slice(0, 4).join(', ')}.`);
-  parts.push('Нагрузку будем прибавлять постепенно, раз в неделю, по вашему самочувствию.');
+  if (fl.length) parts.push(`${t('Особое внимание:')} ${fl.slice(0, 4).join(', ')}.`);
+  parts.push(t('Нагрузку будем прибавлять постепенно, раз в неделю, по вашему самочувствию.'));
   return parts.join(' ');
 }
 
@@ -92,20 +93,20 @@ export function programHtml(pr) {
   const L = levelInfo(pr.level || 1);
   const fl = (pr.flags || []).map((f) => FLAG_TEXT[f]).filter(Boolean);
   return `
-    <p class="eyebrow">Ваша программа</p>
-    <h2>${pr.level ? `Уровень ${pr.level} · «${esc(L.name)}»` : 'Нужна консультация врача'}</h2>
+    <p class="eyebrow">${t('Ваша программа')}</p>
+    <h2>${pr.level ? t('Уровень {n} · «{name}»', { n: pr.level, name: esc(t(L.name)) }) : t('Нужна консультация врача')}</h2>
     <p class="lead">${esc(pr.rationale)}</p>
-    ${pr.doctor?.length ? `<div class="callout danger"><strong>Перед нагрузкой покажитесь врачу:</strong><ul>${pr.doctor.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
-    ${pr.focus?.length ? `<h3>На чём сосредоточимся</h3><ul class="bullets">${pr.focus.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-    ${pr.cautions?.length ? `<h3>Что соблюдать</h3><ul class="bullets">${pr.cautions.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-    ${fl.length ? `<p class="note">Учтено: ${esc(fl.join(', '))}.</p>` : ''}
-    ${pr.aiError ? `<p class="note">Нейросеть не ответила (${esc(pr.aiError)}), программа составлена по правилам.</p>` : ''}`;
+    ${pr.doctor?.length ? `<div class="callout danger"><strong>${t('Перед нагрузкой покажитесь врачу:')}</strong><ul>${pr.doctor.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+    ${pr.focus?.length ? `<h3>${t('На чём сосредоточимся')}</h3><ul class="bullets">${pr.focus.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    ${pr.cautions?.length ? `<h3>${t('Что соблюдать')}</h3><ul class="bullets">${pr.cautions.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    ${fl.length ? `<p class="note">${t('Учтено:')} ${esc(fl.join(', '))}.</p>` : ''}
+    ${pr.aiError ? `<p class="note">${t('Нейросеть не ответила (')}${esc(pr.aiError)}${t('), программа составлена по правилам.')}</p>` : ''}`;
 }
 
 function revealProgram(root) {
   return new Promise((resolve) => {
     const pr = state.program;
-    root.innerHTML = `<section class="iv reveal">${programHtml(pr)}<button class="btn wide" data-go-on>${pr.level ? 'Начать путь' : 'Понятно'}</button><button class="btn ghost wide" data-replay>Послушать ещё раз</button></section>`;
+    root.innerHTML = `<section class="iv reveal">${programHtml(pr)}<button class="btn wide" data-go-on>${pr.level ? t('Начать путь') : t('Понятно')}</button><button class="btn ghost wide" data-replay>${t('Послушать ещё раз')}</button></section>`;
     voice.speak(FLOW_LINES.programReady, { interrupt: true }).then(() => voice.speak(pr.rationale));
     if (pr.doctor?.length) voice.speak(FLOW_LINES.doctor);
     root.onclick = (e) => {
@@ -121,7 +122,7 @@ export async function runCheckin(root, kind) {
   focusOn();
   voice.unlock();
   voice.speak(FLOW_LINES.checkinIntro, { interrupt: true });
-  const answers = await runInterview(root, { title: 'Перед занятием', questions: CHECKIN });
+  const answers = await runInterview(root, { title: t('Перед занятием'), questions: CHECKIN });
   if (!answers) { focusOff(); return null; }
   const today = dateStr();
   const d = day(today);
@@ -130,7 +131,7 @@ export async function runCheckin(root, kind) {
   const rule = checkinDecision(answers);
   let decision = { mode: rule.mode, skip: [], say: CHECKIN_REPLIES[rule.key], source: 'rules', reasons: rule.reasons };
   if (rule.mode !== 'none' && aiAvailable()) {
-    root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>Мастер обдумывает ответ</h2></section>`;
+    root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>${t('Мастер обдумывает ответ')}</h2></section>`;
     try {
       const ai = await checkinReply(answers, rule, kind);
       decision = { ...decision, ...ai, source: 'ai' };
@@ -144,11 +145,11 @@ export async function runCheckin(root, kind) {
 
   await new Promise((resolve) => {
     root.innerHTML = `<section class="iv reveal">
-      <p class="eyebrow">Слово мастера</p>
+      <p class="eyebrow">${t('Слово мастера')}</p>
       <h2>${esc(MODE_TEXT[decision.mode])}</h2>
-      <p class="lead">${esc(decision.say)}</p>
-      ${decision.reasons?.length ? `<p class="note">Учтено: ${esc(decision.reasons.join(', '))}.</p>` : ''}
-      <button class="btn wide" data-go-on>${decision.mode === 'none' ? 'Понятно' : 'Продолжить'}</button></section>`;
+      <p class="lead">${esc(t(decision.say))}</p>
+      ${decision.reasons?.length ? `<p class="note">${t('Учтено:')} ${esc(decision.reasons.join(', '))}.</p>` : ''}
+      <button class="btn wide" data-go-on>${decision.mode === 'none' ? t('Понятно') : t('Продолжить')}</button></section>`;
     voice.speak(decision.say, { interrupt: true });
     root.onclick = (e) => { if (e.target.closest('[data-go-on]')) { voice.cancel(); root.onclick = null; resolve(); } };
   });
@@ -169,7 +170,7 @@ export async function runReview(root, onDone) {
   voice.unlock();
   const pr = state.program;
   const ready = readiness();
-  root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>Мастер изучает дневник</h2></section>`;
+  root.innerHTML = `<section class="iv iv-wait">${TAIJI}<h2>${t('Мастер изучает дневник')}</h2></section>`;
   voice.speak(FLOW_LINES.reviewIntro, { interrupt: true });
   let r;
   if (aiAvailable()) {
@@ -179,16 +180,16 @@ export async function runReview(root, onDone) {
     const decision = ready.regress ? 'step_back' : ready.ready && ready.nextScripted ? 'level_up' : ready.stageUp ? 'stage_up' : 'stay';
     r = { decision, say: { step_back: FLOW_LINES.stepBack, level_up: FLOW_LINES.levelUp, stage_up: FLOW_LINES.stageUp, stay: FLOW_LINES.stay }[decision], reasons: [], source: 'rules' };
   }
-  const titles = { stay: 'Продолжаем в том же темпе', stage_up: `Ступень ${Math.min(4, pr.stage + 1)} из 4`, level_up: `Уровень ${pr.level + 1}`, step_back: 'Делаем мягче' };
+  const titles = { stay: t('Продолжаем в том же темпе'), stage_up: `${t('Ступень')} ${Math.min(4, pr.stage + 1)} ${t('из 4')}`, level_up: `${t('Уровень')} ${pr.level + 1}`, step_back: t('Делаем мягче') };
   await new Promise((resolve) => {
     root.innerHTML = `<section class="iv reveal">
-      <p class="eyebrow">Пересмотр недели · готовность ${ready.score} из 100</p>
+      <p class="eyebrow">${t('Пересмотр недели · готовность')} ${ready.score} ${t('из 100')}</p>
       <h2>${esc(titles[r.decision])}</h2>
-      <p class="lead">${esc(r.say)}</p>
+      <p class="lead">${esc(t(r.say))}</p>
       ${r.reasons.length ? `<ul class="bullets">${r.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       <ul class="crit">${ready.crit.map((c) => `<li class="${c.ok ? 'ok' : ''}"><span class="crit-mark">${c.ok ? '✓' : '○'}</span><span>${esc(c.text)}<small>${esc(c.have)}</small></span></li>`).join('')}</ul>
-      <button class="btn wide" data-accept>${r.decision === 'stay' ? 'Понятно' : 'Принять'}</button>
-      ${r.decision !== 'stay' ? '<button class="btn ghost wide" data-keep>Пока оставить как есть</button>' : ''}</section>`;
+      <button class="btn wide" data-accept>${r.decision === 'stay' ? t('Понятно') : t('Принять')}</button>
+      ${r.decision !== 'stay' ? `<button class="btn ghost wide" data-keep>${t('Пока оставить как есть')}</button>` : ''}</section>`;
     voice.speak(r.say, { interrupt: true });
     root.onclick = (e) => {
       const accept = e.target.closest('[data-accept]');

@@ -1,9 +1,10 @@
 // Голосовая беседа мастера: задаёт вопросы по одному, ученик отвечает кнопками, числами или голосом.
 import * as voice from './voice.js';
 import { FLOW_LINES } from './flow-lines.js';
+import { t } from './i18n.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const NUM_WORDS = { ноль: 0, один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10 };
+const NUM_WORDS = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, ноль: 0, один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10 };
 
 function parseNumber(t) {
   const m = String(t).match(/\d+([.,]\d+)?/);
@@ -39,36 +40,36 @@ export function runInterview(root, { title, questions, answers = {}, onClose }) 
       multi = new Set(Array.isArray(cur) ? cur : []);
       let input = '';
       if (q.kind === 'choice') {
-        input = `<div class="iv-options">${q.options.map(([v, l]) => `<button class="iv-opt ${cur === v ? 'on' : ''}" data-val="${esc(v)}">${esc(l)}</button>`).join('')}</div>`;
+        input = `<div class="iv-options">${q.options.map(([v, l]) => `<button class="iv-opt ${cur === v ? 'on' : ''}" data-val="${esc(v)}">${esc(t(l))}</button>`).join('')}</div>`;
       } else if (q.kind === 'multi') {
-        input = `<div class="iv-options multi">${q.options.map(([v, l]) => `<button class="iv-opt ${multi.has(v) ? 'on' : ''}" data-multi="${esc(v)}" aria-pressed="${multi.has(v)}">${esc(l)}</button>`).join('')}</div>
-          <button class="btn wide" data-next>Дальше</button>`;
+        input = `<div class="iv-options multi">${q.options.map(([v, l]) => `<button class="iv-opt ${multi.has(v) ? 'on' : ''}" data-multi="${esc(v)}" aria-pressed="${multi.has(v)}">${esc(t(l))}</button>`).join('')}</div>
+          <button class="btn wide" data-next>${t('Дальше')}</button>`;
       } else if (q.kind === 'scale') {
         input = `<div class="iv-scale">${Array.from({ length: 11 }, (_, n) => `<button class="iv-num ${Number(cur) === n ? 'on' : ''}" data-val="${n}">${n}</button>`).join('')}</div>
-          <div class="iv-scale-legend"><span>0 — нет</span><span>10 — очень сильно</span></div>`;
+          <div class="iv-scale-legend"><span>${t('0 — нет')}</span><span>${t('10 — очень сильно')}</span></div>`;
       } else if (q.kind === 'number') {
-        input = `<div class="iv-fields"><label class="iv-field"><input id="iv-n" inputmode="decimal" value="${esc(cur ?? '')}" aria-label="${esc(q.unit || 'Число')}"><span>${esc(q.unit || '')}</span></label></div>
-          <button class="btn wide" data-next>Дальше</button>`;
+        input = `<div class="iv-fields"><label class="iv-field"><input id="iv-n" inputmode="decimal" value="${esc(cur ?? '')}" aria-label="${esc(t(q.unit || 'Число'))}"><span>${esc(q.unit ? t(q.unit) : '')}</span></label></div>
+          <button class="btn wide" data-next>${t('Дальше')}</button>`;
       } else if (q.kind === 'numbers') {
-        input = `<div class="iv-fields">${q.fields.map(([k, l]) => `<label class="iv-field"><span>${esc(l)}</span><input data-field="${k}" inputmode="decimal" value="${esc(cur?.[k] ?? '')}"></label>`).join('')}</div>
-          <button class="btn wide" data-next>Дальше</button>`;
+        input = `<div class="iv-fields">${q.fields.map(([k, l]) => `<label class="iv-field"><span>${esc(t(l))}</span><input data-field="${k}" inputmode="decimal" value="${esc(cur?.[k] ?? '')}"></label>`).join('')}</div>
+          <button class="btn wide" data-next>${t('Дальше')}</button>`;
       } else {
-        input = `<textarea id="iv-t" rows="2" class="iv-text">${esc(cur ?? '')}</textarea><button class="btn wide" data-next>Дальше</button>`;
+        input = `<textarea id="iv-t" rows="2" class="iv-text">${esc(cur ?? '')}</textarea><button class="btn wide" data-next>${t('Дальше')}</button>`;
       }
       root.innerHTML = `
         <section class="iv">
           <div class="iv-top">
-            <button class="icon-btn" data-back aria-label="Назад">‹</button>
-            <div class="iv-dots" aria-label="Вопрос ${idx + 1} из ${qs.length}">${qs.map((_, i) => `<i class="${i < idx ? 'done' : i === idx ? 'cur' : ''}"></i>`).join('')}</div>
-            <button class="icon-btn" data-cancel aria-label="Закрыть">✕</button>
+            <button class="icon-btn" data-back aria-label="${t('Назад')}">‹</button>
+            <div class="iv-dots" aria-label="${t('Вопрос')} ${idx + 1} ${t('из')} ${qs.length}">${qs.map((_, i) => `<i class="${i < idx ? 'done' : i === idx ? 'cur' : ''}"></i>`).join('')}</div>
+            <button class="icon-btn" data-cancel aria-label="${t('Закрыть')}">✕</button>
           </div>
-          <p class="eyebrow">${esc(title)} · ${idx + 1} из ${qs.length}</p>
-          <h2 class="iv-q">${esc(q.say)}</h2>
+          <p class="eyebrow">${esc(t(title))} · ${idx + 1} ${t('из')} ${qs.length}</p>
+          <h2 class="iv-q">${esc(t(q.say))}</h2>
           <div class="iv-input">${input}</div>
           <div class="iv-row">
-            ${voice.sttSupported && q.kind !== 'multi' ? '<button class="btn ghost" data-voice>Ответить голосом</button>' : ''}
-            <button class="btn ghost" data-repeat>Повторить вопрос</button>
-            ${q.optional ? '<button class="btn ghost" data-skip>Пропустить</button>' : ''}
+            ${voice.sttSupported && q.kind !== 'multi' ? `<button class="btn ghost" data-voice>${t('Ответить голосом')}</button>` : ''}
+            <button class="btn ghost" data-repeat>${t('Повторить вопрос')}</button>
+            ${q.optional ? `<button class="btn ghost" data-skip>${t('Пропустить')}</button>` : ''}
           </div>
           <p class="iv-heard" aria-live="polite"></p>
         </section>`;
@@ -104,39 +105,39 @@ export function runInterview(root, { title, questions, answers = {}, onClose }) 
     }
 
     root.onclick = async (e) => {
-      const t = e.target.closest('button');
-      if (!t) return;
+      const btn = e.target.closest('button');
+      if (!btn) return;
       const q = list()[idx];
-      if (t.dataset.val != null) {
-        next(q.kind === 'scale' ? Number(t.dataset.val) : t.dataset.val);
-      } else if (t.dataset.multi != null) {
-        const v = t.dataset.multi;
+      if (btn.dataset.val != null) {
+        next(q.kind === 'scale' ? Number(btn.dataset.val) : btn.dataset.val);
+      } else if (btn.dataset.multi != null) {
+        const v = btn.dataset.multi;
         if (v === 'none') multi = new Set(multi.has('none') ? [] : ['none']);
         else { multi.delete('none'); if (multi.has(v)) multi.delete(v); else multi.add(v); }
         root.querySelectorAll('[data-multi]').forEach((b) => { const on = multi.has(b.dataset.multi); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
-      } else if (t.hasAttribute('data-next')) {
+      } else if (btn.hasAttribute('data-next')) {
         const v = readInput(q);
-        if (v === false) { root.querySelector('.iv-heard').textContent = 'Проверьте ответ: число вне разумных пределов.'; return; }
-        if (q.kind === 'multi' && !v.length && !q.optional) { root.querySelector('.iv-heard').textContent = 'Отметьте хотя бы один вариант.'; return; }
+        if (v === false) { root.querySelector('.iv-heard').textContent = t('Проверьте ответ: число вне разумных пределов.'); return; }
+        if (q.kind === 'multi' && !v.length && !q.optional) { root.querySelector('.iv-heard').textContent = t('Отметьте хотя бы один вариант.'); return; }
         next(v);
-      } else if (t.hasAttribute('data-skip')) {
+      } else if (btn.hasAttribute('data-skip')) {
         next(undefined);
-      } else if (t.hasAttribute('data-back')) {
+      } else if (btn.hasAttribute('data-back')) {
         if (idx > 0) { idx--; render(); }
-      } else if (t.hasAttribute('data-cancel')) {
+      } else if (btn.hasAttribute('data-cancel')) {
         finish(null);
-      } else if (t.hasAttribute('data-repeat')) {
+      } else if (btn.hasAttribute('data-repeat')) {
         voice.speak(q.say, { interrupt: true });
-      } else if (t.hasAttribute('data-voice')) {
+      } else if (btn.hasAttribute('data-voice')) {
         voice.cancel();
         const heard = root.querySelector('.iv-heard');
-        heard.textContent = 'Слушаю…';
+        heard.textContent = t('Слушаю…');
         let text = '';
-        try { text = await voice.listenOnce({ onInterim: (x) => { heard.textContent = x || 'Слушаю…'; } }); } catch { text = ''; }
+        try { text = await voice.listenOnce({ onInterim: (x) => { heard.textContent = x || t('Слушаю…'); } }); } catch { text = ''; }
         if (list()[idx] !== q) return;
-        heard.textContent = text ? `Услышал: «${text}»` : '';
+        heard.textContent = text ? `${t('Услышал: «')}${text}»` : '';
         if (!text) { voice.speak(FLOW_LINES.noAnswer); return; }
-        if (q.kind === 'choice') { const v = matchOption(text, q.options); if (v) next(v); else voice.speak(FLOW_LINES.noAnswer); }
+        if (q.kind === 'choice') { const v = matchOption(text, q.options.map(([val, l]) => [val, t(l)])); if (v) next(v); else voice.speak(FLOW_LINES.noAnswer); }
         else if (q.kind === 'scale') { const v = parseNumber(text); if (v != null && v >= 0 && v <= 10) next(v); else voice.speak(FLOW_LINES.noAnswer); }
         else if (q.kind === 'number') { const v = parseNumber(text); if (v != null) root.querySelector('#iv-n').value = v; }
         else if (q.kind === 'numbers') {
