@@ -77,33 +77,57 @@ def clean(wav, sr):
     peak = np.max(np.abs(y)) or 1.0
     return y * (0.89 / peak)
 
-todo = [p for p in PHRASES if not (p['key'] in clips and (OUT / f"{p['key']}.mp3").exists())]
+def sentences(text):
+    parts = re.findall(r'[^.!?…]+[.!?…»]*', text)
+    return [x.strip() for x in parts if x.strip()]
+
+SENT_CACHE = {}
+
+def synth_sentence(text, seed):
+    """Одно предложение: несколько попыток, лучшая по распознаванию."""
+    if text in SENT_CACHE:
+        return SENT_CACHE[text]
+    best = None
+    need = 0.9 if len(text) > 14 else 0.8
+    for attempt in range(TRIES):
+        torch.manual_seed(seed + attempt * 37)
+        wav = tts.tts(text=text, speaker=SPEAKER, language='ru', speed=SPEED, temperature=0.65 if attempt < 3 else 0.5)
+        y = clean(wav, sr)
+        sc, sim, heard, dur, y = score(text, y, sr)
+        y = clean(y, sr)
+        if best is None or sc > best[0]:
+            best = (sc, sim, heard, dur, y, attempt + 1)
+        if sc >= need:
+            break
+    best = best + (best[0] >= need,)
+    SENT_CACHE[text] = best
+    return best
+
+REDO = set(os.environ.get('VOICE_REDO', '').split(',')) - {''}
+todo = [p for p in PHRASES if p['key'] in REDO or not (p['key'] in clips and (OUT / f"{p['key']}.mp3").exists())]
 print(f'{len(PHRASES)} фраз, осталось {len(todo)}', flush=True)
 sr = 24000
 for idx, p in enumerate(todo, 1):
     text, key = p['text'], p['key']
     t0 = time.time()
-    best = None
-    need = 0.9 if len(text) > 14 else 0.75
-    for attempt in range(TRIES):
-        torch.manual_seed(1000 + attempt * 37 + idx)
-        wav = tts.tts(text=text, speaker=SPEAKER, language='ru', speed=SPEED, temperature=0.65 if attempt < 3 else 0.5)
-        y = clean(wav, sr)
-        s, sim, heard, dur, y = score(text, y, sr)
-        y = clean(y, sr)
-        if best is None or s > best[0]:
-            best = (s, sim, heard, dur, y, attempt + 1)
-        if s >= need:
-            break
-    s, sim, heard, dur, y, tries = best
+    # Каждое предложение озвучиваем отдельно: так XTTS не вставляет лишних слогов на стыках.
+    parts = [synth_sentence(t, 1000 + idx * 11 + k) for k, t in enumerate(sentences(text))]
+    gap = np.zeros(int(sr * 0.3), dtype=np.float32)
+    y = np.concatenate([q for part in parts for q in (part[4], gap)][:-1])
+    y = clean(y, sr)
+    sim = min(part[1] for part in parts)
+    ok = all(part[6] for part in parts)
+    heard = ' | '.join(part[2].strip() for part in parts)
+    tries = sum(part[5] for part in parts)
+    dur = len(y) / sr
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
         sf.write(f.name, y, sr)
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', f.name, '-ac', '1', '-ar', '24000',
                         '-codec:a', 'libmp3lame', '-b:a', '48k', str(OUT / f'{key}.mp3')], check=True)
         os.unlink(f.name)
     clips[key] = round(dur, 2)
-    report[key] = {'text': text, 'heard': heard.strip(), 'sim': round(sim, 2), 'tries': tries, 'ok': s >= need}
+    report[key] = {'text': text, 'heard': heard, 'sim': round(sim, 2), 'tries': tries, 'ok': ok}
     man_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=0), encoding='utf-8')
-    flag = '' if s >= need else '  <-- проверить'
+    flag = '' if ok else '  <-- проверить'
     print(f'[{idx}/{len(todo)}] {time.time() - t0:4.0f}s sim={sim:.2f} x{tries} {text[:60]}{flag}', flush=True)
 print('готово', flush=True)
