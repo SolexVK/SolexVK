@@ -637,3 +637,5 @@ body::after {
 .pal-sw i { position: absolute; width: 14px; height: 14px; border-radius: 3px; right: 7px; top: 7px; }
 .pal-sw b { position: absolute; left: 7px; bottom: 7px; width: 34px; height: 7px; border-radius: 4px; }
 @media (prefers-reduced-motion: reduce) { .taiji { animation: none; } }
+.row-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.row-btns .btn { flex: 1 1 140px; }

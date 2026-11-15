@@ -180,12 +180,12 @@ export class SessionRunner {
   get item() { return this.cur?.items[this.st.j]; }
 
   // Произносит фразу; когда договорит (или сразу, если голос выключен), вызывает done.
-  sayNow(text, done) {
+  sayNow(text, done, fit = 0) {
     const st = this.st;
     const tok = st.token;
     st.speaking = true;
     const t0 = performance.now();
-    voice.speak(text, { interrupt: true }).then((ok) => {
+    voice.speak(text, { interrupt: true, fit }).then((ok) => {
       if (this.st !== st || tok !== st.token) return;
       // Голос выключен или недоступен: выдерживаем примерное время фразы.
       const est = ok ? 0 : Math.max(0, (0.5 + text.length * 0.07) / SPEED - (performance.now() - t0) / 1000);
@@ -206,14 +206,17 @@ export class SessionRunner {
       this.sayNow(it.text, () => this.nextItem());
     } else if (it.t === 'beat') {
       ambient.beat({ breath: it.breath, dur: it.dur / SPEED, rep: it.rep });
-      st.beatLeft = it.dur;
+      // Длина такта считается по исходной записи фразы, а не по подстроенному голосу:
+      // быстрее или медленнее говорит мастер — счёт идёт в том же темпе.
+      const win = Math.max(it.dur, voice.clipSeconds(it.text) * SPEED);
+      st.beatLeft = win;
       if (it.rep) { st.rep = it.rep; st.maxRep = Math.max(st.maxRep, it.rep); }
       if (it.breath && it.breath !== st.breath) {
         st.breath = it.breath;
         this.ink.style.transitionDuration = `${it.dur / SPEED}s`;
         this.ink.className = `s-ink breathing ${it.breath}`;
       }
-      if (it.text) { this.sayNow(it.text); this.showCue(t(it.text), false); }
+      if (it.text) { this.sayNow(it.text, null, win / SPEED); this.showCue(t(it.text), false); }
     } else if (it.t === 'hold') {
       // Удержание продолжается с того места, где остановились (после паузы).
     }

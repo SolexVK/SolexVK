@@ -20,6 +20,8 @@ import { t, locale, lang, LANGS } from './i18n.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const fmtSpeed = (v) => `${Number(v).toFixed(2).replace('.', ',')}×`;
+const fmtPitch = (v) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0').replace('.', ',') + (v ? ` ${t('полутона')}` : ` (${t('как записано')})`);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const main = $('#main');
 const sheet = $('#sheet');
@@ -602,9 +604,13 @@ function openSettings() {
         <label class="switch"><input type="checkbox" id="set-voice" ${s.voice ? 'checked' : ''}><span>${t('Говорить вслух')}</span></label>
         <label class="switch"><input type="checkbox" id="set-count" ${s.countAloud ? 'checked' : ''}><span>${t('Считать повторы вслух')}</span></label>
         ${vs.length > 1 ? `<label for="set-voiceuri">${t('Голос')}</label><select id="set-voiceuri">${vs.map((v) => `<option value="${esc(v.voiceURI)}" ${v.voiceURI === s.voiceURI ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
-        <label for="set-rate">${t('Темп речи:')} <output id="set-rate-out">${s.rate}</output></label>
-        <input type="range" id="set-rate" min="0.7" max="1.2" step="0.05" value="${s.rate}">
-        <button type="button" class="btn ghost" id="set-test">${t('Проверить голос')}</button>
+        <label for="set-vspeed">${t('Скорость речи:')} <output id="set-vspeed-out">${fmtSpeed(voice.voiceSpeed())}</output></label>
+        <input type="range" id="set-vspeed" min="${voice.SPEED_RANGE[0]}" max="${voice.SPEED_RANGE[1]}" step="0.05" value="${voice.voiceSpeed()}">
+        <label for="set-vpitch">${t('Высота голоса:')} <output id="set-vpitch-out">${fmtPitch(voice.voicePitch())}</output></label>
+        <input type="range" id="set-vpitch" min="${voice.PITCH_RANGE[0]}" max="${voice.PITCH_RANGE[1]}" step="0.5" value="${voice.voicePitch()}">
+        <p class="note">${t('Настройка общая для всех фраз мастера. Темп упражнений и счёт от неё не меняются.')}</p>
+        <div class="row-btns"><button type="button" class="btn ghost" id="set-test">${t('Послушать')}</button>
+        <button type="button" class="btn ghost" id="set-vreset">${t('Как записано')}</button></div>
         ${voice.ttsSupported ? '' : `<p class="note">${t('Этот браузер не умеет говорить вслух.')}</p>`}
       </fieldset>
       <fieldset><legend>${t('Ваш сервер')}</legend>
@@ -646,11 +652,23 @@ function openSettings() {
   $('#set-music').addEventListener('change', (e) => { s.music = e.target.checked; save(); ambient.refresh(); });
   $('#set-mvol').addEventListener('input', (e) => { s.musicVolume = Number(e.target.value); $('#set-mvol-out').textContent = `${Math.round(s.musicVolume * 100)}%`; ambient.refresh(); });
   $('#set-mvol').addEventListener('change', () => save());
-  $('#set-rate').addEventListener('input', (e) => { $('#set-rate-out').textContent = e.target.value; });
+  const showVoiceFx = () => {
+    $('#set-vspeed-out').textContent = fmtSpeed(voice.voiceSpeed());
+    $('#set-vpitch-out').textContent = fmtPitch(voice.voicePitch());
+  };
+  $('#set-vspeed').addEventListener('input', (e) => { s.voiceSpeed = Number(e.target.value); showVoiceFx(); });
+  $('#set-vpitch').addEventListener('input', (e) => { s.voicePitch = Number(e.target.value); showVoiceFx(); });
+  $('#set-vspeed').addEventListener('change', () => save());
+  $('#set-vpitch').addEventListener('change', () => save());
+  $('#set-vreset').addEventListener('click', () => {
+    s.voiceSpeed = 1; s.voicePitch = 0;
+    $('#set-vspeed').value = 1; $('#set-vpitch').value = 0;
+    showVoiceFx(); save();
+  });
   $('#set-test').addEventListener('click', () => {
-    state.settings.rate = Number($('#set-rate').value);
+    voice.unlock();
     if ($('#set-voiceuri')) state.settings.voiceURI = $('#set-voiceuri').value;
-    voice.speak('Плечи опущены, дыхание спокойное. Макушка тянется вверх.', { interrupt: true, force: true });
+    voice.speak('Колени чуть согнуты. Макушка тянется вверх, подбородок слегка опущен, плечи расслаблены.', { interrupt: true, force: true });
   });
   $('#set-srv-test').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
@@ -700,7 +718,7 @@ function openSettings() {
       name: $('#set-name').value.trim(), startDate: $('#set-start').value || p.startDate,
       startWeight: num($('#set-weight').value), startWaist: num($('#set-waist').value), health: $('#set-health').value.trim(),
     });
-    Object.assign(s, { voice: $('#set-voice').checked, countAloud: $('#set-count').checked, rate: Number($('#set-rate').value) });
+    Object.assign(s, { voice: $('#set-voice').checked, countAloud: $('#set-count').checked, voiceSpeed: Number($('#set-vspeed').value), voicePitch: Number($('#set-vpitch').value) });
     if ($('#set-voiceuri')) s.voiceURI = $('#set-voiceuri').value;
     setApiKey($('#set-key').value);
     const srv = normUrl($('#set-srv').value);

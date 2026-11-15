@@ -949,5 +949,12 @@ export default {
 "Шесть. Назад.": "Six. Back.",
 "Шесть. Правая вниз.": "Six. Right heel down.",
 "Шесть. Правая рука, левая нога.": "Six. Right arm, left leg.",
-"Шесть. Правое колено.": "Six. Right knee."
+"Шесть. Правое колено.": "Six. Right knee.",
+"Скорость речи:": "Speech speed:",
+"Высота голоса:": "Voice pitch:",
+"Настройка общая для всех фраз мастера. Темп упражнений и счёт от неё не меняются.": "One setting for all of the master's phrases. The exercise pace and counting do not change.",
+"Послушать": "Listen",
+"Как записано": "As recorded",
+"как записано": "as recorded",
+"полутона": "semitones"
 };

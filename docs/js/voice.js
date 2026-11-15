@@ -2,6 +2,7 @@
 // Оба работают средствами самого телефона, без сторонних сервисов.
 import { state } from './store.js';
 import { speechLang } from './i18n.js';
+import { processBuffer } from './voicefx.js';
 
 const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
 const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
@@ -91,6 +92,35 @@ if (typeof window !== 'undefined') loadManifest();
 
 export const hasClip = (text) => !!(manifest?.clips && manifest.clips[clipKey(text)] != null);
 export const clipDuration = (text) => manifest?.clips?.[clipKey(text)] ?? null;
+// Сколько длится запись фразы в исходном виде, если она прозвучит записью (иначе 0).
+export const clipSeconds = (text) => (state.settings.voice && ctx && text ? clipDuration(normText(text)) || 0 : 0);
+
+// ---- подстройка звучания: скорость речи и высота голоса ----
+export const SPEED_RANGE = [0.85, 1.25];
+export const PITCH_RANGE = [-3, 3];
+const clampN = (v, [a, b]) => Math.min(b, Math.max(a, Number(v) || 0));
+export const voiceSpeed = () => clampN(state.settings.voiceSpeed ?? 1, SPEED_RANGE);
+export const voicePitch = () => clampN(state.settings.voicePitch ?? 0, PITCH_RANGE);
+const variants = new Map(); // ключ|скорость|высота -> AudioBuffer
+function variant(key, buf, speed, pitch) {
+  if (Math.abs(speed - 1) < 0.005 && Math.abs(pitch) < 0.01) return buf;
+  const id = `${key}|${speed.toFixed(2)}|${pitch}`;
+  let v = variants.get(id);
+  if (!v) {
+    if (variants.size > 300) variants.clear();
+    try { v = processBuffer(ctx, buf, speed, pitch); } catch { v = buf; }
+    variants.set(id, v);
+  }
+  return v;
+}
+// Скорость для фразы: если фраза звучит внутри такта упражнения (fit — длина такта в секундах),
+// замедленный голос ускоряется ровно настолько, чтобы уложиться в такт. Темп упражнения не меняется.
+function speedFor(text, fit) {
+  let sp = voiceSpeed();
+  const d = clipDuration(text);
+  if (fit && d && d / sp > fit) sp = Math.ceil((d / fit) * 100) / 100;
+  return sp;
+}
 
 function loadClip(key) {
   if (buffers.has(key)) return Promise.resolve(buffers.get(key));
@@ -120,6 +150,21 @@ export async function preload(texts, onProgress) {
     }
   };
   await Promise.all([worker(), worker(), worker(), worker()]);
+  warm(keys);
+}
+
+// Обработка фраз под настройку голоса — в фоне, по одной, не мешая занятию.
+// Если фраза понадобится раньше, она обработается в момент произнесения.
+let warmGen = 0;
+async function warm(keys) {
+  if (Math.abs(voiceSpeed() - 1) < 0.005 && Math.abs(voicePitch()) < 0.01) return;
+  const gen = ++warmGen;
+  for (const k of keys) {
+    await new Promise((r) => setTimeout(r, 15));
+    if (gen !== warmGen) return;
+    const b = buffers.get(k);
+    if (b) variant(k, b, voiceSpeed(), voicePitch());
+  }
 }
 
 // Первое произнесение на айфоне должно случиться прямо в обработчике касания.
@@ -150,7 +195,7 @@ export function unlock() {
   } catch { /* не критично */ }
 }
 
-export function speak(text, { interrupt = false, force = false } = {}) {
+export function speak(text, { interrupt = false, force = false, fit = 0 } = {}) {
   return new Promise((resolve) => {
     if ((!state.settings.voice && !force) || !text) return resolve(false);
     if (interrupt) cancel();
@@ -159,7 +204,7 @@ export function speak(text, { interrupt = false, force = false } = {}) {
     const parts = hasClip(whole) && ctx ? [whole] : split(whole);
     if (!parts.length) return resolve(false);
     if (!ctx && !ttsSupported) return resolve(false);
-    parts.forEach((t, i) => queue.push({ text: t, resolve: i === parts.length - 1 ? resolve : null }));
+    parts.forEach((t, i) => queue.push({ text: t, fit: parts.length === 1 ? fit : 0, resolve: i === parts.length - 1 ? resolve : null }));
     pump();
     return undefined;
   });
@@ -197,9 +242,10 @@ function run() {
 
   if (ctx && hasClip(item.text)) {
     const key = clipKey(item.text);
-    loadClip(key).then((buf) => {
+    loadClip(key).then((raw) => {
       if (done) return;
       if (ctx.state === 'suspended') ctx.resume();
+      const buf = variant(key, raw, speedFor(item.text, item.fit), voicePitch());
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(ctx.destination);
@@ -219,7 +265,8 @@ function speakSynth(item, finish, setStop, setWd) {
   u.lang = /[А-Яа-яЁё]/.test(item.text) ? 'ru-RU' : speechLang();
   const v = pickVoice(item.text);
   if (v) u.voice = v;
-  u.rate = state.settings.rate || 0.95;
+  u.rate = (state.settings.rate || 0.95) * voiceSpeed();
+  u.pitch = Math.min(2, Math.max(0, 2 ** (voicePitch() / 12)));
   u.onend = () => finish(true);
   u.onerror = () => finish(false);
   setStop(() => { try { synth.cancel(); } catch { /* noop */ } });
