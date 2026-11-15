@@ -29,18 +29,39 @@ function solveSide(P) {
   J.dT = dT;
   J.dH = dH;
   for (const s of ['N', 'F']) {
-    const a = P['arm' + s];
     const l = P['leg' + s];
-    J['el' + s] = add(J.sh, dirS(a[0]), LEN.upper);
-    J['wr' + s] = add(J['el' + s], dirS(a[1]), LEN.fore);
-    J['ha' + s] = add(J['wr' + s], dirS(a[2] ?? a[1]), LEN.hand);
     J['kn' + s] = add(J.hip, dirS(l[0]), LEN.thigh * (l[3] ?? 1));
     J['an' + s] = add(J['kn' + s], dirS(l[1]), LEN.shin);
     const dF = dirS(l[2] ?? 90);
     J['toe' + s] = add(J['an' + s], dF, LEN.foot);
     J['heel' + s] = add(J['an' + s], dF, -LEN.heel);
   }
+  for (const s of ['N', 'F']) {
+    const a = P['arm' + s];
+    const r = P['reach' + s];
+    if (r) {
+      // Рука по точке касания: ладонь ложится на нужное место, локоть встаёт сам.
+      const T = add(J[r.j], r.d);
+      J['el' + s] = elbowIK(J.sh, T, LEN.upper, LEN.fore, r.bend ?? 1);
+      J['wr' + s] = T;
+      J['ha' + s] = add(T, dirS(r.hand ?? 90), LEN.hand);
+    } else {
+      J['el' + s] = add(J.sh, dirS(a[0]), LEN.upper);
+      J['wr' + s] = add(J['el' + s], dirS(a[1]), LEN.fore);
+      J['ha' + s] = add(J['wr' + s], dirS(a[2] ?? a[1]), LEN.hand);
+    }
+  }
   return J;
+}
+
+// Двухзвенная рука: плечо S, кисть в точке T; bend выбирает, в какую сторону сгибается локоть.
+function elbowIK(S, T, a, b, bend) {
+  const v = [T[0] - S[0], T[1] - S[1]];
+  let d = Math.hypot(v[0], v[1]) || 1;
+  d = Math.min(a + b - 0.01, Math.max(Math.abs(a - b) + 0.01, d));
+  const A = Math.acos((a * a + d * d - b * b) / (2 * a * d));
+  const th = Math.atan2(v[1], v[0]) + bend * A;
+  return [S[0] + a * Math.cos(th), S[1] + a * Math.sin(th)];
 }
 
 function solveFront(P) {
@@ -81,7 +102,8 @@ function mix(A, B, k) {
   for (const key of Object.keys(A)) {
     const a = A[key];
     const b = B[key] ?? a;
-    out[key] = Array.isArray(a) ? a.map((v, i) => lerp(v, b[i] ?? v, k)) : typeof a === 'number' ? lerp(a, b, k) : a;
+    if (a && typeof a === 'object' && !Array.isArray(a) && a.d) out[key] = { ...a, d: a.d.map((v, i) => lerp(v, b.d?.[i] ?? v, k)), hand: a.hand != null ? lerp(a.hand, b.hand ?? a.hand, k) : undefined };
+    else out[key] = Array.isArray(a) ? a.map((v, i) => lerp(v, b[i] ?? v, k)) : typeof a === 'number' ? lerp(a, b, k) : a;
   }
   return out;
 }
@@ -319,59 +341,59 @@ const SOFT_F = { ...STAND_F, legR: [6, -3, 0.97, 1], legL: [6, -3, 0.97, 1] };
 const SUPINE = { torso: -90, head: -94, armN: [96, 92, 90], armF: [98, 94, 92] };
 
 const FIG = {
-  breath: { view: 'side', frames: [{ ...SOFT_S, armN: [10, 120, 150], armF: [14, 124, 152] }],
-    marks: (J) => dblArrow(add(J.hip, [48, -44]), [1, 0], 12) + label(t('вдох 4 · выдох 6'), add(J.headC, [0, -44]), 'middle') },
+  breath: { view: 'side', frames: [{ ...SOFT_S, reachN: { j: 'hip', d: [27, -36], hand: 20 }, reachF: { j: 'hip', d: [25, -60], hand: 20 } }],
+    marks: (J) => dblArrow(add(J.hip, [74, -40]), [1, 0], 12) + label(t('вдох 4 · выдох 6'), add(J.headC, [0, -44]), 'middle') },
   neck: { view: 'front', frames: [SOFT_F],
     marks: (J) => arcArrow(J.headC, 34, -150, -30, true, -1) + label('½', add(J.headC, [0, -62]), 'middle') },
   shoulders: { view: 'side', frames: [SOFT_S],
     marks: (J) => circleArrow(J.sh, 26) },
   wrists: { view: 'side', frames: [{ ...SOFT_S, armN: [8, 92, 92], armF: [10, 94, 94] }],
     marks: (J) => circleArrow(J.haN, 15) },
-  blades: { view: 'front', frames: [
-    { ...SOFT_F, armR: [92, 178, 180], armL: [92, 178, 180] },
-    { ...SOFT_F, armR: [-150, 178, 180, 0.62], armL: [-150, 178, 180, 0.62] }],
-    arrows: [{ j: 'elR', off: 0 }, { j: 'elL', off: 0 }], both: true },
+  blades: { view: 'side', frames: [
+    { ...SOFT_S, armN: [-98, 62, 70], armF: [-96, 60, 68] },
+    { ...SOFT_S, armN: [100, 178, 178], armF: [98, 176, 176] }],
+    marks: (J) => dblArrow(add(J.sh, [0, -46]), [1, 0], 52) + label(t('вдох'), add(J.sh, [-60, -58]), 'end') + label(t('выдох'), add(J.sh, [60, -58]), 'start') },
   pelvis: { view: 'front', frames: [{ ...SOFT_F, armR: [28, -40, -40], armL: [28, -40, -40] }],
     marks: (J) => ellipseArrow(add(J.hip, [0, 6]), 58, 16) },
   knees: { view: 'side', anchor: 'anN', frames: [
-    { ...SOFT_S, armN: [16, 22, 22], armF: [18, 24, 24] },
-    { ...SOFT_S, torso: 192, legN: [36, -18, 90], legF: [34, -17, 90], armN: [34, 34, 30], armF: [36, 36, 32] }],
+    { ...SOFT_S, reachN: { j: 'knN', d: [6, -34], hand: 20 }, reachF: { j: 'knF', d: [6, -34], hand: 20 } },
+    { ...SOFT_S, torso: 192, legN: [36, -18, 90], legF: [34, -17, 90], reachN: { j: 'knN', d: [6, -34], hand: 20 }, reachF: { j: 'knF', d: [6, -34], hand: 20 } }],
     arrows: [{ j: 'hip', off: -30 }], both: true },
   feet: { view: 'side', anchor: 'toeN', frames: [
-    { ...STAND_S, armN: [40, 70, 80] },
-    { ...STAND_S, legN: [3, -4, 52], legF: [-3, 2, 52], armN: [36, 64, 76] }],
+    { ...STAND_S, reachN: { j: 'toeN', d: [62, -176], hand: 90 } },
+    { ...STAND_S, legN: [3, -4, 52], legF: [-3, 2, 52], reachN: { j: 'toeN', d: [62, -176], hand: 90 } }],
     props: ['chairBack'], arrows: [{ j: 'heelN', off: -10 }], both: true },
   sky: { view: 'front', frames: [
     { ...SOFT_F, armR: [12, -62, -80], armL: [12, -62, -80] },
-    { ...SOFT_F, armR: [96, 150, 190], armL: [96, 150, 190] },
-    { ...SOFT_F, armR: [170, 192, 205], armL: [170, 192, 205] }],
-    marks: (J) => vArrow([J.hip[0] + 62, J.hip[1] - 40], [J.hip[0] + 62, J.headC[1] - 64]) + label(t('вдох'), [J.hip[0] + 72, J.sh[1] - 20], 'start')
-      + `<path class="fg-guide" d="M${f1(J.hip[0] - 50)} ${f1(J.headC[1] - 70)}Q${f1(J.hip[0] - 150)} ${f1(J.sh[1] - 10)} ${f1(J.hip[0] - 60)} ${f1(J.hip[1] - 10)}"/>`
-      + label(t('выдох'), [J.hip[0] - 104, J.hip[1] - 14], 'end') },
+    { ...SOFT_F, armR: [176, 210, 225], armL: [176, 210, 225] }],
+    marks: (J) => vArrow([J.hip[0], J.hip[1] - 70], [J.hip[0], J.headC[1] - 90]) + label(t('вдох'), [J.hip[0] + 10, J.headC[1] - 60], 'start')
+      + `<path class="fg-guide" d="M${f1(J.hip[0] - 34)} ${f1(J.headC[1] - 76)}Q${f1(J.hip[0] - 170)} ${f1(J.sh[1] - 10)} ${f1(J.hip[0] - 60)} ${f1(J.hip[1] - 4)}"/>`
+      + `<path class="fg-guide" d="M${f1(J.hip[0] + 34)} ${f1(J.headC[1] - 76)}Q${f1(J.hip[0] + 170)} ${f1(J.sh[1] - 10)} ${f1(J.hip[0] + 60)} ${f1(J.hip[1] - 4)}"/>`
+      + label(t('выдох'), [J.hip[0] - 120, J.hip[1] - 4], 'end') },
   qishi: { view: 'side', frames: [
     { ...SOFT_S },
     { ...SOFT_S, armN: [88, 92, 98], armF: [86, 90, 96] },
     { ...SOFT_S, torso: 186, legN: [28, -14, 90], legF: [26, -13, 90], armN: [40, 80, 70], armF: [38, 78, 68] }],
     arrows: [{ j: 'wrN', off: 16, from: 0, to: 1 }, { j: 'wrN', off: 16, from: 1, to: 2 }],
-    labels: [{ text: () => t('вдох'), j: 'sh', dx: 62, dy: -40 }, { text: () => t('выдох'), j: 'hip', dx: 92, dy: 0 }] },
+    labels: [{ text: () => t('выдох'), j: 'sh', dx: 64, dy: -44 }, { text: () => t('вдох'), j: 'hip', dx: 96, dy: 4 }] },
   shift: { view: 'front', frames: [
     { ...SOFT_F, shiftX: -16, legR: [-2, -1, 0.95, 1], legL: [14, -4, 1.02, 1], armR: [28, -40, -40], armL: [28, -40, -40], legsWide: true },
     { ...SOFT_F, shiftX: 16, legR: [14, -4, 1.02, 1], legL: [-2, -1, 0.95, 1], armR: [28, -40, -40], armL: [28, -40, -40] }],
     marks: (J) => dblArrow(add(J.hip, [16, 46]), [1, 0], 34) },
-  stolb: { view: 'side', frames: [{ ...SOFT_S, torso: 182, legN: [22, -12, 90], legF: [20, -11, 90], armN: [42, 108, 128], armF: [44, 110, 130] }],
+  stolb: { view: 'side', frames: [{ ...SOFT_S, torso: 182, legN: [22, -12, 90], legF: [20, -11, 90], reachN: { j: 'sh', d: [64, 34], hand: 120 }, reachF: { j: 'sh', d: [62, 30], hand: 120 } }],
     props: ['ball'], marks: (J) => upArrow(add(J.headC, [0, -32]), 30) },
   close: { view: 'front', frames: [{ ...SOFT_F, armR: [14, -58, -78], armL: [14, -58, -78] }],
     marks: (J) => ringMark(add(J.hip, [0, -14]), 12) },
   walk: { view: 'side', anchor: 'anF', frames: [{ ...STAND_S, torso: 182, legN: [24, 4, 70], legF: [-20, -30, 112], armN: [-22, -12, -10], armF: [24, 40, 40] }],
     marks: (J) => horArrow(add(J.headC, [22, -8]), 60) },
   chair: { view: 'side', anchor: 'anN', frames: [
-    { ...STAND_S, torso: 196, head: 188, legN: [88, 2, 90], legF: [86, 2, 90], armN: [22, 172, 150], armF: [24, 174, 152] },
-    { ...STAND_S, armN: [16, 170, 150], armF: [18, 172, 152] }],
+    { ...STAND_S, torso: 196, head: 188, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'sh', d: [26, 30], hand: 200 }, reachF: { j: 'sh', d: [22, 24], hand: 200 } },
+    { ...STAND_S, reachN: { j: 'sh', d: [26, 30], hand: 200 }, reachF: { j: 'sh', d: [22, 24], hand: 200 } }],
     props: ['chair'], arrows: [{ j: 'hip', off: 16 }],
     labels: [{ text: () => t('выдох'), j: 'sh', dx: 70, dy: -10 }] },
   wall: { view: 'side', anchor: 'anN', frames: [
-    { ...STAND_S, torso: 160, head: 160, armN: [100, 100, 170], armF: [98, 98, 168], legN: [-14, -14, 90], legF: [-15, -15, 90] },
-    { ...STAND_S, torso: 150, head: 150, armN: [140, 40, 170], armF: [138, 38, 168], legN: [-24, -24, 90], legF: [-25, -25, 90] }],
+    { ...STAND_S, torso: 165, head: 166, legN: [-15, -15, 90], legF: [-16, -16, 90], reachN: { j: 'anN', d: [192, -290], hand: 172 }, reachF: { j: 'anN', d: [190, -286], hand: 172 } },
+    { ...STAND_S, torso: 155, head: 158, legN: [-25, -25, 90], legF: [-26, -26, 90], reachN: { j: 'anN', d: [192, -290], hand: 172 }, reachF: { j: 'anN', d: [190, -286], hand: 172 } }],
     props: ['wall'], arrows: [{ j: 'sh', off: 26 }], both: true },
   bridge: { view: 'side', anchor: 'sh', groundPad: 4, frames: [
     { ...SUPINE, legN: [150, 30, 90], legF: [146, 28, 92] },
@@ -390,9 +412,9 @@ const FIG = {
     { ...STAND_S, legN: [118, 20, 100], legF: [86, 2, 90], armN: [-20, 30, 30], armF: [20, 60, 60] }],
     props: ['chair'], arrows: [{ j: 'knN', off: 14 }], both: true, free: true },
   tilt: { view: 'side', anchor: 'hip', frames: [
-    { ...STAND_S, legN: [88, 2, 90], legF: [86, 2, 90], armN: [40, 80, 80], armF: [42, 82, 82] },
-    { ...STAND_S, torso: 168, head: 176, legN: [88, 2, 90], legF: [86, 2, 90], armN: [40, 84, 84], armF: [42, 86, 86] }],
-    props: ['chair'], arrows: [{ j: 'sh', off: 18 }], both: true },
+    { ...STAND_S, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'knN', d: [-30, -14], hand: 92 }, reachF: { j: 'knF', d: [-30, -14], hand: 92 } },
+    { ...STAND_S, torso: 170, head: 178, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'knN', d: [-30, -14], hand: 92 }, reachF: { j: 'knF', d: [-30, -14], hand: 92 } }],
+    props: ['chair'], marks: (J) => arcAround(add(J.hip, [-2, -30]), 40, 120, 220) },
   unload: { view: 'side', anchor: 'sh', groundPad: 4, frames: [
     { ...SUPINE, legN: [180, 90, 140], legF: [178, 88, 140] }],
     props: ['mat', 'chairShins'],
@@ -426,6 +448,12 @@ function ellipseArrow(c, rx, ry) {
   const p0 = [c[0] - rx * 0.94, c[1] + ry * 0.34];
   const p1 = [c[0] - rx * 0.7, c[1] + ry * 0.72];
   return `<path class="fg-arrow" d="M${f1(p0[0])} ${f1(p0[1])}A${rx} ${ry} 0 1 1 ${f1(p1[0])} ${f1(p1[1])}" ${ARW}/>`;
+}
+function arcAround(c, r, a0, a1) {
+  const pt = (a) => [c[0] + r * Math.cos(rad(a)), c[1] + r * Math.sin(rad(a))];
+  const p0 = pt(a0);
+  const p1 = pt(a1);
+  return `<path class="fg-arrow" d="M${f1(p0[0])} ${f1(p0[1])}A${r} ${r} 0 0 1 ${f1(p1[0])} ${f1(p1[1])}" ${ARW} marker-start="url(#fg-ah)"/>`;
 }
 function ringMark(c, r) { return `<circle class="fg-guide" cx="${f1(c[0])}" cy="${f1(c[1])}" r="${r}"/><circle class="fg-guide" cx="${f1(c[0])}" cy="${f1(c[1])}" r="${r * 2}"/>`; }
 
