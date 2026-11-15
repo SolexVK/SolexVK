@@ -8,7 +8,7 @@ import { audioContext, onSpeaking } from './voice.js';
 const DIR = 'sounds/';
 const BASE = 0.8; // общий уровень при громкости 100 %
 // Баланс (единицы громкости LUFS при полной громкости): мелодия около −29,5 — чуть громче всего остального;
-// вода, ветер, птицы фоном около −35; колокольчики, чаша, гонг, блок и редкие птицы — около −34, на уровне воды.
+// вода, ветер, птицы фоном около −39; колокольчики, чаша, гонг, блок и редкие птицы — около −38, на уровне воды.
 const MUSIC = 0.5;
 const TRACKS = ['kalimba', 'xiao', 'dizi', 'healing', 'wisdom', 'temple', 'shakuhachi'];
 // Мелодии по времени суток: утром светлые флейты и калимба, днём спокойные, вечером храмовые.
@@ -28,14 +28,14 @@ const SHOTS = ['bowl', 'gong', 'chime1', 'chime2', 'chime3', 'windchime1', 'wind
 // Сцены: громкость слоёв природы и события.
 const SCENES = {
   off: { music: 0 },
-  home: { music: 1, fountain: 0.37, windchime: 1 / 150, bird: 1 / 120 },
-  talk: { music: 0.8, fountain: 0.22 },
-  breath: { music: 1, wind: 0.57, bird: 1 / 150 },
-  warmup: { music: 0.9, fountain: 0.3, wood: 0.3 },
-  qigong: { music: 1, wind: 0.4, fountain: 0.2, breathChime: true, bird: 1 / 150 },
-  hold: { music: 1, fountain: 0.26, drops: 0.24, minuteChime: true, bird: 1 / 180 },
-  strength: { music: 0.9, fountain: 0.26, wood: 0.33 },
-  rest: { music: 1, birds: 0.4, wind: 0.3, bird: 1 / 200 },
+  home: { music: 1, fountain: 0.23, windchime: 1 / 150, bird: 1 / 120 },
+  talk: { music: 0.8, fountain: 0.14 },
+  breath: { music: 1, wind: 0.36, bird: 1 / 150 },
+  warmup: { music: 0.9, fountain: 0.19, wood: 0.19 },
+  qigong: { music: 1, wind: 0.25, fountain: 0.13, breathChime: true, bird: 1 / 150 },
+  hold: { music: 1, fountain: 0.16, drops: 0.15, minuteChime: true, bird: 1 / 180 },
+  strength: { music: 0.9, fountain: 0.16, wood: 0.21 },
+  rest: { music: 1, birds: 0.25, wind: 0.19, bird: 1 / 200 },
 };
 
 let ctx = null;
@@ -153,14 +153,14 @@ function play(name, vel = 0.7, when = 0, pan = 0) {
 // ---- планировщик ----
 function tick() {
   if (!running || paused || document.hidden || !enabled()) return;
-  if (cfg.windchime && Math.random() < cfg.windchime) play(pick(['windchime1', 'windchime2']), 0.27);
+  if (cfg.windchime && Math.random() < cfg.windchime) play(pick(['windchime1', 'windchime2']), 0.17);
   // Птица где-то вдали: редко, тихо, с разных сторон и не поверх голоса мастера.
   if (cfg.bird && !speakingNow && now() - lastBird > BIRD_GAP && Math.random() < cfg.bird) {
     const b = pick(BIRDS);
-    if (ready(b)) { play(b, 0.14 + Math.random() * 0.06, 0, (Math.random() * 1.2 - 0.6)); lastBird = now(); } else load(b);
+    if (ready(b)) { play(b, 0.09 + Math.random() * 0.04, 0, (Math.random() * 1.2 - 0.6)); lastBird = now(); } else load(b);
   }
   if (cfg.minuteChime && holdStart && now() - holdStart >= 60 && now() - lastChime > 55) {
-    play(pick(['chime1', 'chime2', 'chime3']), 0.29);
+    play(pick(['chime1', 'chime2', 'chime3']), 0.18);
     lastChime = now();
     holdStart = now();
   }
@@ -234,16 +234,16 @@ export function refresh() {
 export function beat({ breath, rep = 0 } = {}) {
   if (!ctx || !running || paused || !enabled()) return;
   if (cfg.wood && rep) play(rep % 2 ? 'wood1' : 'wood2', cfg.wood);
-  if (breath === 'in' && rep === 1 && (scene === 'breath' || scene === 'rest')) play('bowl', 0.38);
-  if (cfg.breathChime && breath === 'in' && (rep === 1 || rep % 4 === 0)) play(pick(['chime1', 'chime2', 'chime3']), 0.27);
+  if (breath === 'in' && rep === 1 && (scene === 'breath' || scene === 'rest')) play('bowl', 0.24);
+  if (cfg.breathChime && breath === 'in' && (rep === 1 || rep % 4 === 0)) play(pick(['chime1', 'chime2', 'chime3']), 0.17);
 }
 
 export function chime(kind = 'bell') {
   if (!ctx || !running || !enabled()) return;
-  if (kind === 'end') { play('gong', 0.27); play('bowl', 0.38, 3); }
-  else if (kind === 'start') play('bowl', 0.4);
-  else if (kind === 'bowl') play('bowl', 0.38);
-  else play(pick(['chime1', 'chime2', 'chime3']), 0.29);
+  if (kind === 'end') { play('gong', 0.17); play('bowl', 0.24, 3); }
+  else if (kind === 'start') play('bowl', 0.25);
+  else if (kind === 'bowl') play('bowl', 0.24);
+  else play(pick(['chime1', 'chime2', 'chime3']), 0.18);
 }
 
 // Для проверки: доступ к выходу (запись пробных фрагментов).
