@@ -22,20 +22,21 @@ const LOOPS = {
   wind: [0.5, 60.5],
   birds: [0.5, 75.5],
   drops: [0.5, 18.5],
+  trickle: [0.5, 60.5], // тихое журчание по камням
 };
 const SHOTS = ['bowl', 'gong', 'chime1', 'chime2', 'chime3', 'windchime1', 'windchime2', 'wood1', 'wood2'];
 
 // Сцены: громкость слоёв природы и события.
 const SCENES = {
   off: { music: 0 },
-  home: { music: 1, fountain: 0.23, windchime: 1 / 150, bird: 1 / 120 },
+  home: { music: 1, fountain: 0.23, windchime: 1 / 150, bird: 1 / 120, shishi: true },
   talk: { music: 0.8, fountain: 0.14 },
   breath: { music: 1, wind: 0.36, bird: 1 / 150 },
   warmup: { music: 0.9, fountain: 0.19, wood: 0.19 },
-  qigong: { music: 1, wind: 0.25, fountain: 0.13, breathChime: true, bird: 1 / 150 },
-  hold: { music: 1, fountain: 0.16, drops: 0.15, minuteChime: true, bird: 1 / 180 },
+  qigong: { music: 1, wind: 0.18, trickle: 0.2, breathChime: true, bird: 1 / 150, shishi: true },
+  hold: { music: 1, trickle: 0.2, drops: 0.12, minuteChime: true, bird: 1 / 180, shishi: true },
   strength: { music: 0.9, fountain: 0.16, wood: 0.21 },
-  rest: { music: 1, birds: 0.25, wind: 0.19, bird: 1 / 200 },
+  rest: { music: 1, birds: 0.25, wind: 0.12, trickle: 0.14, bird: 1 / 200 },
 };
 
 let ctx = null;
@@ -54,6 +55,7 @@ let timer = 0;
 let holdStart = 0;
 let lastChime = 0;
 let lastBird = 0;
+let nextShishi = 20; // сисиодоси: бамбук наполняется и ударяет раз в 25–45 с
 let speakingNow = false;
 
 const now = () => ctx.currentTime;
@@ -154,6 +156,10 @@ function play(name, vel = 0.7, when = 0, pan = 0) {
 function tick() {
   if (!running || paused || document.hidden || !enabled()) return;
   if (cfg.windchime && Math.random() < cfg.windchime) play(pick(['windchime1', 'windchime2']), 0.17);
+  // Сисиодоси (запись из сада храма Сисэн-до, Киото): журчание, бамбук выливает воду и ударяет о камень.
+  if (cfg.shishi && !speakingNow && now() >= nextShishi) {
+    if (ready('shishi')) { play('shishi', 0.16, 0, Math.random() * 0.5 - 0.25); nextShishi = now() + 25 + Math.random() * 20; } else load('shishi');
+  }
   // Птица где-то вдали: редко, тихо, с разных сторон и не поверх голоса мастера.
   if (cfg.bird && !speakingNow && now() - lastBird > BIRD_GAP && Math.random() < cfg.bird) {
     const b = pick(BIRDS);

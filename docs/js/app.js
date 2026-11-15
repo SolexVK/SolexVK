@@ -607,7 +607,8 @@ function openSettings() {
         <details class="credits"><summary>${t('Авторы музыки и звуков')}</summary>
           <p class="note">«Ethereal Xiao Flute — Tranquil Chinese Melody», «Calming Dizi — Inspirational Chinese Flute», «Wisdom of the Ancient — Soothing Asian Flute», «Ancient Temple — Meditative Shakuhachi Flute» — MemoryMusic; «Ancient Temple» — Siarhei Korbut (Jamendo, CC BY-NC-ND 3.0).<br>
           «Healing», «Kalimba Relaxation Music» — Kevin MacLeod (incompetech.com), CC BY 4.0.<br>
-          ${t('Звуки природы и инструментов')} — BigSoundBank (bigsoundbank.com), CC0.</p>
+          ${t('Звуки природы и инструментов')} — BigSoundBank (bigsoundbank.com), CC0.<br>
+          ${t('Сисиодоси в саду храма Сисэн-до, Киото')} — Fg2, Wikimedia Commons, public domain.</p>
         </details>
       </fieldset>
       <fieldset><legend>${t('Голос наставника')}</legend>

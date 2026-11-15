@@ -1309,5 +1309,6 @@ export default {
 "Прогулка, восемнадцать минут.": "Walk, eighteen minutes.",
 "Прогулка, двадцать минут.": "Walk, twenty minutes.",
 "Прогулка, двадцать пять минут.": "Walk, twenty-five minutes.",
-"Прогулка, тридцать минут.": "Walk, thirty minutes."
+"Прогулка, тридцать минут.": "Walk, thirty minutes.",
+"Сисиодоси в саду храма Сисэн-до, Киото": "Shishi-odoshi in the garden of Shisen-dō temple, Kyoto"
 };
