@@ -680,3 +680,15 @@ body::after {
 .ex .btn.small { min-height: 34px; padding: 0 12px; margin-top: 8px; font-size: 14px; }
 .ex.open { grid-template-columns: 1fr; }
 .ex.open .ex-fig { height: 300px; cursor: zoom-out; }
+
+/* ---- живой манекен на экране занятия ---- */
+.s-fig {
+  position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 64px); width: min(80vw, 380px); height: 38vh;
+  transform: translateX(-50%); opacity: 0; transition: opacity 0.5s; pointer-events: none;
+  --ink: #e6f2ed; --seal: #f39a84; --surface: #0f1915; --accent-soft: #1d3b32; --line: #355047; --muted: #7f9b91;
+  --fig-fill: rgba(140, 235, 205, 0.14); --fig-far: rgba(140, 235, 205, 0.06);
+}
+.s-fig.on { opacity: 1; }
+.s-fig .fig { width: 100%; height: 100%; }
+#session.cam .s-fig { display: none; }
+#session.with-fig:not(.cam) .s-cue { margin-top: auto; margin-bottom: 6px; font-size: clamp(19px, 5.2vw, 28px); }

@@ -11,6 +11,8 @@ const GROUND = 400;
 const rad = (a) => (a * Math.PI) / 180;
 const add = (p, v, k = 1) => [p[0] + v[0] * k, p[1] + v[1] * k];
 const lerp = (a, b, k) => a + (b - a) * k;
+// Углы — по кратчайшей дуге: 196° и −150° почти рядом, рука не должна проворачиваться через низ.
+const lerpA = (a, b, k) => a + ((((b - a) % 360) + 540) % 360 - 180) * k;
 const f1 = (n) => Math.round(n * 10) / 10;
 // Вид сбоку: 0 — вниз, 90 — вперёд (вправо), 180 — вверх, -90 — назад.
 const dirS = (a) => [Math.sin(rad(a)), Math.cos(rad(a))];
@@ -46,8 +48,8 @@ function solveSide(P) {
       J['wr' + s] = T;
       J['ha' + s] = add(T, dirS(r.hand ?? 90), LEN.hand);
     } else {
-      J['el' + s] = add(J.sh, dirS(a[0]), LEN.upper);
-      J['wr' + s] = add(J['el' + s], dirS(a[1]), LEN.fore);
+      J['el' + s] = add(J.sh, dirS(a[0]), LEN.upper * (a[3] ?? 1));
+      J['wr' + s] = add(J['el' + s], dirS(a[1]), LEN.fore * (a[4] ?? 1));
       J['ha' + s] = add(J['wr' + s], dirS(a[2] ?? a[1]), LEN.hand);
     }
   }
@@ -116,7 +118,7 @@ function mix(A, B, k) {
     const a = A[key];
     const b = B[key] ?? a;
     if (a && typeof a === 'object' && !Array.isArray(a) && a.d) out[key] = { ...a, d: a.d.map((v, i) => lerp(v, b.d?.[i] ?? v, k)), hand: a.hand != null ? lerp(a.hand, b.hand ?? a.hand, k) : undefined };
-    else out[key] = Array.isArray(a) ? a.map((v, i) => lerp(v, b[i] ?? v, k)) : typeof a === 'number' ? lerp(a, b, k) : a;
+    else out[key] = Array.isArray(a) ? a.map((v, i) => lerpA(v, b[i] ?? v, k)) : typeof a === 'number' ? (key === 'shiftX' ? lerp(a, b, k) : lerpA(a, b, k)) : a;
   }
   return out;
 }
@@ -368,9 +370,10 @@ const FIG = {
     marks: (J) => circleArrow(J.sh, 26) },
   wrists: { view: 'side', frames: [{ ...SOFT_S, armN: [8, 92, 92], armF: [10, 94, 94] }],
     marks: (J) => circleArrow(J.haN, 15) },
-  blades: { view: 'side', frames: [
+  blades: { view: 'side', ghosts: [1], seq: [[2, 1], [2, 0]], frames: [
     { ...SOFT_S, armN: [-98, 62, 70], armF: [-96, 60, 68] },
-    { ...SOFT_S, armN: [100, 178, 178], armF: [98, 176, 176] }],
+    { ...SOFT_S, armN: [100, 178, 178], armF: [98, 176, 176] },
+    { ...SOFT_S, armN: [0, 80, 90, 0.12, 0.8], armF: [0, 80, 90, 0.12, 0.8] }],
     marks: (J) => dblArrow(add(J.sh, [0, -46]), [1, 0], 52) + label(t('вдох'), add(J.sh, [-60, -58]), 'end') + label(t('выдох'), add(J.sh, [60, -58]), 'start') },
   pelvis: { view: 'front', frames: [{ ...SOFT_F, armR: [28, -40, -40], armL: [28, -40, -40] }],
     marks: (J) => ellipseArrow(add(J.hip, [0, 6]), 58, 16) },
@@ -382,9 +385,12 @@ const FIG = {
     { ...STAND_S, reachN: { j: 'toeN', d: [62, -176], hand: 90 } },
     { ...STAND_S, legN: [3, -4, 52], legF: [-3, 2, 52], reachN: { j: 'toeN', d: [62, -176], hand: 90 } }],
     props: ['chairBack'], arrows: [{ j: 'heelN', off: -10 }], both: true },
-  sky: { view: 'front', frames: [
+  sky: { view: 'front', ghosts: [2], seq: [[1, 4, 2], [3, 0]], frames: [
     { ...SOFT_F, armR: [12, -62, -80], armL: [12, -62, -80] },
-    { ...SOFT_F, armR: [176, 210, 225], armL: [176, 210, 225] }],
+    { ...SOFT_F, armR: [20, -150, -170, 1, 0.9], armL: [20, -150, -170, 1, 0.9] },
+    { ...SOFT_F, armR: [176, 210, 225], armL: [176, 210, 225] },
+    { ...SOFT_F, armR: [92, 92, 95], armL: [92, 92, 95] },
+    { ...SOFT_F, armR: [60, 196, 210, 0.35, 1], armL: [60, 196, 210, 0.35, 1] }],
     marks: (J) => vArrow([J.hip[0], J.hip[1] - 70], [J.hip[0], J.headC[1] - 90]) + label(t('вдох'), [J.hip[0] + 10, J.headC[1] - 60], 'start')
       + `<path class="fg-guide" d="M${f1(J.hip[0] - 34)} ${f1(J.headC[1] - 76)}Q${f1(J.hip[0] - 170)} ${f1(J.sh[1] - 10)} ${f1(J.hip[0] - 60)} ${f1(J.hip[1] - 4)}"/>`
       + `<path class="fg-guide" d="M${f1(J.hip[0] + 34)} ${f1(J.headC[1] - 76)}Q${f1(J.hip[0] + 170)} ${f1(J.sh[1] - 10)} ${f1(J.hip[0] + 60)} ${f1(J.hip[1] - 4)}"/>`
@@ -449,11 +455,11 @@ const SEAT_S = { ...STAND_S, legN: [88, 2, 90], legF: [86, 2, 90] };
 Object.assign(FIG, {
   bow: { view: 'front', frames: [
     { ...HORSE_F, reachR: { j: 'sh', d: [16, 36], hand: 180 }, reachL: { j: 'sh', d: [-14, 32], hand: 180 } },
-    { ...HORSE_F, reachR: { j: 'sh', d: [-30, 16], hand: 180, bend: -1 }, reachL: { j: 'sh', d: [150, 8], hand: 180 } }],
+    { ...HORSE_F, reachR: { j: 'sh', d: [-30, 16], hand: 180 }, reachL: { j: 'sh', d: [150, 8], hand: 180 } }],
     arrows: [{ j: 'wrL', off: 16 }], labels: [{ text: () => t('вдох'), j: 'shjL', dx: 40, dy: -40 }] },
   one_arm: { view: 'front', frames: [
     { ...SOFT_F, reachR: { j: 'hip', d: [-12, -30], hand: 90 }, reachL: { j: 'hip', d: [12, -30], hand: -90 } },
-    { ...SOFT_F, reachR: { j: 'hip', d: [-58, 26], hand: -90, bend: -1 }, reachL: { j: 'hip', d: [44, -238], hand: -90 } }],
+    { ...SOFT_F, reachR: { j: 'hip', d: [-58, 26], hand: -90 }, reachL: { j: 'hip', d: [44, -238], hand: -90 } }],
     arrows: [{ j: 'haL', off: 18 }, { j: 'haR', off: 14 }] },
   look_back: (o) => ({ view: 'front', frames: [{ ...SOFT_F, armR: [12, 8, 8], armL: [12, 8, 8] }],
     marks: (J) => arcArrow(J.headC, 34, -150, -30, true, -1) + (o.gentleNeck ? label('½', add(J.headC, [0, -62]), 'middle') : '') }),
@@ -565,6 +571,45 @@ function arcAround(c, r, a0, a1) {
 function ringMark(c, r) { return `<circle class="fg-guide" cx="${f1(c[0])}" cy="${f1(c[1])}" r="${r}"/><circle class="fg-guide" cx="${f1(c[0])}" cy="${f1(c[1])}" r="${r * 2}"/>`; }
 
 export const hasFigure = (id) => !!FIG[id];
+const defOf = (id, opts = {}) => (typeof FIG[id] === 'function' ? FIG[id](opts) : FIG[id]);
+export const frameCount = (id, opts) => defOf(id, opts)?.frames.length || 0;
+
+// Кадр анимации: поза в точке g цепочки кадров (0 — начало, 1 — второй кадр…). Рамка общая для всех поз,
+// поэтому фигура не «прыгает». Без стрелок и теней — только тело и реквизит.
+const layoutCache = new Map();
+function layout(id, opts) {
+  const key = `${id}|${opts.gentleNeck ? 1 : 0}${opts.noHeadDown ? 1 : 0}`;
+  if (layoutCache.has(key)) return layoutCache.get(key);
+  const def = defOf(id, opts);
+  const frames = [];
+  for (const P of def.frames) frames.push({ P, J: place(def, P, frames[0]?.J) });
+  let box = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const f of frames) for (const p of extentPts(f.J, def.view)) box = [Math.min(box[0], p[0]), Math.min(box[1], p[1]), Math.max(box[2], p[0]), Math.max(box[3], p[1])];
+  const pad = 30;
+  const extra = def.props?.includes('wall') || def.props?.includes('chairBack') ? 70 : def.props?.includes('table') ? 60 : 0;
+  const vb = [box[0] - pad, box[1] - pad, box[2] - box[0] + 2 * pad + extra, GROUND + 12 - (box[1] - pad)];
+  const props = ['floor', ...(def.props || [])].map((p) => PROPS[p](frames[0].J, box, frames, def)).join('');
+  const out = { def, frames, vb, props };
+  layoutCache.set(key, out);
+  return out;
+}
+
+// a, b — номера кадров, k — доля пути от a к b.
+export function figureAt(id, opts = {}, a = 0, b = a, k = 0) {
+  if (!FIG[id]) return '';
+  const { def, frames, vb, props } = layout(id, opts);
+  const n = frames.length;
+  a = Math.max(0, Math.min(n - 1, a));
+  b = Math.max(0, Math.min(n - 1, b));
+  const P = a === b ? frames[a].P : mix(frames[a].P, frames[b].P, k);
+  const J = a === b ? frames[a].J : place(def, P, frames[0].J);
+  const body = def.view === 'front' ? drawFront(J, P) : drawSide(J, P);
+  const nearOnTop = def.farFront === false && def.view === 'side' ? armS(J, 'N', false) : '';
+  return `<svg class="fig" viewBox="${vb.map(f1).join(' ')}" aria-hidden="true">${props}<g class="fg-body">${body}${nearOnTop}</g></svg>`;
+}
+// Особый порядок кадров для движения (например, руки вверх перед телом, а вниз — через стороны).
+export const frameSeq = (id, opts) => defOf(id, opts)?.seq || null;
+
 export const figureIds = () => Object.keys(FIG);
 
 // Рисунок упражнения. opts.frame — показать конкретную позу (для анимации), opts.bare — без стрелок.
@@ -580,7 +625,7 @@ export function figureSvg(id, opts = {}) {
   const body = [];
   const draw = (J, P) => (def.view === 'front' ? drawFront(J, P) : drawSide(J, P));
   // Конечные позы — бледной тенью позади.
-  if (!opts.bare) for (let i = frames.length - 1; i >= 1; i--) body.push(`<g class="fg-ghost">${draw(frames[i].J, frames[i].P)}</g>`);
+  if (!opts.bare) for (let i = frames.length - 1; i >= 1; i--) if (!def.ghosts || def.ghosts.includes(i)) body.push(`<g class="fg-ghost">${draw(frames[i].J, frames[i].P)}</g>`);
   body.push(`<g class="fg-body">${draw(J0, frames[0].P)}</g>`);
   if (def.farFront === false && def.view === 'side') body.push(`<g class="fg-body">${armS(J0, 'N', false)}</g>`);
   // Рамка: все позы, все точки.

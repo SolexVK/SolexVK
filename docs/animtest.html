@@ -1,0 +1,17 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><link rel="stylesheet" href="css/app.css">
+<style>body{padding:8px;background:#0f1915}.r{display:flex;align-items:center;gap:4px;margin-bottom:6px}.r b{width:110px;color:#e6f2ed;font:600 12px sans-serif}.c{width:150px;height:150px;--ink:#e6f2ed;--seal:#f39a84;--surface:#0f1915;--accent-soft:#1d3b32;--line:#355047;--muted:#7f9b91;--fig-fill:rgba(140,235,205,.14);--fig-far:rgba(140,235,205,.06)}</style></head>
+<body><div id="g"></div>
+<script type="module">
+import { figureAt, figureIds, frameCount, frameSeq } from './js/figures.js';
+const only = new URLSearchParams(location.search).get('only');
+const ids = (only ? only.split(',') : figureIds()).filter((id) => frameCount(id, {}) > 1);
+let h = '';
+for (const id of ids) {
+  const n = frameCount(id, {}); const seq = frameSeq(id, {});
+  const path = seq ? [0, ...seq.flat()] : n === 2 ? [0, 1, 0] : [0, 1, 2, 0];
+  const cells = [];
+  for (let i = 0; i < path.length - 1; i++) for (const k of [0, 0.33, 0.66]) cells.push(figureAt(id, {}, path[i], path[i + 1], k));
+  h += `<div class="r"><b>${id}</b>${cells.map((c) => `<div class="c">${c}</div>`).join('')}</div>`;
+}
+document.getElementById('g').innerHTML = h;
+</script></body></html>

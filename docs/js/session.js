@@ -8,6 +8,7 @@ import * as ambient from './ambient.js';
 import * as pose from './pose.js';
 import { askMaster, hasKey } from './master.js';
 import { t } from './i18n.js';
+import { FigurePlayer, beatTarget } from './figplayer.js';
 
 const params = new URLSearchParams(location.search);
 const SPEED = Math.max(1, Number(params.get('speed')) || 1);
@@ -51,6 +52,7 @@ export class SessionRunner {
         <video class="s-video" playsinline muted></video>
         <canvas class="s-canvas"></canvas>
         <div class="s-ink" aria-hidden="true"></div>
+        <div class="s-fig" aria-hidden="true"></div>
       </div>
       <div class="s-top">
         <button class="s-icon" data-act="exit" aria-label="${t('Закончить занятие')}">✕</button>
@@ -80,6 +82,8 @@ export class SessionRunner {
     this.video = q('.s-video');
     this.canvas = q('.s-canvas');
     this.ink = q('.s-ink');
+    const w = typeof this.o.week === 'object' && this.o.week ? this.o.week : {};
+    this.fig = new FigurePlayer(q('.s-fig'), { gentleNeck: w.gentleNeck, noHeadDown: w.noHeadDown });
     this.el = {
       bar: q('.s-progress i'), count: q('.s-count'), cam: q('[data-act="cam"]'), cue: q('.s-cue'),
       group: q('.s-group'), title: q('.s-title'), text: q('.s-text'), num: q('.s-num'), unit: q('.s-unit'),
@@ -162,6 +166,9 @@ export class SessionRunner {
     const s = this.cur;
     this.coach = s.pose && POSES[s.pose] ? new Coach(s.pose) : null;
     this.st = { j: 0, token: 0, rep: 0, maxRep: 0, breath: null, holdT: 0, firedCues: new Set(), pendingCue: null, speaking: false };
+    this.fig.setStep(String(s.id).replace(/\d+$/, ''));
+    this.root.classList.toggle('with-fig', !!this.fig.id);
+    this.figSt = {};
     this.el.group.textContent = t(s.group || SESSION_META[this.plan.kind].title);
     this.el.title.textContent = t(s.title);
     this.el.text.textContent = t(s.text || '');
@@ -206,6 +213,8 @@ export class SessionRunner {
       this.sayNow(it.text, () => this.nextItem());
     } else if (it.t === 'beat') {
       ambient.beat({ breath: it.breath, dur: it.dur / SPEED, rep: it.rep });
+      const tg = beatTarget(this.fig, it, this.figSt);
+      if (tg != null) this.fig.moveTo(tg, Math.min(6, it.dur / SPEED) * 0.9);
       // Длина такта считается по исходной записи фразы, а не по подстроенному голосу:
       // быстрее или медленнее говорит мастер — счёт идёт в том же темпе.
       const win = Math.max(it.dur, voice.clipSeconds(it.text) * SPEED);
@@ -348,6 +357,7 @@ export class SessionRunner {
   pause() {
     this.paused = true;
     ambient.setPaused(true);
+    this.fig?.pause(true);
     voice.cancel();
     if (this.st) { this.st.token++; this.st.speaking = false; }
     this.el.pause.textContent = t('Продолжить');
@@ -357,6 +367,7 @@ export class SessionRunner {
   resume() {
     this.paused = false;
     ambient.setPaused(false);
+    this.fig?.pause(false);
     this.lastTick = performance.now();
     this.el.pause.textContent = t('Пауза');
     this.root.classList.remove('paused');
@@ -512,6 +523,7 @@ export class SessionRunner {
   stopEngines() {
     clearInterval(this.timer);
     this.ended = true;
+    this.fig?.stop();
     pose.stopCamera();
     try { this.wake?.release(); } catch { /* noop */ }
   }
