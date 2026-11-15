@@ -77,17 +77,30 @@ function solveFront(P) {
   const side = { R: -1, L: 1 };
   for (const s of ['R', 'L']) {
     const k = side[s];
-    const shJ = add(J.sh, [k * 37, 4]);
-    const hipJ = add(J.hip, [k * 17, 0]);
+    const nr = [-dT[1], dT[0]]; // поперёк туловища, вправо на экране
+    const shJ = add(add(J.sh, nr, k * 37), dT, -4);
+    const hipJ = add(J.hip, nr, k * 17);
     J['shj' + s] = shJ;
     J['hipj' + s] = hipJ;
-    const a = P['arm' + s];
-    J['el' + s] = add(shJ, dirF(a[0], k), LEN.upper * (a[3] ?? 1));
-    J['wr' + s] = add(J['el' + s], dirF(a[1], k), LEN.fore * (a[4] ?? 1));
-    J['ha' + s] = add(J['wr' + s], dirF(a[2] ?? a[1], k), LEN.hand);
     const l = P['leg' + s];
     J['kn' + s] = add(hipJ, dirF(l[0], k), LEN.thigh * (l[2] ?? 1));
     J['an' + s] = add(J['kn' + s], dirF(l[1], k), LEN.shin * (l[3] ?? 1));
+  }
+  for (const s of ['R', 'L']) {
+    const k = side[s];
+    const shJ = J['shj' + s];
+    const a = P['arm' + s];
+    const r = P['reach' + s];
+    if (r) {
+      const T = add(J[r.j], r.d);
+      J['el' + s] = elbowIK(shJ, T, LEN.upper * (r.fs ?? 1), LEN.fore * (r.fs ?? 1), (r.bend ?? 1) * -k);
+      J['wr' + s] = T;
+      J['ha' + s] = add(T, dirS(r.hand ?? 0), LEN.hand);
+    } else {
+      J['el' + s] = add(shJ, dirF(a[0], k), LEN.upper * (a[3] ?? 1));
+      J['wr' + s] = add(J['el' + s], dirF(a[1], k), LEN.fore * (a[4] ?? 1));
+      J['ha' + s] = add(J['wr' + s], dirF(a[2] ?? a[1], k), LEN.hand);
+    }
   }
   return J;
 }
@@ -249,7 +262,8 @@ const lowest = (J, view, pad = 0) => {
 // ---- реквизит ----
 const PROPS = {
   floor: (J0, box) => `<path class="fg-floor" d="M${f1(box[0] - 10)} ${GROUND + 1}H${f1(box[2] + 10)}"/>`,
-  chair: (J0) => { // стул сбоку под тазом
+  chair: (J0, box, F, def) => { // стул сбоку под тазом
+    if (def?.chairFrame) J0 = F[def.chairFrame].J;
     const top = J0.hip[1] + 16;
     const x0 = J0.hip[0] - 34;
     const x1 = J0.hip[0] + 46;
@@ -274,6 +288,11 @@ const PROPS = {
     const wx = (J0.wrN[0] + J0.sh[0]) / 2 + 6;
     const wy = (J0.wrN[1] + J0.elN[1]) / 2 + 6;
     return `<ellipse class="fg-guide" cx="${f1(wx)}" cy="${f1(wy)}" rx="34" ry="44"/>`;
+  },
+  table: (J0) => { // край стола под ладонями
+    const x0 = J0.wrN[0] - 18;
+    const top = J0.wrN[1] + 9;
+    return `<g class="fg-prop"><path d="M${f1(x0)} ${f1(top)}H${f1(x0 + 110)}M${f1(x0 + 8)} ${f1(top)}V${GROUND}M${f1(x0 + 100)} ${f1(top)}V${GROUND}"/></g>`;
   },
   mat: (J0, box) => `<rect class="fg-mat" x="${f1(box[0] + 6)}" y="${GROUND - 1}" width="${f1(box[2] - box[0] - 12)}" height="7" rx="3.5"/>`,
 };
@@ -335,7 +354,7 @@ function place(def, P, J0) {
 // Вид сбоку: torso, head; armN/armF = [плечо, предплечье, кисть]; legN/legF = [бедро, голень, стопа, укорочение бедра].
 // Вид спереди: armR/armL = [плечо, предплечье, кисть, укор. плеча, укор. предплечья]; legR/legL = [бедро, голень, укор. бедра, укор. голени].
 const STAND_S = { torso: 180, head: 180, armN: [2, 0, 0], armF: [-2, 0, 0], legN: [3, -4, 90], legF: [-3, 2, 90] };
-const SOFT_S = { ...STAND_S, torso: 182, legN: [12, -10, 90], legF: [10, -9, 90] };
+const SOFT_S = { ...STAND_S, torso: 179, legN: [12, -10, 90], legF: [10, -9, 90] };
 const STAND_F = { torso: 180, head: 180, armR: [8, 4, 2], armL: [8, 4, 2], legR: [4, -1, 1, 1], legL: [4, -1, 1, 1] };
 const SOFT_F = { ...STAND_F, legR: [6, -3, 0.97, 1], legL: [6, -3, 0.97, 1] };
 const SUPINE = { torso: -90, head: -94, armN: [96, 92, 90], armF: [98, 94, 92] };
@@ -357,7 +376,7 @@ const FIG = {
     marks: (J) => ellipseArrow(add(J.hip, [0, 6]), 58, 16) },
   knees: { view: 'side', anchor: 'anN', frames: [
     { ...SOFT_S, reachN: { j: 'knN', d: [6, -34], hand: 20 }, reachF: { j: 'knF', d: [6, -34], hand: 20 } },
-    { ...SOFT_S, torso: 192, legN: [36, -18, 90], legF: [34, -17, 90], reachN: { j: 'knN', d: [6, -34], hand: 20 }, reachF: { j: 'knF', d: [6, -34], hand: 20 } }],
+    { ...SOFT_S, torso: 166, legN: [36, -18, 90], legF: [34, -17, 90], reachN: { j: 'knN', d: [6, -34], hand: 20 }, reachF: { j: 'knF', d: [6, -34], hand: 20 } }],
     arrows: [{ j: 'hip', off: -30 }], both: true },
   feet: { view: 'side', anchor: 'toeN', frames: [
     { ...STAND_S, reachN: { j: 'toeN', d: [62, -176], hand: 90 } },
@@ -373,21 +392,21 @@ const FIG = {
   qishi: { view: 'side', frames: [
     { ...SOFT_S },
     { ...SOFT_S, armN: [88, 92, 98], armF: [86, 90, 96] },
-    { ...SOFT_S, torso: 186, legN: [28, -14, 90], legF: [26, -13, 90], armN: [40, 80, 70], armF: [38, 78, 68] }],
+    { ...SOFT_S, torso: 176, legN: [28, -14, 90], legF: [26, -13, 90], armN: [40, 80, 70], armF: [38, 78, 68] }],
     arrows: [{ j: 'wrN', off: 16, from: 0, to: 1 }, { j: 'wrN', off: 16, from: 1, to: 2 }],
     labels: [{ text: () => t('выдох'), j: 'sh', dx: 64, dy: -44 }, { text: () => t('вдох'), j: 'hip', dx: 96, dy: 4 }] },
   shift: { view: 'front', frames: [
     { ...SOFT_F, shiftX: -16, legR: [-2, -1, 0.95, 1], legL: [14, -4, 1.02, 1], armR: [28, -40, -40], armL: [28, -40, -40], legsWide: true },
     { ...SOFT_F, shiftX: 16, legR: [14, -4, 1.02, 1], legL: [-2, -1, 0.95, 1], armR: [28, -40, -40], armL: [28, -40, -40] }],
     marks: (J) => dblArrow(add(J.hip, [16, 46]), [1, 0], 34) },
-  stolb: { view: 'side', frames: [{ ...SOFT_S, torso: 182, legN: [22, -12, 90], legF: [20, -11, 90], reachN: { j: 'sh', d: [64, 34], hand: 120 }, reachF: { j: 'sh', d: [62, 30], hand: 120 } }],
+  stolb: { view: 'side', frames: [{ ...SOFT_S, torso: 178, legN: [22, -12, 90], legF: [20, -11, 90], reachN: { j: 'sh', d: [64, 34], hand: 120 }, reachF: { j: 'sh', d: [62, 30], hand: 120 } }],
     props: ['ball'], marks: (J) => upArrow(add(J.headC, [0, -32]), 30) },
   close: { view: 'front', frames: [{ ...SOFT_F, armR: [14, -58, -78], armL: [14, -58, -78] }],
     marks: (J) => ringMark(add(J.hip, [0, -14]), 12) },
-  walk: { view: 'side', anchor: 'anF', frames: [{ ...STAND_S, torso: 182, legN: [24, 4, 70], legF: [-20, -30, 112], armN: [-22, -12, -10], armF: [24, 40, 40] }],
+  walk: { view: 'side', anchor: 'anF', frames: [{ ...STAND_S, torso: 177, legN: [24, 4, 70], legF: [-20, -30, 112], armN: [-22, -12, -10], armF: [24, 40, 40] }],
     marks: (J) => horArrow(add(J.headC, [22, -8]), 60) },
   chair: { view: 'side', anchor: 'anN', frames: [
-    { ...STAND_S, torso: 196, head: 188, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'sh', d: [26, 30], hand: 200 }, reachF: { j: 'sh', d: [22, 24], hand: 200 } },
+    { ...STAND_S, torso: 160, head: 166, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'sh', d: [26, 30], hand: 200 }, reachF: { j: 'sh', d: [22, 24], hand: 200 } },
     { ...STAND_S, reachN: { j: 'sh', d: [26, 30], hand: 200 }, reachF: { j: 'sh', d: [22, 24], hand: 200 } }],
     props: ['chair'], arrows: [{ j: 'hip', off: 16 }],
     labels: [{ text: () => t('выдох'), j: 'sh', dx: 70, dy: -10 }] },
@@ -413,7 +432,7 @@ const FIG = {
     props: ['chair'], arrows: [{ j: 'knN', off: 14 }], both: true, free: true },
   tilt: { view: 'side', anchor: 'hip', frames: [
     { ...STAND_S, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'knN', d: [-30, -14], hand: 92 }, reachF: { j: 'knF', d: [-30, -14], hand: 92 } },
-    { ...STAND_S, torso: 170, head: 178, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'knN', d: [-30, -14], hand: 92 }, reachF: { j: 'knF', d: [-30, -14], hand: 92 } }],
+    { ...STAND_S, torso: 190, head: 184, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'knN', d: [-30, -14], hand: 92 }, reachF: { j: 'knF', d: [-30, -14], hand: 92 } }],
     props: ['chair'], marks: (J) => arcAround(add(J.hip, [-2, -30]), 40, 120, 220) },
   unload: { view: 'side', anchor: 'sh', groundPad: 4, frames: [
     { ...SUPINE, legN: [180, 90, 140], legF: [178, 88, 140] }],
@@ -421,6 +440,94 @@ const FIG = {
     marks: (J) => label(t('вдох 4 · выдох 6'), add(J.hip, [0, -150]), 'middle') },
 };
 FIG.close.marks = FIG.close.marks;
+
+
+// ---- уровни 3–4 ----
+const HORSE_F = { ...STAND_F, legR: [24, 0, 0.84, 1], legL: [24, 0, 0.84, 1] };
+const HANDS_THIGH_F = { reachR: { j: 'knR', d: [2, -30], hand: 0 }, reachL: { j: 'knL', d: [-2, -30], hand: 0 } };
+const SEAT_S = { ...STAND_S, legN: [88, 2, 90], legF: [86, 2, 90] };
+Object.assign(FIG, {
+  bow: { view: 'front', frames: [
+    { ...HORSE_F, reachR: { j: 'sh', d: [16, 36], hand: 180 }, reachL: { j: 'sh', d: [-14, 32], hand: 180 } },
+    { ...HORSE_F, reachR: { j: 'sh', d: [-30, 16], hand: 180, bend: -1 }, reachL: { j: 'sh', d: [150, 8], hand: 180 } }],
+    arrows: [{ j: 'wrL', off: 16 }], labels: [{ text: () => t('вдох'), j: 'shjL', dx: 40, dy: -40 }] },
+  one_arm: { view: 'front', frames: [
+    { ...SOFT_F, reachR: { j: 'hip', d: [-12, -30], hand: 90 }, reachL: { j: 'hip', d: [12, -30], hand: -90 } },
+    { ...SOFT_F, reachR: { j: 'hip', d: [-58, 26], hand: -90, bend: -1 }, reachL: { j: 'hip', d: [44, -238], hand: -90 } }],
+    arrows: [{ j: 'haL', off: 18 }, { j: 'haR', off: 14 }] },
+  look_back: (o) => ({ view: 'front', frames: [{ ...SOFT_F, armR: [12, 8, 8], armL: [12, 8, 8] }],
+    marks: (J) => arcArrow(J.headC, 34, -150, -30, true, -1) + (o.gentleNeck ? label('½', add(J.headC, [0, -62]), 'middle') : '') }),
+  sway: { view: 'front', frames: [
+    { ...HORSE_F, ...HANDS_THIGH_F },
+    { ...HORSE_F, ...HANDS_THIGH_F, torso: 166, head: 168, shiftX: -14 }],
+    arrows: [{ j: 'headC', off: 26 }], both: true },
+  toes: (o) => ({ view: 'side', anchor: 'anN', frames: [
+    { ...SOFT_S, reachN: { j: 'anN', d: [-26, -238], hand: 180 }, reachF: { j: 'anF', d: [-24, -238], hand: 180 } },
+    o.noHeadDown
+      ? { ...SOFT_S, torso: 122, head: 118, legN: [6, -4, 90], legF: [4, -3, 90], reachN: { j: 'anN', d: [26, -96], hand: 0 }, reachF: { j: 'anF', d: [24, -96], hand: 0 } }
+      : { ...SOFT_S, torso: 98, head: 70, legN: [10, -4, 90], legF: [8, -3, 90], reachN: { j: 'anN', d: [18, -40], hand: 0 }, reachF: { j: 'anF', d: [16, -40], hand: 0 } }],
+    arrows: [{ j: 'neck', off: 22 }] }),
+  fists: { view: 'side', frames: [
+    { ...SOFT_S, legN: [26, -14, 90], legF: [24, -13, 90], reachN: { j: 'sh', d: [16, 86], hand: 90 }, reachF: { j: 'sh', d: [14, 84], hand: 90 } },
+    { ...SOFT_S, legN: [26, -14, 90], legF: [24, -13, 90], reachN: { j: 'sh', d: [120, 22], hand: 90 }, reachF: { j: 'sh', d: [14, 84], hand: 90 } }],
+    arrows: [{ j: 'wrN', off: 14 }], labels: [{ text: () => t('выдох'), j: 'sh', dx: 70, dy: -36 }] },
+  heels: { view: 'side', anchor: 'toeN', frames: [
+    { ...STAND_S },
+    { ...STAND_S, legN: [3, -4, 52], legF: [-3, 2, 52] }],
+    arrows: [{ j: 'headC', off: 22 }], both: true,
+    labels: [{ text: () => t('вдох'), j: 'headC', dx: 30, dy: -30 }] },
+  cat_step: { view: 'side', anchor: 'heelN', free: true, frames: [
+    { ...STAND_S, torso: 178, legN: [34, 16, 116], legF: [-8, -22, 90], reachN: { j: 'hip', d: [14, -28], hand: 0, bend: -1 }, reachF: { j: 'hip', d: [12, -28], hand: 0, bend: -1 } },
+    { ...STAND_S, torso: 178, legN: [22, -12, 90], legF: [-26, -24, 70], reachN: { j: 'hip', d: [14, -28], hand: 0, bend: -1 }, reachF: { j: 'hip', d: [12, -28], hand: 0, bend: -1 } }],
+    arrows: [{ j: 'hip', off: 26 }] },
+  squat_chair: { view: 'side', anchor: 'anN', chairFrame: 1, frames: [
+    { ...STAND_S, armN: [90, 90, 90], armF: [88, 88, 88] },
+    { ...STAND_S, torso: 150, head: 156, legN: [72, -22, 90], legF: [70, -21, 90], armN: [96, 96, 96], armF: [94, 94, 94] }],
+    props: ['chair'], arrows: [{ j: 'hip', off: 18 }], both: true },
+  squat: { view: 'side', anchor: 'anN', frames: [
+    { ...STAND_S, armN: [90, 90, 90], armF: [88, 88, 88] },
+    { ...STAND_S, torso: 146, head: 154, legN: [84, -32, 90], legF: [82, -31, 90], armN: [98, 98, 98], armF: [96, 96, 96] }],
+    arrows: [{ j: 'hip', off: 18 }], both: true },
+  lunge: { view: 'side', anchor: 'anN', free: true, frames: [
+    { ...STAND_S, reachN: { j: 'anN', d: [74, -168], hand: 90 } },
+    { ...STAND_S, torso: 178, legN: [78, -4, 90], legF: [-24, -96, -120], reachN: { j: 'anN', d: [74, -168], hand: 90 } }],
+    props: ['chairBack'], arrows: [{ j: 'hip', off: -26 }], both: true },
+  table_push: { view: 'side', anchor: 'anN', frames: [
+    { ...STAND_S, torso: 140, head: 142, legN: [-40, -40, 90], legF: [-41, -41, 90], reachN: { j: 'anN', d: [232, -144], hand: 90 }, reachF: { j: 'anN', d: [230, -144], hand: 90 } },
+    { ...STAND_S, torso: 132, head: 134, legN: [-48, -48, 90], legF: [-49, -49, 90], reachN: { j: 'anN', d: [232, -144], hand: 90 }, reachF: { j: 'anN', d: [230, -144], hand: 90 } }],
+    props: ['table'], arrows: [{ j: 'sh', off: 22 }], both: true },
+  knee_push: { view: 'side', anchor: 'knN', groundPad: 6, frames: [
+    { torso: 124, head: 120, legN: [-56, -92, -92], legF: [-57, -93, -93], reachN: { j: 'knN', d: [177, 4], hand: 90 }, reachF: { j: 'knF', d: [175, 4], hand: 90 } },
+    { torso: 106, head: 104, legN: [-74, -92, -92], legF: [-75, -93, -93], reachN: { j: 'knN', d: [177, 4], hand: 90 }, reachF: { j: 'knF', d: [175, 4], hand: 90 } }],
+    props: ['mat'], arrows: [{ j: 'sh', off: 18 }], both: true },
+  bridge_march: { view: 'side', anchor: 'sh', groundPad: 4, frames: [
+    { ...SUPINE, torso: -70, head: -92, legN: [130, 18, 90], legF: [126, 16, 92] },
+    { ...SUPINE, torso: -70, head: -92, legN: [158, 70, 100], legF: [126, 16, 92] }],
+    props: ['mat'], arrows: [{ j: 'toeN', off: 10 }], both: true },
+  bridge_one: { view: 'side', anchor: 'sh', groundPad: 4, frames: [
+    { ...SUPINE, legN: [128, 128, 128], legF: [146, 28, 92] },
+    { ...SUPINE, torso: -70, head: -92, legN: [112, 112, 112], legF: [126, 16, 92] }],
+    props: ['mat'], arrows: [{ j: 'hip', off: 18 }] },
+  plank_knee: { view: 'side', anchor: 'knN', groundPad: 5, frames: [
+    { torso: 107, head: 102, legN: [-73, -92, -92], legF: [-74, -93, -93], armN: [2, 90, 90], armF: [4, 92, 92] }],
+    props: ['mat'], marks: (J) => dblArrow(add(J.hip, [40, -46]), [Math.cos(rad(17)), -Math.sin(rad(17))], 60) },
+  plank: { view: 'side', anchor: 'anN', groundPad: 5, frames: [
+    { torso: 102, head: 98, legN: [-78, -78, 8], legF: [-79, -79, 8], armN: [2, 90, 90], armF: [4, 92, 92] }],
+    props: ['mat'], marks: (J) => dblArrow(add(J.hip, [30, -44]), [Math.cos(rad(12)), -Math.sin(rad(12))], 80) },
+  side_knee: { view: 'front', anchor: 'hip', frames: [
+    { torso: 112, head: 108, legR: [68, 68, 0.95, 0.42], legL: [-68, -68, 0.95, 0.42], reachL: { j: 'shjL', d: [6, 66], hand: 160 }, reachR: { j: 'hip', d: [4, -16], hand: 90 } }],
+    props: ['mat'], marks: (J) => upArrow(add(J.hip, [0, -36]), 34) },
+  calf: { view: 'side', anchor: 'toeN', frames: [
+    { ...STAND_S, reachN: { j: 'toeN', d: [62, -176], hand: 90 } },
+    { ...STAND_S, legN: [3, -4, 52], legF: [-3, 2, 52], reachN: { j: 'toeN', d: [62, -176], hand: 90 } }],
+    props: ['chairBack'], arrows: [{ j: 'heelN', off: -10 }], both: true },
+  ham_stretch: { view: 'side', anchor: 'hip', free: true, frames: [
+    { ...SEAT_S, torso: 148, head: 150, legN: [58, 58, 160], reachN: { j: 'knN', d: [-6, -16], hand: 60 }, reachF: { j: 'knN', d: [-12, -18], hand: 60 } }],
+    props: ['chair'], marks: (J) => arcAround(J.hip, 70, -120, -60) },
+  hip_stretch: { view: 'side', anchor: 'anN', free: true, frames: [
+    { ...STAND_S, torso: 181, legN: [26, -10, 90], legF: [-22, -34, 40], reachN: { j: 'anN', d: [70, -170], hand: 90 }, reachF: { j: 'hip', d: [8, -26], hand: 0 } }],
+    props: ['chairBack'], marks: (J) => horArrow(add(J.hip, [-30, 40]), 40) },
+});
 
 // ---- значки ----
 const ARW = 'marker-end="url(#fg-ah)"';
@@ -462,7 +569,7 @@ export const figureIds = () => Object.keys(FIG);
 
 // Рисунок упражнения. opts.frame — показать конкретную позу (для анимации), opts.bare — без стрелок.
 export function figureSvg(id, opts = {}) {
-  const def = FIG[id];
+  const def = typeof FIG[id] === 'function' ? FIG[id](opts) : FIG[id];
   if (!def) return '';
   const frames = [];
   for (const P of def.frames) {
@@ -489,11 +596,11 @@ export function figureSvg(id, opts = {}) {
   }
   if (!opts.bare && def.marks) marks.push(def.marks(J0));
   if (!opts.bare) for (const lb of def.labels || []) marks.push(label(lb.text(), add(J0[lb.j], [lb.dx || 0, lb.dy || 0]), lb.anchor || 'start'));
-  const props = ['floor', ...(def.props || [])].map((p) => PROPS[p](J0, box)).join('');
+  const props = ['floor', ...(def.props || [])].map((p) => PROPS[p](J0, box, frames, def)).join('');
   // Рамка с запасом под стрелки и реквизит.
   const pad = 34;
   const x0 = box[0] - pad - (def.props?.includes('wall') ? 0 : 0);
-  const x1 = box[2] + pad + (def.props?.includes('wall') || def.props?.includes('chairBack') ? 70 : 0);
+  const x1 = box[2] + pad + (def.props?.includes('wall') || def.props?.includes('chairBack') ? 70 : def.props?.includes('table') ? 60 : 0);
   const y0 = Math.min(box[1], ...(def.marks ? [box[1] - 40] : [box[1]])) - pad;
   const y1 = GROUND + 12;
   return `<svg class="fig" viewBox="${f1(x0)} ${f1(y0)} ${f1(x1 - x0)} ${f1(y1 - y0)}" role="img" aria-label="${t('Схема упражнения')}">

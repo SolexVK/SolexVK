@@ -100,7 +100,7 @@ const PROGRAM_SCHEMA = {
   type: 'object', additionalProperties: false,
   required: ['level', 'doseScale', 'exclude', 'focus', 'cautions', 'rationale'],
   properties: {
-    level: { type: 'integer', enum: [1, 2] },
+    level: { type: 'integer', enum: [1, 2, 3] },
     doseScale: { type: 'number', enum: [0.6, 0.7, 0.8, 0.9, 1] },
     exclude: { type: 'array', items: { type: 'string', enum: EX_IDS } },
     focus: { type: 'array', items: { type: 'string' } },
@@ -114,7 +114,7 @@ export async function designProgram(intake, base) {
   const out = await callJSON({
     model: MODELS.expert, effort: 'medium', schema: PROGRAM_SCHEMA,
     system: `${PERSONA}\n\nСейчас ты составляешь начальную программу по анкете ученика. Правила приложения уже предложили базовый вариант; ты можешь сделать его бережнее (понизить уровень, уменьшить множитель нагрузки, исключить упражнения), но не интенсивнее.`,
-    messages: [{ role: 'user', content: `Анкета ученика:\n${JSON.stringify(intake, null, 1)}\n\nБазовый вариант по правилам: уровень ${base.level}, ограничения ${base.flags.join(', ') || 'нет'}, баллы слабости ${base.weakness}, причины: ${base.reasons.join('; ') || 'нет'}. Рекомендации к врачу: ${base.doctor.join('; ') || 'нет'}.\n\nКаталог упражнений (id: название):\n${catalog}\n\nВерни программу. level — 1 или 2, не выше базового. doseScale — множитель повторов и времени. exclude — id упражнений, которые этому ученику пока нельзя. focus — 2–4 главных направления работы. cautions — 2–5 коротких предостережений для этого ученика. rationale — обращение мастера к ученику вслух, 5–7 фраз: что вы увидели в ответах, с какого уровня начинаете и почему, на чём сосредоточитесь, что важно соблюдать. ${VOICE_RULES}` }],
+    messages: [{ role: 'user', content: `Анкета ученика:\n${JSON.stringify(intake, null, 1)}\n\nБазовый вариант по правилам: уровень ${base.level}, ограничения ${base.flags.join(', ') || 'нет'}, баллы слабости ${base.weakness}, причины: ${base.reasons.join('; ') || 'нет'}. Рекомендации к врачу: ${base.doctor.join('; ') || 'нет'}.\n\nКаталог упражнений (id: название):\n${catalog}\n\nВерни программу. level — от 1 до 3, не выше базового. doseScale — множитель повторов и времени. exclude — id упражнений, которые этому ученику пока нельзя. focus — 2–4 главных направления работы. cautions — 2–5 коротких предостережений для этого ученика. rationale — обращение мастера к ученику вслух, 5–7 фраз: что вы увидели в ответах, с какого уровня начинаете и почему, на чём сосредоточитесь, что важно соблюдать. ${VOICE_RULES}` }],
   });
   return {
     level: Math.min(base.level, Math.max(1, out.level | 0)),

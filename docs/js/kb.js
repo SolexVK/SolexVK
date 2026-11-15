@@ -24,12 +24,12 @@ export const LEVELS = [
   { n: 2, name: 'Пробуждение', minWeeks: 4, stages: 4,
     who: 'Боль умеренная, человек может встать со стула без рук и немного постоять на одной ноге у опоры.',
     goal: 'Полный утренний комплекс: дыхание, разминка, три движения цигун, стояние столбом. Днём ходьба и пять упражнений для спины и ног.' },
-  { n: 3, name: 'Опора', minWeeks: 6, stages: 4, scripted: false,
+  { n: 3, name: 'Опора', minWeeks: 6, stages: 4,
     who: 'Регулярные занятия, боль под контролем, столб 4 минуты, 12 вставаний со стула подряд.',
-    goal: '«Восемь кусков парчи» в адаптации, шаг тай-чи, первые движения формы, больше времени в стойке.' },
-  { n: 4, name: 'Форма', minWeeks: 8, stages: 4, scripted: false,
+    goal: 'Все «Восемь кусков парчи», шаг тай-чи, больше времени в стойке. Днём присед до стула, отжимания от стола, мост, планка с колен, растяжка.' },
+  { n: 4, name: 'Форма', minWeeks: 8, stages: 4,
     who: 'Уверенная стойка, хорошее равновесие, занятия без боли.',
-    goal: 'Форма из 8 движений стиля Ян целиком, ходьба до 30 минут, силовой блок через день.' },
+    goal: 'Полная сила: свободный присед и выпады, отжимания с колен, мост на одной ноге, планки, столб до восьми минут, ходьба до получаса. Форма стиля Ян из 8 движений добавляется следующим этапом.' },
 ];
 
 // ---- каталог упражнений ----
@@ -58,6 +58,29 @@ export const EXERCISES = {
   march: { name: 'Марш сидя', session: 'day', min: 1, replaces: ['bird', 'bug'] },
   tilt: { name: 'Наклоны таза сидя', session: 'day', min: 1, replaces: ['bridge'] },
   unload: { name: 'Разгрузка поясницы', session: 'day', min: 1 },
+  // ---- уровни 3–4: «Восемь кусков парчи» целиком и шаг тай-чи ----
+  bow: { name: '«Натянуть лук»', session: 'morning', min: 3, caution: ['knee', 'shoulder'] },
+  one_arm: { name: '«Поднять одну руку»', session: 'morning', min: 3, caution: ['shoulder'] },
+  look_back: { name: '«Оглянуться назад»', session: 'morning', min: 3, caution: ['cervical'] },
+  sway: { name: '«Покачать головой и хвостом»', session: 'morning', min: 3, caution: ['lumbar_radicular', 'knee', 'hypertension'], avoid: ['lumbar_acute'] },
+  toes: { name: '«Достать стопы»', session: 'morning', min: 3, caution: ['lumbar_radicular', 'osteo', 'hypertension'], avoid: ['lumbar_acute'] },
+  fists: { name: '«Кулаки и гневный взгляд»', session: 'morning', min: 3, caution: ['knee'] },
+  heels: { name: '«Встряхнуться на носках»', session: 'morning', min: 3, balance: true, caution: ['osteo', 'lumbar_radicular'] },
+  cat_step: { name: 'Шаг тай-чи', session: 'morning', min: 3, balance: true, caution: ['knee', 'balance'] },
+  // ---- силовые лестницы: от лёгкого к тяжёлому ----
+  squat_chair: { name: 'Присед до касания стула', session: 'day', min: 3, caution: ['knee', 'hip'], family: 'legs' },
+  squat: { name: 'Присед', session: 'day', min: 4, caution: ['knee', 'hip'], family: 'legs' },
+  lunge: { name: 'Обратный выпад у опоры', session: 'day', min: 4, balance: true, avoid: ['knee'], family: 'legs' },
+  table_push: { name: 'Отжимания от стола', session: 'day', min: 3, caution: ['shoulder', 'wrist'], family: 'push' },
+  knee_push: { name: 'Отжимания с колен', session: 'day', min: 4, floor: true, caution: ['shoulder', 'wrist'], family: 'push' },
+  bridge_march: { name: 'Мост с шагами', session: 'day', min: 3, floor: true, caution: ['lumbar_radicular'], family: 'bridge' },
+  bridge_one: { name: 'Мост на одной ноге', session: 'day', min: 4, floor: true, caution: ['lumbar_radicular'], family: 'bridge' },
+  plank_knee: { name: 'Планка с колен', session: 'day', min: 3, floor: true, caution: ['shoulder', 'hypertension'], family: 'core' },
+  plank: { name: 'Планка', session: 'day', min: 4, floor: true, caution: ['shoulder', 'hypertension'], avoid: ['lumbar_acute'], family: 'core' },
+  side_knee: { name: 'Боковая планка с колен', session: 'day', min: 4, floor: true, caution: ['shoulder'], avoid: ['lumbar_acute'] },
+  calf: { name: 'Подъёмы на носки', session: 'day', min: 3, balance: true },
+  ham_stretch: { name: 'Растяжка задней поверхности бедра', session: 'day', min: 3, caution: ['lumbar_radicular'] },
+  hip_stretch: { name: 'Растяжка передней поверхности бедра', session: 'day', min: 3, balance: true, caution: ['knee', 'lumbar_radicular'] },
 };
 
 // ---- дозировки по уровню и ступени (ступень = неделя на уровне, 1–4) ----
@@ -71,6 +94,18 @@ export const DOSES = {
     stolbSec: [60, 120, 180, 270], chairReps: [8, 8, 12, 12], wallReps: [8, 8, 12, 12], bridgeReps: [8, 8, 12, 12],
     birdReps: [5, 5, 8, 8], bugReps: [6, 6, 10, 10], marchReps: [12, 12, 16, 16], tiltReps: [10, 10, 12, 12],
     walkMin: [8, 8, 10, 10], skyReps: 8, qishiReps: 8, shiftReps: 8, unloadCycles: 18, chairHands: false,
+  },
+  3: {
+    stolbSec: [180, 240, 300, 360], walkMin: [12, 15, 18, 20], legsReps: [8, 10, 12, 12], pushReps: [8, 10, 12, 12],
+    bridgeReps: [6, 6, 8, 8], plankSec: [20, 25, 30, 30], calfReps: [10, 12, 15, 15], birdReps: [6, 6, 8, 8], bugReps: [8, 8, 10, 10],
+    stepReps: [4, 6, 6, 8], marchReps: [16, 16, 20, 20], tiltReps: [12, 12, 12, 12], stretchSec: 30, bdjReps: 6,
+    skyReps: 6, qishiReps: 6, shiftReps: 6, unloadCycles: 12, chairHands: false,
+  },
+  4: {
+    stolbSec: [300, 360, 420, 480], walkMin: [20, 25, 30, 30], legsReps: [10, 12, 12, 15], lungeReps: [6, 8, 8, 10], pushReps: [6, 8, 10, 12],
+    bridgeReps: [6, 8, 8, 10], plankSec: [30, 40, 45, 60], sideSec: [15, 20, 25, 30], calfReps: [15, 15, 20, 20], birdReps: [8, 8, 10, 10], bugReps: [10, 10, 12, 12],
+    stepReps: [6, 8, 8, 10], marchReps: [16, 16, 20, 20], tiltReps: [12, 12, 12, 12], stretchSec: 40, bdjReps: 8,
+    skyReps: 8, qishiReps: 6, shiftReps: 6, unloadCycles: 12, chairHands: false,
   },
 };
 

@@ -55,7 +55,11 @@ export function assess(a) {
   if (a.falls !== 'no' && a.falls) w += 1;
   if (a.flex === 'thighs' || a.flex === 'nobend') { w += 1; reasons.push(t('тугая подвижность спины')); }
 
-  const level = flags.has('pregnant') ? 0 : (w >= 4 ? 1 : 2);
+  // Подготовленный ученик без ограничений начинает сразу с уровня 3: щадящие упражнения ему не нужны.
+  const fit = w === 0 && chair != null && chair >= 12 && ['regular', 'sport'].includes(a.activity) && painLevel <= 3
+    && (!a.radiating || a.radiating === 'no') && Number(a.balanceTest ?? 0) >= 20
+    && !['lumbar_radicular', 'lumbar_acute', 'heart', 'osteo', 'balance', 'knee', 'hip', 'no_floor', 'postpartum'].some((f) => flags.has(f));
+  const level = flags.has('pregnant') ? 0 : fit ? 3 : (w >= 4 ? 1 : 2);
   return { level, weakness: w, flags: [...flags], reasons, doctor, bmi: bmi ? Math.round(bmi * 10) / 10 : null };
 }
 
@@ -73,12 +77,13 @@ export function newProgram(intake) {
 // Превращает программу в параметры для сценария: дозировки, опора, исключения.
 export function resolvePlan(prog = state.program) {
   if (!prog || !prog.level) return null;
-  const lvl = Math.min(Math.max(prog.level, 1), 2);
+  const lvl = Math.min(Math.max(prog.level, 1), 4);
   const st = Math.min(Math.max(prog.stage || 1, 1), 4) - 1;
   const D = DOSES[lvl];
   const scale = Math.min(1, Math.max(0.5, prog.doseScale || 1));
   const pick = (k) => (Array.isArray(D[k]) ? D[k][st] : D[k]);
-  const reps = (k, min = 3) => Math.max(min, Math.round(pick(k) * scale));
+  const reps = (k, min = 3) => (D[k] == null ? 0 : Math.max(min, Math.round(pick(k) * scale)));
+  const secs = (k, min = 10) => (D[k] == null ? 0 : Math.max(min, Math.round(pick(k) * scale / 5) * 5));
   const flags = new Set(prog.flags || []);
   const exclude = new Set(prog.exclude || []);
   for (const [id, ex] of Object.entries(EXERCISES)) {
@@ -86,7 +91,7 @@ export function resolvePlan(prog = state.program) {
     if (ex.min > lvl) exclude.add(id);
   }
   const noFloor = flags.has('no_floor');
-  if (noFloor) ['bridge', 'bird', 'bug'].forEach((id) => exclude.add(id));
+  if (noFloor) Object.entries(EXERCISES).forEach(([id, ex]) => { if (ex.floor) exclude.add(id); });
   else ['march', 'tilt'].forEach((id) => exclude.add(id));
   return {
     level: lvl, stage: st + 1, noFloor,
@@ -99,13 +104,19 @@ export function resolvePlan(prog = state.program) {
     chairReps: reps('chairReps'), wallReps: reps('wallReps'), bridgeReps: reps('bridgeReps'),
     birdReps: reps('birdReps', 2), bugReps: reps('bugReps', 2), marchReps: reps('marchReps', 6), tiltReps: reps('tiltReps', 6),
     walkMin: pick('walkMin'), skyReps: D.skyReps, qishiReps: D.qishiReps, shiftReps: D.shiftReps, unloadCycles: D.unloadCycles,
+    // уровни 3–4
+    legsReps: reps('legsReps'), lungeReps: reps('lungeReps', 3), pushReps: reps('pushReps'), plankSec: secs('plankSec'), sideSec: secs('sideSec'),
+    calfReps: reps('calfReps', 6), stepReps: reps('stepReps', 2), stretchSec: D.stretchSec || 0, bdjReps: D.bdjReps || 0,
+    // щадящие варианты движений цигун
+    gentleNeck: flags.has('cervical'), noHeadDown: flags.has('hypertension') || flags.has('lumbar_radicular') || flags.has('osteo') || flags.has('heart'),
+    gentleKneesDeep: flags.has('knee'), flags,
   };
 }
 
 // Все варианты плана — чтобы заранее озвучить все фразы.
 export function allPlans() {
   const out = [];
-  for (const level of [1, 2]) for (let stage = 1; stage <= 4; stage++) for (const flags of [[], ['no_floor'], ['balance', 'knee'], ['lumbar_radicular']]) {
+  for (const level of [1, 2, 3, 4]) for (let stage = 1; stage <= 4; stage++) for (const flags of [[], ['no_floor'], ['balance', 'knee'], ['lumbar_radicular'], ['cervical', 'hypertension']]) {
     for (const doseScale of [0.6, 0.7, 0.8, 0.9, 1]) out.push(resolvePlan({ level, stage, flags, doseScale }));
   }
   return out;

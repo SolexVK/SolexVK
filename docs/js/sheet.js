@@ -18,6 +18,7 @@ const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart
 // Дозировка шага в виде, не зависящем от языка: h:секунды, b:дыханий:вдох:выдох, r:блок+блок.
 export function doseRaw(s) {
   const holds = s.items.filter((it) => it.t === 'hold');
+  if (holds.length > 1 && holds.every((it) => it.dur === holds[0].dur)) return `x:${holds.length}:${holds[0].dur}`;
   if (holds.length) return `h:${holds.reduce((a, it) => a + it.dur, 0)}`;
   const beats = s.items.filter((it) => it.t === 'beat' && it.rep);
   if (s.kind === 'breath') {
@@ -39,6 +40,7 @@ export function doseRaw(s) {
 export function fmtDose(raw) {
   const [k, a, b, c] = String(raw || '').split(':');
   if (k === 'h') { const sec = Number(a); return sec >= 120 && sec % 60 === 0 ? `${sec / 60} ${t('мин')}` : mmss(sec); }
+  if (k === 'x') return `${a} × ${mmss(Number(b))}`;
   if (k === 'b') return `${a} ${t('дыханий')} · ${b}/${c}`;
   if (k === 'r') return `${a.split('+').join(' + ')} ${t('повт.')}`;
   return '';
@@ -107,12 +109,13 @@ function cautionNote(id, flags) {
   return hit.length ? `<p class="ex-caution">${t('Щадящий вариант:')} ${esc(hit.join(', '))}</p>` : '';
 }
 
+let figOpts = {};
 function card(kind, s, flags, skipped) {
   const id = baseId(s.id);
   const k = `${kind}:${id}`;
   const g = GUIDES[id];
   return `<article class="ex ${skipped ? 'ex-off' : ''}" data-ex="${esc(id)}">
-    <div class="ex-fig">${hasFigure(id) ? figureSvg(id, { noFloor: id === 'unload' && state.program?.flags?.includes('no_floor') }) : ''}</div>
+    <div class="ex-fig">${hasFigure(id) ? figureSvg(id, figOpts) : ''}</div>
     <div class="ex-body">
       <h4>${esc(t(s.title))} ${changeBadge(k)}</h4>
       <p class="ex-dose">${esc(doseOf(s))}${skipped ? ` · <em>${t('сегодня пропускаем')}</em>` : ''}</p>
@@ -133,6 +136,7 @@ export function renderSheet(root, { todayMode = 'full', todaySkip = [] } = {}) {
   }
   trackChanges();
   const flags = new Set(pr.flags || []);
+  figOpts = { gentleNeck: plan.gentleNeck, noHeadDown: plan.noHeadDown };
   const L = levelInfo(pr.level);
   // Что реально будет сегодня: занятие в сегодняшнем режиме с пропусками.
   const todayPlan = resolvePlan(pr);
