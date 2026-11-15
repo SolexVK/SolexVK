@@ -161,7 +161,7 @@ export async function runCheckin(root, kind) {
 export function reviewDue(today = dateStr()) {
   const pr = state.program;
   if (!pr?.level) return false;
-  const last = state.reviews?.length ? state.reviews[state.reviews.length - 1].date : pr.levelSince;
+  const last = state.reviews?.length ? state.reviews[state.reviews.length - 1].date : (pr.levelSince || pr.createdAt || state.profile.startDate || today);
   return daysBetween(last, today) >= 7;
 }
 
@@ -208,7 +208,8 @@ export async function runReview(root, onDone) {
 function applyReview(decision, r, ready) {
   const pr = state.program;
   const today = dateStr();
-  if (decision === 'stage_up') { pr.stage = Math.min(4, (pr.stage || 1) + 1); pr.stageSince = today; }
+  // Ступень вверх: заодно постепенно снимаем облегчение, иначе с ним уровень никогда не откроется.
+  if (decision === 'stage_up') { pr.stage = Math.min(4, (pr.stage || 1) + 1); pr.stageSince = today; if ((pr.doseScale || 1) < 1) pr.doseScale = Math.min(1, Math.round(((pr.doseScale || 1) + 0.1) * 10) / 10); }
   if (decision === 'level_up') { pr.level = Math.min(LEVELS.length, pr.level + 1); pr.stage = 1; pr.stageSince = today; pr.levelSince = today; }
   if (decision === 'step_back') {
     if ((pr.stage || 1) > 1) { pr.stage -= 1; pr.stageSince = today; } else pr.doseScale = Math.max(0.6, Math.round((pr.doseScale || 1) * 0.85 * 10) / 10);

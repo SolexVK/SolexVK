@@ -91,6 +91,8 @@ export function resolvePlan(prog = state.program) {
     if (ex.min > lvl) exclude.add(id);
   }
   const noFloor = flags.has('no_floor');
+  // Давление: удержания в планке не длиннее 20 секунд (натуживание поднимает давление).
+  const holdCap = flags.has('hypertension') || flags.has('heart') ? 20 : 999;
   if (noFloor) Object.entries(EXERCISES).forEach(([id, ex]) => { if (ex.floor) exclude.add(id); });
   else ['march', 'tilt'].forEach((id) => exclude.add(id));
   return {
@@ -105,7 +107,7 @@ export function resolvePlan(prog = state.program) {
     birdReps: reps('birdReps', 2), bugReps: reps('bugReps', 2), marchReps: reps('marchReps', 6), tiltReps: reps('tiltReps', 6),
     walkMin: pick('walkMin'), skyReps: D.skyReps, qishiReps: D.qishiReps, shiftReps: D.shiftReps, unloadCycles: D.unloadCycles,
     // уровни 3–4
-    legsReps: reps('legsReps'), lungeReps: reps('lungeReps', 3), pushReps: reps('pushReps'), plankSec: secs('plankSec'), sideSec: secs('sideSec'),
+    legsReps: reps('legsReps'), lungeReps: reps('lungeReps', 3), pushReps: reps('pushReps'), plankSec: Math.min(holdCap, secs('plankSec')), sideSec: Math.min(holdCap, secs('sideSec')),
     calfReps: reps('calfReps', 6), stepReps: reps('stepReps', 2), stretchSec: D.stretchSec || 0, bdjReps: D.bdjReps || 0,
     // щадящие варианты движений цигун
     gentleNeck: flags.has('cervical'), noHeadDown: flags.has('hypertension') || flags.has('lumbar_radicular') || flags.has('osteo') || flags.has('heart'),
@@ -138,6 +140,9 @@ export function checkinDecision(c) {
   if (sys && dia) {
     if (sys > 170 || dia > 105) down('none', 'stop_bp', `${t('давление')} ${sys}/${dia}`);
     else if (sys >= 150 || dia >= 95) down('light', 'light', `${t('давление')} ${sys}/${dia}`);
+  } else if ((state.program?.flags || []).includes('hypertension')) {
+    // При гипертонии без измерения давления — только мягкий режим.
+    down('light', 'light', `${t('давление')} ${t('не измерено')}`);
   }
   if (c.warning === 'dizzy') down('rest', 'rest', t('головокружение'));
   if (c.warning === 'new_pain') down('light', 'light', t('новая боль'));
@@ -172,10 +177,13 @@ export function readiness(today = dateStr(), prog = state.program) {
   if (!prog?.level) return null;
   const lvl = prog.level;
   const target = PROGRESSION.level[lvl];
-  const weeksOnLevel = Math.floor(daysBetween(prog.levelSince, today) / 7);
+  const since = prog.levelSince || prog.createdAt || state.profile.startDate || today; // старые данные могут быть без даты
+  const weeksOnLevel = Math.floor(daysBetween(since, today) / 7);
   const w1 = windowStats(addDays(today, -6), 7);
   const w2 = windowStats(addDays(today, -13), 7);
   const levelDef = LEVELS.find((l) => l.n === lvl);
+  // С отдающей болью в спине и болезнями сердца уровень 4 — только с согласия врача: дальше третьего не ведём.
+  const capped = lvl >= 3 && (prog.flags || []).some((f) => ['lumbar_radicular', 'lumbar_acute', 'heart'].includes(f));
   const crit = target ? [
     { id: 'time', ok: weeksOnLevel >= levelDef.minWeeks, text: `${t('Не меньше')} ${levelDef.minWeeks} ${t('недель на уровне')}`, have: `${weeksOnLevel} ${t('нед.')}` },
     { id: 'adherence', ok: w1.sessions >= target.weekSessions && w2.sessions >= target.weekSessions, text: `${t('Не меньше')} ${target.weekSessions} ${t('занятий в неделю две недели подряд')}`, have: `${w2.sessions} ${t('и')} ${w1.sessions}` },
@@ -194,11 +202,15 @@ export function readiness(today = dateStr(), prog = state.program) {
   const score = Math.round(Object.values(parts).reduce((a, b) => a + b, 0));
   const ready = !!target && crit.every((c) => c.ok) && score >= 80;
   // Ступень внутри уровня: раз в неделю, если не было ухудшений.
-  const daysOnStage = daysBetween(prog.stageSince || prog.levelSince, today);
+  const daysOnStage = daysBetween(prog.stageSince || since, today);
+  // Нагрузку прибавляем, только если боль не высокая сама по себе и давление не срывало занятия.
+  const painCap = (target || PROGRESSION.level[3]).maxPain + 1;
   const stageUp = (prog.stage || 1) < 4 && daysOnStage >= PROGRESSION.stage.minDays && w1.sessions >= PROGRESSION.stage.minSessions
+    && (w1.pain == null || w1.pain <= painCap) && w1.bpBad === 0
     && (w1.pain == null || w2.pain == null || w1.pain <= w2.pain + PROGRESSION.stage.maxPainRise);
-  const regress = w1.pain != null && w2.pain != null && w1.pain >= w2.pain + PROGRESSION.regress.painRise;
-  return { level: lvl, stage: prog.stage || 1, score, ready, crit, stageUp, regress, weeksOnLevel, last: w1, prev: w2, nextScripted: LEVELS.find((l) => l.n === lvl + 1)?.scripted !== false };
+  // Откат: боль заметно выросла за неделю или просто держится высокой.
+  const regress = (w1.pain != null && w1.pain >= 6) || (w1.pain != null && w2.pain != null && w1.pain >= w2.pain + PROGRESSION.regress.painRise);
+  return { level: lvl, stage: prog.stage || 1, score, ready, crit, stageUp, regress, weeksOnLevel, last: w1, prev: w2, nextScripted: !capped && !!LEVELS.find((l) => l.n === lvl + 1) && LEVELS.find((l) => l.n === lvl + 1).scripted !== false };
 }
 
 export function levelInfo(n) { return LEVELS.find((l) => l.n === n) || LEVELS[0]; }

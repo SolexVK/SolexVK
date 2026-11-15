@@ -10,6 +10,9 @@ let dirty = localStorage.getItem('taichi.server.dirty') === '1';
 let timer = null;
 let pushing = false;
 let applying = false;
+let editGen = 0; // счётчик правок: правка во время отправки не должна потеряться
+let pendingAgain = false;
+let started = false;
 const subs = new Set();
 let status = { state: cfg ? 'idle' : 'off', at: null, error: '' };
 
@@ -30,7 +33,8 @@ export function setServer(url, token) {
   cfg = u && token ? { url: u, token: String(token).trim() } : null;
   try { if (cfg) localStorage.setItem(KEY, JSON.stringify(cfg)); else localStorage.removeItem(KEY); } catch { /* noop */ }
   rev = 0;
-  dirty = true;
+  // Новое устройство без своих данных (знакомство не пройдено) не должно затирать данные на сервере.
+  dirty = !!state.profile?.onboarded;
   remember();
   setStatus({ state: cfg ? 'idle' : 'off', error: '' });
 }
@@ -42,6 +46,7 @@ export async function api(path, init = {}) {
   if (!cfg) throw new Error('no_server');
   if (!secureUrl(cfg.url)) throw Object.assign(new Error(t('Сервер недоступен. Проверьте адрес: он должен начинаться с https://')), { kind: 'insecure' });
   const r = await fetch(cfg.url + path, {
+    cache: 'no-store',
     ...init,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.token}`, ...(init.headers || {}) },
   });
@@ -49,10 +54,29 @@ export async function api(path, init = {}) {
   return r;
 }
 
-// Объединение копий: дни и записи берём из обеих, при совпадении — свежую локальную версию.
+// Объединение копий. Дни объединяются по частям (занятия, боль, давление), записи журнала — из обеих копий,
+// программа и память — более свежая. Пустые местные поля (новое устройство) не затирают серверные.
+function mergeDay(r = {}, l = {}) {
+  const sessions = { ...(r.sessions || {}) };
+  for (const [k, v] of Object.entries(l.sessions || {})) {
+    const o = sessions[k];
+    sessions[k] = o && o.done && !v?.done ? o : { ...(o || {}), ...v };
+  }
+  return { ...r, ...l, sessions, pain: { ...(r.pain || {}), ...(l.pain || {}) }, bp: l.bp || r.bp, checkin: l.checkin || r.checkin };
+}
 function merge(local, remote) {
   const out = { ...remote, ...local };
-  out.days = { ...(remote.days || {}), ...(local.days || {}) };
+  const days = { ...(remote.days || {}) };
+  for (const [d, v] of Object.entries(local.days || {})) days[d] = mergeDay(days[d], v);
+  out.days = days;
+  out.profile = !local.profile?.onboarded && remote.profile?.onboarded ? remote.profile : { ...(remote.profile || {}), ...(local.profile || {}) };
+  out.intake = local.intake || remote.intake || null;
+  const tasks = { ...(remote.tasks || {}) };
+  for (const [k, v] of Object.entries(local.tasks || {})) tasks[k] = v || tasks[k];
+  out.tasks = tasks;
+  const rv = new Map();
+  for (const r of [...(remote.reviews || []), ...(local.reviews || [])]) rv.set(`${r.date}|${r.decision}`, r);
+  out.reviews = [...rv.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const byKey = (arr) => {
     const m = new Map();
     for (const e of arr || []) m.set(`${e.at}|${e.role}|${(e.text || '').slice(0, 40)}`, e);
@@ -61,9 +85,10 @@ function merge(local, remote) {
   out.chat = byKey([...(remote.chat || []), ...(local.chat || [])]).slice(-60);
   out.log = byKey([...(remote.log || []), ...(local.log || [])]).slice(-400);
   if ((remote.memory?.updatedAt || 0) > (local.memory?.updatedAt || 0)) out.memory = remote.memory;
-  if ((remote.program?.updatedAt || 0) > (local.program?.updatedAt || 0)) out.program = remote.program;
+  if (!local.program || (remote.program?.updatedAt || 0) > (local.program?.updatedAt || 0)) out.program = remote.program || local.program;
   return out;
 }
+export const _merge = merge; // для проверки
 
 export async function pull() {
   if (!cfg) return false;
@@ -91,11 +116,15 @@ export async function pull() {
   }
 }
 
-async function push() {
-  if (!cfg || pushing) return;
+async function push(attempt = 0) {
+  if (!cfg) return;
+  if (pushing) { pendingAgain = true; return; }
   pushing = true;
+  pendingAgain = false;
   setStatus({ state: 'syncing' });
+  let retry = false;
   try {
+    const gen = editGen;
     const r = await api('/api/state', { method: 'PUT', body: JSON.stringify({ rev, state }) });
     if (r.status === 409) {
       const data = await r.json();
@@ -103,12 +132,14 @@ async function push() {
       replaceState(merge(state, data.state));
       applying = false;
       rev = data.rev;
-      pushing = false;
-      return push();
+      remember();
+      retry = attempt < 3;
+      if (!retry) throw new Error(t('Нет связи с сервером'));
+      return;
     }
     if (!r.ok) throw new Error(`${t('Сервер ответил')} ${r.status}`);
     rev = (await r.json()).rev;
-    dirty = false;
+    dirty = editGen !== gen; // правки, сделанные во время отправки, уйдут следующим заходом
     remember();
     setStatus({ state: 'ok', at: Date.now(), error: '', changed: false });
   } catch (e) {
@@ -116,6 +147,8 @@ async function push() {
     setStatus({ state: 'error', error: e.message || t('Нет связи с сервером') });
   } finally {
     pushing = false;
+    if (retry) push(attempt + 1);
+    else if (pendingAgain || dirty) schedulePush(pendingAgain ? 0 : 2500);
   }
 }
 
@@ -126,6 +159,7 @@ function schedulePush(ms = 2500) {
 
 subscribe(() => {
   if (applying) return;
+  editGen++;
   dirty = true;
   remember();
   if (cfg) schedulePush();
@@ -134,5 +168,7 @@ subscribe(() => {
 export function startSync() {
   if (!cfg) return;
   pull();
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); else if (dirty) push(); });
+  if (started) return;
+  started = true;
+  document.addEventListener('visibilitychange', () => { if (!cfg) return; if (!document.hidden) pull(); else if (dirty) push(); });
 }

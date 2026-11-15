@@ -79,10 +79,14 @@ export function trackChanges() {
     }
     for (const [k, o] of Object.entries(sh.snap)) if (!snap[k]) items.push({ k, type: 'del', title: o.title, dose: o.dose });
     const h = (pr.history || []).at(-1);
-    if (items.length) sh.changes = [{ date: dateStr(), level: pr.level, stage: pr.stage, reason: h?.reason || '', items }, ...(sh.changes || [])].slice(0, 6);
+    // Если мастер ничего не менял после прошлого снимка — значит, изменилось само приложение.
+    const byMaster = h && (!sh.at || h.date >= sh.at);
+    const reason = byMaster ? h.reason || '' : t('Обновление приложения: упражнения и нагрузка уточнены');
+    if (items.length) sh.changes = [{ date: dateStr(), level: pr.level, stage: pr.stage, reason, items }, ...(sh.changes || [])].slice(0, 6);
   }
   sh.sig = sig;
   sh.snap = snap;
+  sh.at = dateStr();
   save();
 }
 

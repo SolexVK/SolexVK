@@ -79,7 +79,7 @@ export const EXERCISES = {
   plank: { name: 'Планка', session: 'day', min: 4, floor: true, caution: ['shoulder', 'hypertension'], avoid: ['lumbar_acute'], family: 'core' },
   side_knee: { name: 'Боковая планка с колен', session: 'day', min: 4, floor: true, caution: ['shoulder'], avoid: ['lumbar_acute'] },
   calf: { name: 'Подъёмы на носки', session: 'day', min: 3, balance: true },
-  ham_stretch: { name: 'Растяжка задней поверхности бедра', session: 'day', min: 3, caution: ['lumbar_radicular'] },
+  ham_stretch: { name: 'Растяжка задней поверхности бедра', session: 'day', min: 3, avoid: ['lumbar_radicular'] }, // натяжение нерва при отдающей боли
   hip_stretch: { name: 'Растяжка передней поверхности бедра', session: 'day', min: 3, balance: true, caution: ['knee', 'lumbar_radicular'] },
 };
 
@@ -160,7 +160,7 @@ export const CHECKIN = [
   { id: 'warning', kind: 'choice', say: 'Есть ли сейчас новая или необычная боль, онемение, головокружение, давление в груди?',
     options: [['no', 'Нет'], ['new_pain', 'Новая боль'], ['numb', 'Онемение или слабость'], ['dizzy', 'Головокружение'], ['chest', 'Давление или боль в груди']] },
   { id: 'bp', kind: 'numbers', optional: true, say: 'Измерьте давление сидя и введите цифры. Если тонометра нет рядом, пропустите.',
-    fields: [['sys', 'Верхнее', 70, 260], ['dia', 'Нижнее', 40, 160]] },
+    fields: [['sys', 'Верхнее', 60, 300], ['dia', 'Нижнее', 30, 200]] },
 ];
 
 // Заранее записанные ответы мастера на итог опроса (когда нет нейросети).
@@ -180,7 +180,7 @@ export const PROGRESSION = {
   level: {
     1: { stolbSec: 90, chairReps: 8, weekSessions: 10, weeksStable: 2, maxPain: 5 },
     2: { stolbSec: 240, chairReps: 12, weekSessions: 10, weeksStable: 2, maxPain: 4 },
-    3: { stolbSec: 360, chairReps: 15, weekSessions: 10, weeksStable: 3, maxPain: 3 },
+    3: { stolbSec: 360, chairReps: 12, weekSessions: 10, weeksStable: 3, maxPain: 3 },
   },
   // Откат: боль выросла на 2 балла и держится 3 дня, или были тревожные признаки.
   regress: { painRise: 2, days: 3 },

@@ -12,6 +12,7 @@ import { FigurePlayer, beatTarget } from './figplayer.js';
 
 const params = new URLSearchParams(location.search);
 const SPEED = Math.max(1, Number(params.get('speed')) || 1);
+const UNWELL = /нехорошо|плохо|кружит|головокруж|темнеет в глазах|в груди|давит|задыха|онемел|немеет|слабость в|unwell|dizzy|sick|chest pain|can'?t breathe|numb/;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const mmss = (sec) => { const s = Math.max(0, Math.ceil(sec)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -43,6 +44,7 @@ export class SessionRunner {
     this.doneSteps = 0;
     this.results = { quality: [], stolbSec: 0, chairReps: 0, repsTotal: 0, cues: 0 };
     this.startedAt = Date.now();
+    this.date = dateStr(); // занятие после полуночи засчитывается в день начала
     this.build();
   }
 
@@ -60,7 +62,7 @@ export class SessionRunner {
         <span class="s-count"></span>
         <button class="s-chip" data-act="cam" aria-pressed="false">${t('Камера')}</button>
       </div>
-      <p class="s-cue" aria-live="assertive"></p>
+      <p class="s-cue" aria-live="polite"></p>
       <div class="s-panel">
         <p class="s-group"></p>
         <h2 class="s-title"></h2>
@@ -95,7 +97,11 @@ export class SessionRunner {
       this.act(b.dataset.act);
     };
     this.root.addEventListener('click', this.onClick);
-    this.onVis = () => { if (!document.hidden) this.requestWake(); };
+    this.onVis = () => {
+      if (document.hidden) return;
+      this.requestWake();
+      voice.resumeAudio(); // после звонка или блокировки экрана айфон «замораживает» звук
+    };
     document.addEventListener('visibilitychange', this.onVis);
   }
 
@@ -128,6 +134,8 @@ export class SessionRunner {
   }
 
   async enableCamera() {
+    if (this.camBusy) return;
+    this.camBusy = true;
     this.el.cam.textContent = t('Камера…');
     try {
       await pose.startCamera(this.video);
@@ -146,6 +154,8 @@ export class SessionRunner {
       this.flash(err?.name === 'NotAllowedError'
         ? t('Нет доступа к камере. Занимаемся без неё.')
         : t('Камера недоступна. Занимаемся без неё.'));
+    } finally {
+      this.camBusy = false;
     }
   }
 
@@ -213,7 +223,10 @@ export class SessionRunner {
       this.sayNow(it.text, () => this.nextItem());
     } else if (it.t === 'beat') {
       ambient.beat({ breath: it.breath, dur: it.dur / SPEED, rep: it.rep });
-      const tg = beatTarget(this.fig, it, this.figSt);
+      // После паузы такт начинается заново — манекен идёт к той же позе, а не к следующей.
+      const tg = st.figJ === st.j ? st.figTarget : beatTarget(this.fig, it, this.figSt);
+      st.figJ = st.j;
+      st.figTarget = tg;
       if (tg != null) this.fig.moveTo(tg, Math.min(6, it.dur / SPEED) * 0.9);
       // Длина такта считается по исходной записи фразы, а не по подстроенному голосу:
       // быстрее или медленнее говорит мастер — счёт идёт в том же темпе.
@@ -365,6 +378,8 @@ export class SessionRunner {
   }
 
   resume() {
+    voice.unlock();
+    voice.resumeAudio();
     this.paused = false;
     ambient.setPaused(false);
     this.fig?.pause(false);
@@ -380,10 +395,12 @@ export class SessionRunner {
   // Микрофон включается только по нажатию: постоянное прослушивание на айфоне прерывает звук занятия.
   command(raw) {
     const p = String(raw || '').toLowerCase().replace(/^(?:мастер|учитель|master|teacher)[,.!\s]*/, '').trim();
-    if (!p || p.split(/\s+/).length > 3) return false;
+    if (!p) return false;
+    // Тревожные слова — в любой фразе, какой бы длинной она ни была.
+    if (UNWELL.test(p)) { this.sos(); return true; }
+    if (p.split(/\s+/).length > 3) return false;
     const run = (fn) => { this.closeOverlay(); fn(); return true; };
     if (/посмотри|look/.test(p)) { this.ask({ look: true }); return true; }
-    if (/нехорошо|плохо|кружится|unwell|dizzy|sick/.test(p)) { this.sos(); return true; }
     if (/пауза|подожди|стоп|pause|wait|stop/.test(p)) return run(() => { if (!this.paused) this.pause(); });
     if (/продолж|поехали|continue|resume|go on/.test(p)) return run(() => { if (this.paused) this.resume(); });
     if (/дальше|следующ|пропус|next|skip/.test(p)) return run(() => (this.paused ? this.resume() : this.finishStep(true)));
@@ -395,6 +412,7 @@ export class SessionRunner {
 
   // ---- оверлеи ----
   openOverlay(html) {
+    this.abort?.abort(); // прежний ответ мастера не должен говорить поверх нового вопроса
     this.overlayOpen = true;
     voice.cancel();
     if (this.st) { this.st.token++; this.st.speaking = false; }
@@ -435,7 +453,7 @@ export class SessionRunner {
         this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">${t('Слушаю')}</p><p class="ov-live">${t('Говорите…')}</p><p class="note">${t('Вопрос или команда: «пауза», «дальше», «назад», «повтори», «посмотри».')}</p><button class="btn ghost" data-act="ov-close">${t('Отмена')}</button></div>`);
         const live = this.el.overlay.querySelector('.ov-live');
         try {
-          question = await voice.listenOnce({ onInterim: (t) => { if (live.isConnected) live.textContent = t || t('Говорите…'); } });
+          question = await voice.listenOnce({ onInterim: (txt) => { if (live.isConnected) live.textContent = txt || t('Говорите…'); } });
         } catch { question = null; }
         if (!this.overlayOpen) return undefined;
         if (question && this.command(question)) return undefined;
@@ -453,6 +471,7 @@ export class SessionRunner {
 
   sendTyped() {
     const v = this.el.overlay.querySelector('.ov-input')?.value.trim();
+    if (v && UNWELL.test(v.toLowerCase())) { this.sos(); return; }
     if (v) this.answer(v, null);
   }
 
@@ -484,7 +503,8 @@ export class SessionRunner {
     this.pause();
     this.openOverlay(`<div class="ov-card ov-sos"><h3>${t('Остановитесь')}</h3><p>${t('Сядьте или лягте. Дышите спокойно, без задержек.')}</p>
       <p><strong>${t('Сразу звоните 103 или 112')}</strong>${t(', если есть хотя бы одно:')}</p>
-      <ul>${RED_FLAGS.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
+      <ul>${RED_FLAGS.map((f) => `<li>${esc(t(f))}</li>`).join('')}</ul>
+      <div class="ov-row"><a class="btn danger" href="tel:103">${t('Позвонить 103')}</a><a class="btn danger" href="tel:112">${t('Позвонить 112')}</a></div>
       <p>${t('Если просто закружилась голова или стало больно, на сегодня достаточно. Измерьте давление и запишите в дневник, что случилось.')}</p>
       <div class="ov-row"><button class="btn" data-act="finish-save">${t('Закончить занятие')}</button><button class="btn ghost" data-act="ov-close">${t('Мне лучше, вернуться')}</button></div></div>`);
     voice.speak(SESSION_LINES.sos, { interrupt: true });
@@ -531,12 +551,12 @@ export class SessionRunner {
   finish(record, fromSummary = false) {
     const kind = this.plan.kind;
     if (record) {
-      const d = day(dateStr());
+      const d = day(this.date || dateStr());
       const r = this.results;
       // Незавершённый шаг тоже учитываем: время столба и повторы до выхода.
       if (!this.completed && this.st && this.cur) {
-        if (this.cur.id === 'stolb') r.stolbSec = Math.max(r.stolbSec, Math.round(Math.min(this.st.t, this.cur.dur)));
-        if (this.cur.track === 'chair') r.chairReps = Math.max(r.chairReps, this.st.reps);
+        if (this.cur.id === 'stolb') r.stolbSec = Math.max(r.stolbSec, Math.round(Math.min(this.st.holdT || 0, this.cur.dur || 0)));
+        if (this.cur.track === 'chair') r.chairReps = Math.max(r.chairReps, Math.max(0, (this.st.maxRep || 1) - 1), this.coach?.reps || 0);
       }
       const prev = d.sessions[kind] || {};
       const q = r.quality.length ? Math.round(r.quality.reduce((a, b) => a + b, 0) / r.quality.length) : null;

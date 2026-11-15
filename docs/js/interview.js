@@ -87,7 +87,8 @@ export function runInterview(root, { title, questions, answers = {}, onClose }) 
         const out = {};
         for (const [k, , min, max] of q.fields) {
           const v = parseNumber(root.querySelector(`[data-field="${k}"]`).value);
-          if (v == null || v < min || v > max) return q.optional ? undefined : false;
+          if (v == null) return q.optional ? undefined : false;
+          if (v < min || v > max) return false; // число вне пределов — переспросить, а не молча пропустить
           out[k] = v;
         }
         return out;

@@ -214,6 +214,10 @@ function renderToday() {
 // ---------- запуск занятия ----------
 async function openStart(kind) {
   const today = dateStr();
+  if (state.program && state.program.level === 0) {
+    toast(t('По вашим ответам занятия сейчас можно начинать только после разрешения врача. Я подготовлю бережную программу, когда врач даст согласие.'));
+    return;
+  }
   // Перед первым занятием дня мастер спрашивает о самочувствии.
   if (state.program?.level && kind !== 'evening' && !todayCheckin(today)) {
     const dec = await runCheckin(main, kind);
@@ -379,7 +383,7 @@ function renderDiary() {
 
     <section class="log"><h3>${t('Записи')}</h3>
       ${dates.length ? `<div class="table-wrap"><table><thead><tr><th>${t('Дата')}</th><th>${t('Занятия')}</th><th>${t('АД')}</th><th>${t('Поясн.')}</th><th>${t('Шаги')}</th><th>${t('Вес')}</th><th>${t('Талия')}</th></tr></thead><tbody>
-        ${dates.map((ds) => { const x = state.days[ds]; return `<tr data-date="${ds}"><td>${shortDate(ds)}</td><td>${SESSION_KINDS.map((k) => (x.sessions?.[k]?.done ? t(SESSION_META[k].title)[0] : '·')).join(' ')}</td><td>${x.bp?.sys ? `${x.bp.sys}/${x.bp.dia}` : '—'}</td><td>${x.pain?.back ?? '—'}</td><td>${x.steps ?? '—'}</td><td>${x.weight ?? '—'}</td><td>${x.waist ?? '—'}</td></tr>`; }).join('')}
+        ${dates.map((ds) => { const x = state.days[ds]; return `<tr data-date="${ds}"><td>${shortDate(ds)}</td><td>${SESSION_KINDS.map((k) => (x.sessions?.[k]?.done ? t(SESSION_META[k].title)[0] : '·')).join(' ')}</td><td>${x.bp?.sys ? `${esc(x.bp.sys)}/${esc(x.bp.dia)}` : '—'}</td><td>${esc(x.pain?.back ?? '—')}</td><td>${esc(x.steps ?? '—')}</td><td>${esc(x.weight ?? '—')}</td><td>${esc(x.waist ?? '—')}</td></tr>`; }).join('')}
       </tbody></table></div>` : `<p class="note">${t('Здесь появятся ваши записи. Первая — сегодня вечером.')}</p>`}
     </section>`;
 
@@ -463,8 +467,9 @@ function renderProgress() {
     { name: t('Нижнее'), color: 'var(--series-2)', points: series((x) => x.bp?.dia) },
   ] });
   const weeks = [];
-  const nWeeks = Math.min(12, Math.max(1, Math.ceil(ci.dayN / 7)));
-  for (let i = 0; i < nWeeks; i++) {
+  // Последние 12 недель (после 84-го дня график сдвигается, а не замирает).
+  const nAll = Math.max(1, Math.ceil(ci.dayN / 7));
+  for (let i = Math.max(0, nAll - 12); i < nAll; i++) {
     let n = 0;
     for (let k = 0; k < 7; k++) n += coreDone(addDays(p.startDate, i * 7 + k));
     weeks.push({ label: String(i + 1), value: n });
@@ -496,7 +501,7 @@ function renderMaster() {
   main.innerHTML = `
     ${state.memory?.summary || state.log?.length ? `<details class="memory"><summary>${t('Что мастер помнит о вас')}</summary>
       <p>${esc(state.memory?.summary || t('Заметок пока нет: они появятся, когда подключена нейросеть.'))}</p>
-      ${state.log?.length ? `<h4>${t('Последние беседы')}</h4><ul class="journal">${state.log.slice(-12).reverse().map((e) => `<li><span>${new Date(e.at).toLocaleDateString('ru-RU')} · ${esc({ intake: t('знакомство'), checkin: t('перед занятием'), review: t('пересмотр'), session: t('занятие'), chat: t('беседа') }[e.kind] || e.kind)}</span>${esc(e.role === 'user' ? t('Вы ответили на вопросы') : String(e.text).slice(0, 220))}</li>`).join('')}</ul>` : ''}
+      ${state.log?.length ? `<h4>${t('Последние беседы')}</h4><ul class="journal">${state.log.slice(-12).reverse().map((e) => `<li><span>${new Date(e.at).toLocaleDateString(locale())} · ${esc({ intake: t('знакомство'), checkin: t('перед занятием'), review: t('пересмотр'), session: t('занятие'), chat: t('беседа') }[e.kind] || e.kind)}</span>${esc(e.role === 'user' ? t('Вы ответили на вопросы') : String(e.text).slice(0, 220))}</li>`).join('')}</ul>` : ''}
     </details>` : ''}
     <section class="chat" id="chat" aria-live="polite"></section>
     ${hasKey() ? '' : `<p class="note chat-note">${t('Без ключа наставник отвечает только по курсу. Свободный разговор включается в настройках.')} <button class="link" data-open="settings">${t('Открыть')}</button></p>`}
@@ -649,6 +654,8 @@ function openSettings() {
     </form>`);
   $$('[data-lang]').forEach((b) => b.addEventListener('click', () => {
     if (b.dataset.lang === lang) return;
+    // Сначала сохраняем то, что уже введено в форме (имя, сервер, ключ), — иначе перезапуск это сотрёт.
+    try { $('#set-form')?.requestSubmit?.(); } catch { /* noop */ }
     s.lang = b.dataset.lang;
     save();
     // Язык подхватывается при загрузке: перезапускаем приложение.
@@ -817,7 +824,7 @@ function syncLabel(st = syncStatus()) {
   if (!serverConfig()) return t('Сервер не подключён.');
   if (st.state === 'syncing') return t('Синхронизация…');
   if (st.state === 'error') return `${t('Нет связи с сервером:')} ${st.error}`;
-  if (st.state === 'ok') return `${t('Синхронизировано')} ${new Date(st.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.`;
+  if (st.state === 'ok') return `${t('Синхронизировано')} ${new Date(st.at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}.`;
   return t('Сервер подключён.');
 }
 onSyncStatus((st) => {

@@ -1310,5 +1310,14 @@ export default {
 "Прогулка, двадцать минут.": "Walk, twenty minutes.",
 "Прогулка, двадцать пять минут.": "Walk, twenty-five minutes.",
 "Прогулка, тридцать минут.": "Walk, thirty minutes.",
-"Сисиодоси в саду храма Сисэн-до, Киото": "Shishi-odoshi in the garden of Shisen-dō temple, Kyoto"
+"Сисиодоси в саду храма Сисэн-до, Киото": "Shishi-odoshi in the garden of Shisen-dō temple, Kyoto",
+"Позвонить 103": "Call 103",
+"Позвонить 112": "Call 112",
+"внезапная сильная головная боль или резкое ухудшение зрения": "sudden severe headache or sudden loss of vision",
+"Шею бережём: только медленные повороты в половину амплитуды и мягкое втягивание подбородка назад. Без кругов, без запрокидывания и без наклонов головы к груди. Макушка тянется вверх.": "We protect the neck: only slow turns at half range and a gentle chin tuck backwards. No circles, no tilting back and no bending the head to the chest. The crown reaches up.",
+"Пальцы сплетены перед животом. На вдохе руки поднимаются перед телом, у груди ладони поворачиваются и выталкиваются вверх. Тянитесь макушкой, взгляд прямо, назад не прогибайтесь. На выдохе руки через стороны вниз. Медленно, без задержки дыхания.": "Fingers interlaced in front of the belly. Breathing in, the arms rise in front of the body, at the chest the palms turn and push up. Reach up with the crown, look straight ahead, do not arch back. Breathing out, the arms lower through the sides. Slowly, without holding the breath.",
+"Повороты головы в половину амплитуды и мягкое втягивание подбородка назад. Без кругов, без запрокидывания и без наклонов к груди.": "Head turns at half range and a gentle chin tuck backwards. No circles, no tilting back and no bending to the chest.",
+"Теперь мягко втягиваем подбородок назад, будто делаем двойной подбородок. Голова не наклоняется, взгляд прямо.": "Now gently draw the chin back, as if making a double chin. The head does not tilt, look straight ahead.",
+"Затем возвращаемся в свободное положение.": "Then return to a relaxed position.",
+"Обновление приложения: упражнения и нагрузка уточнены": "App update: exercises and load were refined"
 };

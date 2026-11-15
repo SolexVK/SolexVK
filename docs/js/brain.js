@@ -3,7 +3,8 @@
 import Anthropic from '../vendor/anthropic-sdk.mjs';
 import { MODELS, prepareRequest, runRequest, responseText } from './ai-request.js';
 import { state, getApiKey, dateStr, addDays, peekDay, save, logEntry } from './store.js';
-import { PRINCIPLES, LEVELS, EXERCISES, INTAKE, CHECKIN } from './kb.js';
+import { PRINCIPLES, LEVELS, EXERCISES, INTAKE, CHECKIN, CHECKIN_REPLIES } from './kb.js';
+import { FLOW_LINES } from './flow-lines.js';
 import { serverConfig, api } from './sync.js';
 import { t, aiLanguage } from './i18n.js';
 
@@ -116,13 +117,16 @@ export async function designProgram(intake, base) {
     system: `${PERSONA}\n\nСейчас ты составляешь начальную программу по анкете ученика. Правила приложения уже предложили базовый вариант; ты можешь сделать его бережнее (понизить уровень, уменьшить множитель нагрузки, исключить упражнения), но не интенсивнее.`,
     messages: [{ role: 'user', content: `Анкета ученика:\n${JSON.stringify(intake, null, 1)}\n\nБазовый вариант по правилам: уровень ${base.level}, ограничения ${base.flags.join(', ') || 'нет'}, баллы слабости ${base.weakness}, причины: ${base.reasons.join('; ') || 'нет'}. Рекомендации к врачу: ${base.doctor.join('; ') || 'нет'}.\n\nКаталог упражнений (id: название):\n${catalog}\n\nВерни программу. level — от 1 до 3, не выше базового. doseScale — множитель повторов и времени. exclude — id упражнений, которые этому ученику пока нельзя. focus — 2–4 главных направления работы. cautions — 2–5 коротких предостережений для этого ученика. rationale — обращение мастера к ученику вслух, 5–7 фраз: что вы увидели в ответах, с какого уровня начинаете и почему, на чём сосредоточитесь, что важно соблюдать. ${VOICE_RULES}` }],
   });
+  const level = Math.min(base.level, Math.max(1, out.level | 0));
   return {
-    level: Math.min(base.level, Math.max(1, out.level | 0)),
+    level,
+    // Если нейросеть назвала уровень выше разрешённого, её текст мог бы его объявить — тогда текст по правилам.
+    clampedLevel: (out.level | 0) > base.level,
     doseScale: Math.min(1, Math.max(0.6, Number(out.doseScale) || 1)),
     exclude: (out.exclude || []).filter((id) => EX_IDS.includes(id) && !['breath', 'close', 'unload'].includes(id)),
     focus: (out.focus || []).slice(0, 5).map(String),
     cautions: (out.cautions || []).slice(0, 6).map(String),
-    rationale: String(out.rationale || ''),
+    rationale: (out.level | 0) > base.level ? '' : String(out.rationale || ''),
   };
 }
 
@@ -145,7 +149,9 @@ export async function checkinReply(answers, rule, kind) {
     messages: [{ role: 'user', content: `Перед занятием (${kind === 'morning' ? 'утро' : kind === 'day' ? 'день' : 'вечер'}) ты задал вопросы:\n${q}\n\nОтветы ученика: ${JSON.stringify(answers)}\nРешение по правилам безопасности: режим ${rule.mode}${rule.reasons.length ? `, причины: ${rule.reasons.join('; ')}` : ''}.\n\nВерни: say — что ты скажешь ученику вслух, 2–4 фразы: отклик на его состояние, что сегодня делаем и одно наставление на занятие, учитывая его историю; mode — режим занятия: full, light, rest или none (не легче, чем решение по правилам); skip — id упражнений, которые сегодня лучше пропустить (обычно пусто). ${VOICE_RULES}` }],
   });
   const mode = ORDER[out.mode] >= ORDER[rule.mode] ? out.mode : rule.mode;
-  return { say: String(out.say || ''), mode, skip: (out.skip || []).filter((id) => EX_IDS.includes(id)) };
+  // Режим урезан правилами — слова нейросети («в полную силу») могли бы ему противоречить.
+  const say = mode !== out.mode ? (CHECKIN_REPLIES[rule.key] || CHECKIN_REPLIES[mode] || '') : String(out.say || '');
+  return { say, mode, skip: (out.skip || []).filter((id) => EX_IDS.includes(id)) };
 }
 
 // ---- 3. Память мастера (Haiku) ----
@@ -180,7 +186,9 @@ export async function reviewProgress(ready) {
   let decision = out.decision;
   if (decision === 'level_up' && !(ready.ready && ready.nextScripted)) decision = ready.stageUp ? 'stage_up' : 'stay';
   if (decision === 'stage_up' && !ready.stageUp) decision = 'stay';
-  return { decision, say: String(out.say || ''), reasons: (out.reasons || []).map(String) };
+  const lines = { step_back: FLOW_LINES.stepBack, level_up: FLOW_LINES.levelUp, stage_up: FLOW_LINES.stageUp, stay: FLOW_LINES.stay };
+  const say = decision !== out.decision ? lines[decision] : String(out.say || '');
+  return { decision, say, reasons: (out.reasons || []).map(String) };
 }
 
 // ---- 5. Свободная беседа (Haiku) ----

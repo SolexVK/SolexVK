@@ -203,7 +203,10 @@ function build() {
     duck.gain.cancelScheduledValues(now());
     duck.gain.setTargetAtTime(speaking ? 0.35 : 1, now(), speaking ? 0.08 : 0.6);
   });
-  document.addEventListener('visibilitychange', () => apply());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+    apply();
+  });
   return true;
 }
 

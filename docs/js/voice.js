@@ -139,6 +139,10 @@ export async function preload(texts, onProgress) {
   await loadManifest();
   if (!ctx) return;
   const keys = [...new Set(texts.filter(hasClip).map(clipKey))];
+  // Память телефона не безгранична: записи прошлых занятий и их обработанные варианты отпускаем.
+  const need = new Set(keys);
+  for (const k of [...buffers.keys()]) if (!need.has(k)) buffers.delete(k);
+  variants.clear();
   let done = 0;
   const queueKeys = [...keys];
   const worker = async () => {
@@ -169,6 +173,11 @@ async function warm(keys) {
 
 // Первое произнесение на айфоне должно случиться прямо в обработчике касания.
 let unlocked = false;
+// Айфон после звонка, Siri или блокировки экрана переводит звук в «прерванное» состояние — будим его.
+export function resumeAudio() {
+  try { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); } catch { /* noop */ }
+}
+
 export function unlock() {
   try {
     // Звук занятия должен играть и при выключенном звонке.
@@ -177,7 +186,7 @@ export function unlock() {
   if (AC) {
     try {
       if (!ctx) ctx = new AC();
-      if (ctx.state === 'suspended') ctx.resume();
+      if (ctx.state !== 'running') ctx.resume().catch(() => {});
       const b = ctx.createBuffer(1, 1, 22050);
       const src = ctx.createBufferSource();
       src.buffer = b;
@@ -244,7 +253,7 @@ function run() {
     const key = clipKey(item.text);
     loadClip(key).then((raw) => {
       if (done) return;
-      if (ctx.state === 'suspended') ctx.resume();
+      if (ctx.state !== 'running') ctx.resume().catch(() => {});
       const buf = variant(key, raw, speedFor(item.text, item.fit), voicePitch());
       const src = ctx.createBufferSource();
       src.buffer = buf;
