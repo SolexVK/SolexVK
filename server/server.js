@@ -15,7 +15,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
-import { ALLOWED_MODELS, runRequest } from '../docs/js/ai-request.js';
+import { ALLOWED_MODELS, prepareRequest, runRequest } from '../docs/js/ai-request.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8787);
@@ -35,21 +35,34 @@ await fs.mkdir(path.join(DATA_DIR, 'backups'), { recursive: true });
 const claude = process.env.ANTHROPIC_API_KEY ? new Anthropic({ maxRetries: 2 }) : null;
 
 // ---- хранилище: один файл, запись через временный файл ----
+// Пустое состояние — только если файла ещё нет. Испорченный или нечитаемый файл — ошибка, а не повод его затереть.
 async function readState() {
-  try { return JSON.parse(await fs.readFile(STATE_FILE, 'utf8')); } catch { return { rev: 0, state: null, updatedAt: null }; }
+  let text;
+  try { text = await fs.readFile(STATE_FILE, 'utf8'); } catch (e) {
+    if (e.code === 'ENOENT') return { rev: 0, state: null, updatedAt: null };
+    throw e;
+  }
+  return JSON.parse(text);
 }
-let writing = Promise.resolve();
-function writeState(doc) {
-  writing = writing.then(async () => {
-    const tmp = `${STATE_FILE}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(doc));
-    await fs.rename(tmp, STATE_FILE);
-    // Копия раз в день: можно откатиться, если что-то пошло не так.
-    const day = new Date().toISOString().slice(0, 10);
-    const bak = path.join(DATA_DIR, 'backups', `state-${day}.json`);
-    await fs.copyFile(STATE_FILE, bak).catch(() => {});
-  });
-  return writing;
+const KEEP_BACKUPS = 60; // дней
+async function writeState(doc) {
+  // Копия раз в день — состояние до первой записи этого дня; старые копии удаляются.
+  const day = new Date().toISOString().slice(0, 10);
+  const bak = path.join(DATA_DIR, 'backups', `state-${day}.json`);
+  await fs.copyFile(STATE_FILE, bak, fs.constants.COPYFILE_EXCL).catch(() => {});
+  const tmp = `${STATE_FILE}.tmp`;
+  const fh = await fs.open(tmp, 'w');
+  try { await fh.writeFile(JSON.stringify(doc)); await fh.sync(); } finally { await fh.close(); }
+  await fs.rename(tmp, STATE_FILE);
+  const all = (await fs.readdir(path.join(DATA_DIR, 'backups')).catch(() => [])).filter((f) => /^state-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort();
+  for (const f of all.slice(0, Math.max(0, all.length - KEEP_BACKUPS))) await fs.unlink(path.join(DATA_DIR, 'backups', f)).catch(() => {});
+}
+// Чтение, проверка версии и запись — строго по очереди, чтобы два устройства не затёрли друг друга.
+let queue = Promise.resolve();
+function exclusive(fn) {
+  const run = queue.catch(() => {}).then(fn);
+  queue = run.catch(() => {});
+  return run;
 }
 
 // ---- ограничение частоты запросов к нейросети ----
@@ -73,8 +86,9 @@ function cors(req, res) {
     res.setHeader('Access-Control-Max-Age', '600');
   }
 }
+const SECURITY = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
 function send(res, code, body) {
-  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...SECURITY });
   res.end(JSON.stringify(body));
 }
 function authorized(req) {
@@ -90,18 +104,20 @@ async function readBody(req) {
     if (size > MAX_BODY) throw Object.assign(new Error('too_large'), { code: 413 });
     chunks.push(c);
   }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+  const v = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+  return v && typeof v === 'object' ? v : {};
 }
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.mp3': 'audio/mpeg', '.wasm': 'application/wasm', '.task': 'application/octet-stream' };
-async function serveStatic(req, res) {
-  const url = new URL(req.url, 'http://x');
-  let file = path.normalize(path.join(APP_DIR, decodeURIComponent(url.pathname)));
-  if (!file.startsWith(APP_DIR)) return send(res, 403, { error: 'forbidden' });
+async function serveStatic(url, res) {
+  let file;
+  try { file = path.normalize(path.join(APP_DIR, decodeURIComponent(url.pathname))); } catch { return send(res, 400, { error: 'bad_url' }); }
+  if (file !== APP_DIR && !file.startsWith(APP_DIR + path.sep)) return send(res, 403, { error: 'forbidden' });
+  if (path.relative(APP_DIR, file).split(path.sep).some((p) => p.startsWith('.'))) return send(res, 404, { error: 'not_found' });
   try {
     if ((await fs.stat(file)).isDirectory()) file = path.join(file, 'index.html');
     const data = await fs.readFile(file);
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', ...SECURITY });
     return res.end(data);
   } catch {
     return send(res, 404, { error: 'not_found' });
@@ -109,12 +125,21 @@ async function serveStatic(req, res) {
 }
 
 // ---- маршруты ----
-const server = http.createServer(async (req, res) => {
+const server = http.createServer((req, res) => {
+  handle(req, res).catch((err) => {
+    console.error(err);
+    if (!res.headersSent) send(res, 500, { error: 'server_error' }); else res.end();
+  });
+});
+process.on('unhandledRejection', (err) => console.error('unhandledRejection', err));
+
+async function handle(req, res) {
   cors(req, res);
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
-  const url = new URL(req.url, 'http://x');
+  let url;
+  try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, { error: 'bad_url' }); }
   if (!url.pathname.startsWith('/api/')) {
-    if (SERVE_APP && req.method === 'GET') return serveStatic(req, res);
+    if (SERVE_APP && req.method === 'GET') return serveStatic(url, res);
     return send(res, 404, { error: 'not_found' });
   }
   if (url.pathname === '/api/health') return send(res, 200, { ok: true, ai: !!claude });
@@ -126,23 +151,32 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/state' && req.method === 'PUT') {
       const body = await readBody(req);
-      if (!body.state || typeof body.state !== 'object') return send(res, 400, { error: 'bad_state' });
-      const cur = await readState();
-      // Кто-то записал раньше нас — отдаём серверную копию, приложение объединит и повторит.
-      if (cur.state && Number(body.rev) !== cur.rev) return send(res, 409, cur);
-      const doc = { rev: cur.rev + 1, state: body.state, updatedAt: new Date().toISOString() };
-      await writeState(doc);
-      return send(res, 200, { rev: doc.rev, updatedAt: doc.updatedAt });
+      if (!body.state || typeof body.state !== 'object' || Array.isArray(body.state)) return send(res, 400, { error: 'bad_state' });
+      const out = await exclusive(async () => {
+        const cur = await readState();
+        // Кто-то записал раньше нас — отдаём серверную копию, приложение объединит и повторит.
+        if (cur.state && Number(body.rev) !== cur.rev) return { conflict: cur };
+        const doc = { rev: cur.rev + 1, state: body.state, updatedAt: new Date().toISOString() };
+        await writeState(doc);
+        return { doc };
+      });
+      if (out.conflict) return send(res, 409, out.conflict);
+      return send(res, 200, { rev: out.doc.rev, updatedAt: out.doc.updatedAt });
     }
     if (url.pathname === '/api/messages' && req.method === 'POST') {
       if (!claude) return send(res, 503, { error: 'ai_not_configured' });
       if (rateLimited()) return send(res, 429, { error: 'rate_limited' });
       const reqBody = await readBody(req);
-      const body = reqBody.body || {};
-      // Пропускаем только разрешённые модели и разумный размер ответа.
-      if (!ALLOWED_MODELS.has(body.model)) return send(res, 400, { error: 'model_not_allowed' });
-      body.max_tokens = Math.min(Number(body.max_tokens) || 4000, 16000);
-      const out = await runRequest(claude, { beta: !!reqBody.beta, body });
+      const b = reqBody.body || {};
+      // Запрос собирается заново из разрешённых полей: модель, системный текст, сообщения, усилие, схема ответа.
+      // Инструменты, потоковый режим и прочие параметры от клиента не принимаются.
+      if (!ALLOWED_MODELS.has(b.model)) return send(res, 400, { error: 'model_not_allowed' });
+      if (!Array.isArray(b.messages) || !b.messages.length || b.messages.length > 60) return send(res, 400, { error: 'bad_messages' });
+      const effort = ['low', 'medium'].includes(b.output_config?.effort) ? b.output_config.effort : undefined;
+      const schema = b.output_config?.format?.type === 'json_schema' ? b.output_config.format.schema : undefined;
+      const system = typeof b.system === 'string' || Array.isArray(b.system) ? b.system : undefined;
+      const prepared = prepareRequest({ model: b.model, system, messages: b.messages, maxTokens: Math.min(Number(b.max_tokens) || 4000, 16000), effort, schema });
+      const out = await runRequest(claude, prepared);
       return send(res, 200, out);
     }
     return send(res, 404, { error: 'not_found' });
@@ -159,6 +193,6 @@ const server = http.createServer(async (req, res) => {
     console.error(err);
     return send(res, 500, { error: 'server_error' });
   }
-});
+}
 
 server.listen(PORT, () => console.log(`Тай-Чи сервер слушает порт ${PORT}${claude ? ', нейросеть подключена' : ', без нейросети'}${SERVE_APP ? ', раздаёт приложение' : ''}`));

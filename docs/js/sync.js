@@ -35,8 +35,12 @@ export function setServer(url, token) {
   setStatus({ state: cfg ? 'idle' : 'off', error: '' });
 }
 
+// Ключ доступа отправляем только по защищённому соединению (кроме своего компьютера при отладке).
+const secureUrl = (u) => /^https:\/\//i.test(u) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(u);
+
 export async function api(path, init = {}) {
   if (!cfg) throw new Error('no_server');
+  if (!secureUrl(cfg.url)) throw Object.assign(new Error(t('Сервер недоступен. Проверьте адрес: он должен начинаться с https://')), { kind: 'insecure' });
   const r = await fetch(cfg.url + path, {
     ...init,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.token}`, ...(init.headers || {}) },

@@ -57,8 +57,19 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-sudo chown -R www-data /opt/taichi/server && sudo systemctl enable --now taichi
+sudo mkdir -p /opt/taichi/server/data && sudo chown -R www-data /opt/taichi/server/data
 ```
+
+```bash
+sudo chown root:www-data /opt/taichi/server/.env && sudo chmod 640 /opt/taichi/server/.env
+```
+
+```bash
+sudo systemctl enable --now taichi
+```
+
+Код сервера и файл `.env` принадлежат root: служба может писать только в папку `data`, но не может изменить
+собственный код или ключи.
 
 ## https через Caddy
 
