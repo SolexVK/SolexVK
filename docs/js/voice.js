@@ -251,8 +251,12 @@ function run() {
 
   if (ctx && hasClip(item.text)) {
     const key = clipKey(item.text);
+    // Страховка: если запись не загрузилась за 6 секунд, фразу скажет голос телефона, а не тишина.
+    let late = false;
+    const guard = setTimeout(() => { late = true; if (!done) speakSynth(item, finish, (f) => { stopFn = f; }, (t) => { wd = t; }); }, 6000);
     loadClip(key).then((raw) => {
-      if (done) return;
+      clearTimeout(guard);
+      if (done || late) return;
       if (ctx.state !== 'running') ctx.resume().catch(() => {});
       const buf = variant(key, raw, speedFor(item.text, item.fit), voicePitch());
       const src = ctx.createBufferSource();
@@ -262,7 +266,7 @@ function run() {
       stopFn = () => { src.onended = null; src.stop(); };
       wd = setTimeout(() => finish(false), (buf.duration + 3) * 1000);
       src.start(0);
-    }).catch(() => { if (!done) speakSynth(item, finish, (f) => { stopFn = f; }, (t) => { wd = t; }); });
+    }).catch(() => { clearTimeout(guard); if (!done && !late) speakSynth(item, finish, (f) => { stopFn = f; }, (t) => { wd = t; }); });
     return;
   }
   speakSynth(item, finish, (f) => { stopFn = f; }, (t) => { wd = t; });
