@@ -723,7 +723,7 @@ body::after {
 .food-prev { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; margin-bottom: 8px; }
 .mf-q { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin: 8px 0; }
 .mf-q legend { font-weight: 600; padding: 0 4px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.fchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 .chip { min-height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .chip.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .mf-other { width: 100%; }
@@ -732,3 +732,12 @@ body::after {
 .mm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mm-grid label { display: grid; gap: 4px; font-size: 14px; }
 .tab { font-size: 10px; }
+.menu-card h3 { margin-top: 0; }
+.mm { border-top: 1px solid var(--line); padding: 10px 0; }
+.mm-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.mm h4 { margin: 2px 0; font-size: 16px; }
+.mm-ing, .mm-steps { margin: 6px 0; padding-left: 20px; font-size: 14px; }
+.mm-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.mm-row .btn.small { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.pw-add { display: flex; gap: 6px; margin: 6px 0; } .pw-add input { flex: 1; }
+.btn.small { min-height: 36px; padding: 0 12px; font-size: 14px; }

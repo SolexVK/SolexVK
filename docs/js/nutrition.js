@@ -32,11 +32,13 @@ export function targets() {
   const tdee = bmr * 1.3;
   // Дефицит около 20 %, но не ниже безопасного минимума.
   const floor = male ? 1500 : 1200;
-  const kcal = Math.max(floor, Math.round((tdee * 0.8 + (state.nutrition?.adjust || 0)) / 10) * 10);
+  // Этап «поддержание и мышцы» (после достижения цели): без дефицита, белка больше.
+  const keep = state.nutrition?.phase === 'maintain';
+  const kcal = Math.max(floor, Math.round((tdee * (keep ? 1 : 0.8) + (state.nutrition?.adjust || 0)) / 10) * 10);
   // Белок и жир — на «скорректированный» вес: идеальный (ИМТ 25) плюс 40 % лишнего.
   const ideal = 25 * (h / 100) ** 2;
   const adj = w > ideal ? ideal + 0.4 * (w - ideal) : w;
-  const protein = Math.round(adj * 1.4);
+  const protein = Math.round(adj * (keep ? 1.6 : 1.4));
   const fat = Math.round(Math.max(adj * 0.8, (kcal * 0.25) / 9));
   const carbs = Math.max(80, Math.round((kcal - protein * 4 - fat * 9) / 4));
   return { kcal, protein, fat, carbs, salt: 5, fiber: 30, bmr: Math.round(bmr), tdee: Math.round(tdee), weight: w };

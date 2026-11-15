@@ -6,6 +6,7 @@ import {
   targets, dayMeals, dayTotals, mealTotals, saveMeal, deleteMeal, scaleItem,
   analyzeMeal, finishMeal, weekReview, weekStats, shrinkPhoto, newMealId,
 } from './nutrition.js';
+import { GROUPS, pantry, savePantry, reviewGroup, menu, menuStale, menuDay, makeMenu, replaceMeal, rateMeal } from './menu.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const n1 = (v) => (Math.round((Number(v) || 0) * 10) / 10).toString().replace('.', ',');
@@ -55,6 +56,7 @@ export function renderFood(main, ui) {
       ${s.salt ? `<p class="note">${t('Соль')}: ${n1(s.salt)} / ${T.salt} ${t('г')}</p>` : ''}
       <p class="food-tip">${esc(tip(T, s))}</p>
     </section>
+    ${menuSectionHTML()}
     <section class="food-actions">
       <label class="btn wide" for="food-photo">📷 ${t('Сфотографировать еду')}</label>
       <input type="file" id="food-photo" accept="image/*" capture="environment" hidden>
@@ -88,9 +90,17 @@ export function renderFood(main, ui) {
       ${ai ? `<button class="btn ghost" id="food-week">${t('Разбор недели с диетологом')}</button>` : ''}
     </section>
     <details class="food-norm"><summary>${t('Как считается норма')}</summary>
+      <label for="food-phase">${t('Этап')}</label>
+      <select id="food-phase"><option value="loss" ${state.nutrition?.phase !== 'maintain' ? 'selected' : ''}>${t('Похудение с сохранением мышц')}</option><option value="maintain" ${state.nutrition?.phase === 'maintain' ? 'selected' : ''}>${t('Поддержание веса и рост мышц')}</option></select>
       <p class="note">${t('Расход в покое — около {b} ккал, за день с ходьбой и занятиями — около {d} ккал (вес {w} кг). Для похудения норма меньше расхода примерно на 20 %: {k} ккал. Белок — {p} г, чтобы сохранять и растить мышцы. Соль — до 5 г из-за давления. Норма пересчитывается по мере похудения и после разбора недели. Это ориентир, а не назначение врача.', { b: T.bmr, d: T.tdee, w: n1(T.weight), k: T.kcal, p: T.protein })}</p>
     </details>`;
 
+  bindMenu(main, ui);
+  main.querySelector('#food-phase')?.addEventListener('change', (e) => {
+    state.nutrition = { ...(state.nutrition || {}), phase: e.target.value };
+    save();
+    ui.render();
+  });
   main.querySelector('#food-photo').addEventListener('change', async (e) => {
     const f = e.target.files?.[0];
     e.target.value = '';
@@ -150,7 +160,7 @@ function askStep(ui, ctx) {
   ui.openSheet(`<h3>${esc(first.title || t('Еда'))}</h3>
     <p class="note">${t('Вижу')}: ${esc(first.items.map((x) => `${x.name} ~${Math.round(x.grams)} ${t('г')}`).join(', '))}</p>
     ${qs.map((q) => `<fieldset class="mf-q" data-q="${esc(q.id)}"><legend>${esc(q.text)}</legend>
-      <div class="chips">${q.options.map((o) => `<button type="button" class="chip" data-a="${esc(o)}">${esc(o)}</button>`).join('')}</div>
+      <div class="fchips">${q.options.map((o) => `<button type="button" class="chip" data-a="${esc(o)}">${esc(o)}</button>`).join('')}</div>
       <input class="mf-other" placeholder="${t('Или свой ответ')}"></fieldset>`).join('')}
     <button class="btn wide" id="mf-calc">${t('Посчитать')}</button>
     <button class="btn ghost wide" data-close>${t('Отмена')}</button>`);
@@ -233,4 +243,192 @@ function manualFlow(ui) {
     ui.render();
     ui.toast(t('Сохранено'));
   });
+}
+
+// ================= продукты и меню на неделю =================
+const SLOT = { breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин', snack: 'Перекус' };
+const WD = (i) => { const d = new Date(); d.setDate(d.getDate() + i); return d.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric' }); };
+
+function mealCardHTML(x, di, mi, eaten) {
+  return `<article class="mm" data-di="${di}" data-mi="${mi}">
+    <div class="mm-top"><span class="mm-slot">${t(SLOT[x.slot] || x.slot)}</span><span class="mm-min">${x.minutes ? `${x.minutes} ${t('мин')}` : ''}</span></div>
+    <h4>${esc(x.name)}</h4>
+    <p class="meal-n">${Math.round(x.kcal)} ${t('ккал')} · ${t('Б')} ${n1(x.protein)} · ${t('Ж')} ${n1(x.fat)} · ${t('У')} ${n1(x.carbs)}</p>
+    <details><summary>${t('Продукты и как готовить')}</summary>
+      <ul class="mm-ing">${(x.ingredients || []).map((g) => `<li>${esc(g.name)} — ${Math.round(g.grams)} ${t('г')}</li>`).join('')}</ul>
+      <ol class="mm-steps">${(x.steps || []).map((st) => `<li>${esc(st)}</li>`).join('')}</ol>
+    </details>
+    <div class="mm-row">
+      <button class="btn small" data-eat ${eaten ? 'disabled' : ''}>${eaten ? `✓ ${t('Записано')}` : t('Съел это')}</button>
+      <button class="btn ghost small" data-like="1" aria-label="${t('Нравится')}">👍</button>
+      <button class="btn ghost small" data-like="0" aria-label="${t('Не нравится')}">👎</button>
+      <button class="btn ghost small" data-swap>${t('Заменить')}</button>
+    </div>
+  </article>`;
+}
+
+export function menuSectionHTML() {
+  const P = pantry();
+  const m = menu();
+  const di = menuDay();
+  const ai = aiAvailable();
+  if (!P) {
+    return `<section class="card menu-card"><h3>${t('Меню на неделю')}</h3>
+      <p class="note">${t('Мастер-диетолог составит меню на каждый день из продуктов, которые вы покупаете: простые блюда и быстрая готовка. Сначала расскажите ему о своих продуктах — это 5–10 минут.')}</p>
+      <button class="btn wide" id="pantry-go">${t('Рассказать о продуктах')}</button></section>`;
+  }
+  const eatenIds = new Set(dayMeals().map((x) => x.fromMenu).filter(Boolean));
+  const today = di >= 0 ? m.days[di] : null;
+  return `<section class="card menu-card"><h3>${t('Меню на сегодня')}</h3>
+    ${today ? today.meals.map((x, mi) => mealCardHTML(x, di, mi, eatenIds.has(`${m.start}:${di}:${mi}`))).join('') : `<p class="note">${m ? t('Меню на эту неделю закончилось.') : t('Меню ещё не составлено.')}</p>`}
+    ${menuStale() && ai ? `<button class="btn wide" id="menu-make">${m ? t('Составить меню на следующую неделю') : t('Составить меню на неделю')}</button>` : ''}
+    <div class="row-btns">${m ? `<button class="btn ghost" id="menu-week">${t('Вся неделя')}</button><button class="btn ghost" id="menu-shop">${t('Список покупок')}</button>` : ''}<button class="btn ghost" id="pantry-go">${t('Мои продукты')}</button></div>
+  </section>`;
+}
+
+export function bindMenu(main, ui) {
+  main.querySelector('#pantry-go')?.addEventListener('click', () => (aiAvailable() ? pantryWizard(ui) : pantryWizard(ui, { offline: true })));
+  main.querySelector('#menu-make')?.addEventListener('click', (e) => makeMenuUI(e.currentTarget, ui));
+  main.querySelector('#menu-week')?.addEventListener('click', () => weekSheet(ui, Math.max(0, menuDay())));
+  main.querySelector('#menu-shop')?.addEventListener('click', () => shopSheet(ui));
+  bindMealCards(main, ui, () => ui.render());
+}
+
+function bindMealCards(root, ui, after) {
+  root.querySelectorAll('.mm').forEach((card) => {
+    const di = Number(card.dataset.di);
+    const mi = Number(card.dataset.mi);
+    const m = menu();
+    const x = m.days[di].meals[mi];
+    card.querySelector('[data-eat]')?.addEventListener('click', () => {
+      const g = (x.ingredients || []).reduce((a, i) => a + (Number(i.grams) || 0), 0);
+      saveMeal({ id: newMealId(), at: Date.now(), title: x.name, source: 'menu', fromMenu: `${m.start}:${di}:${mi}`, items: [{ name: x.name, grams: g, kcal: x.kcal, protein: x.protein, fat: x.fat, carbs: x.carbs, salt: 0 }] });
+      ui.toast(t('Записано в дневник питания'));
+      after();
+    });
+    card.querySelectorAll('[data-like]').forEach((b) => b.addEventListener('click', () => {
+      rateMeal(x.name, b.dataset.like === '1');
+      ui.toast(b.dataset.like === '1' ? t('Мастер учтёт в следующем меню') : t('Больше не предложу. Можно заменить сейчас.'));
+    }));
+    card.querySelector('[data-swap]')?.addEventListener('click', async (e) => {
+      if (!aiAvailable()) { ui.toast(t('Нейросеть не подключена.')); return; }
+      e.currentTarget.disabled = true;
+      e.currentTarget.textContent = t('Подбираю…');
+      try { await replaceMeal(di, mi); } catch (err) { ui.toast(err.message || t('Не получилось получить ответ.')); }
+      after();
+    });
+  });
+}
+
+async function makeMenuUI(btn, ui) {
+  btn.disabled = true;
+  btn.textContent = t('Мастер составляет меню… это до двух минут');
+  try { await makeMenu(); ui.render(); ui.toast(t('Меню на неделю готово')); } catch (err) {
+    ui.toast(err.message || t('Не получилось получить ответ.'));
+    btn.disabled = false;
+    btn.textContent = t('Составить меню на неделю');
+  }
+}
+
+function weekSheet(ui, di) {
+  const m = menu();
+  const draw = (d) => {
+    const day7 = m.days[d];
+    const tt = mealTotals(day7.meals);
+    ui.openSheet(`<h3>${t('Меню на неделю')}</h3>
+      ${m.note ? `<p class="note">${esc(m.note)}</p>` : ''}
+      <div class="fchips">${m.days.map((_, i) => `<button type="button" class="chip ${i === d ? 'on' : ''}" data-day="${i}">${esc(WD(i - Math.max(0, menuDay())))}</button>`).join('')}</div>
+      <p class="meal-n"><b>${t('За день')}: ${tt.kcal} ${t('ккал')}</b> · ${t('Б')} ${n1(tt.protein)} · ${t('Ж')} ${n1(tt.fat)} · ${t('У')} ${n1(tt.carbs)}</p>
+      <div class="mm-list">${day7.meals.map((x, mi) => mealCardHTML(x, d, mi, false)).join('')}</div>
+      ${m.prep?.length ? `<h4>${t('Заготовки на неделю')}</h4><ul>${m.prep.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
+      <button class="btn ghost wide" data-close>${t('Закрыть')}</button>`);
+    const body = document.querySelector('#sheet-body');
+    body.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', () => draw(Number(b.dataset.day))));
+    bindMealCards(body, ui, () => { draw(d); ui.render(); });
+  };
+  draw(di);
+}
+
+function shopSheet(ui) {
+  const m = menu();
+  m.bought = m.bought || {};
+  ui.openSheet(`<h3>${t('Список покупок')}</h3>
+    ${m.shopping.map((g) => `<h4>${esc(g.group)}</h4>${g.items.map((it) => `<label class="switch"><input type="checkbox" data-buy="${esc(it)}" ${m.bought[it] ? 'checked' : ''}><span>${esc(it)}</span></label>`).join('')}`).join('')}
+    <button class="btn ghost wide" data-close>${t('Закрыть')}</button>`);
+  document.querySelectorAll('#sheet-body [data-buy]').forEach((c) => c.addEventListener('change', () => { m.bought[c.dataset.buy] = c.checked; save(); }));
+}
+
+// ---- разговор о продуктах: группа за группой ----
+function pantryWizard(ui, { offline = false } = {}) {
+  const prev = pantry();
+  const all = JSON.parse(JSON.stringify(prev?.groups || {}));
+  let gi = 0;
+  const step = () => {
+    const g = GROUPS[gi];
+    const chosen = new Set(all[g.id] || []);
+    const extra = (all[g.id] || []).filter((x) => !g.items.includes(x));
+    ui.openSheet(`<p class="eyebrow">${t('Мастер-диетолог')} · ${gi + 1} / ${GROUPS.length}</p>
+      <h3>${t(g.title)}</h3>
+      <p class="note">${g.negative ? t('Отметьте, что вы не едите или плохо переносите. Можно дописать своё.') : g.id === 'kitchen' ? t('Что есть на кухне и сколько времени вы готовы готовить?') : t('Что из этого вы покупаете или можете купить? Отметьте и допишите своё.')}</p>
+      <div class="fchips">${[...g.items, ...extra].map((x) => `<button type="button" class="chip ${chosen.has(x) ? 'on' : ''}" data-it="${esc(x)}">${esc(t(x))}</button>`).join('')}</div>
+      <div class="pw-add"><input id="pw-own" placeholder="${t('Своё через запятую')}"><button class="btn ghost small" id="pw-plus">+</button></div>
+      <div id="pw-master"></div>
+      <div class="row-btns"><button class="btn ghost" id="pw-back" ${gi ? '' : 'disabled'}>${t('Назад')}</button><button class="btn" id="pw-next">${gi === GROUPS.length - 1 ? t('Готово') : t('Дальше')}</button></div>
+      <button class="btn ghost wide" data-close>${t('Отмена')}</button>`);
+    const body = document.querySelector('#sheet-body');
+    const sync = () => { all[g.id] = [...chosen]; };
+    body.querySelectorAll('[data-it]').forEach((b) => b.addEventListener('click', () => {
+      const v = b.dataset.it;
+      if (chosen.has(v)) chosen.delete(v); else chosen.add(v);
+      b.classList.toggle('on', chosen.has(v));
+      sync();
+    }));
+    body.querySelector('#pw-plus').addEventListener('click', () => {
+      const own = body.querySelector('#pw-own').value.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
+      own.forEach((x) => chosen.add(x));
+      sync();
+      step();
+    });
+    body.querySelector('#pw-back').addEventListener('click', () => { sync(); gi = Math.max(0, gi - 1); step(); });
+    let reviewed = offline;
+    body.querySelector('#pw-next').addEventListener('click', async (e) => {
+      sync();
+      // Мастер смотрит выбор и предлагает, чего не хватает (один раз на группу).
+      if (!reviewed) {
+        reviewed = true;
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.textContent = t('Мастер смотрит…');
+        try {
+          const r = await reviewGroup(g, [...chosen], all);
+          const box = body.querySelector('#pw-master');
+          const sug = (r.suggest || []).filter((x) => !chosen.has(x));
+          box.innerHTML = `<div class="meal-adv">${esc(r.comment)}${r.question ? `<br><b>${esc(r.question)}</b>` : ''}</div>
+            ${sug.length ? `<div class="fchips">${sug.map((x) => `<button type="button" class="chip" data-sug="${esc(x)}">+ ${esc(x)}</button>`).join('')}</div>` : ''}
+            ${r.question ? `<input id="pw-ans" placeholder="${t('Ваш ответ (необязательно)')}">` : ''}`;
+          box.querySelectorAll('[data-sug]').forEach((b) => b.addEventListener('click', () => {
+            const v = b.dataset.sug;
+            if (chosen.has(v)) chosen.delete(v); else chosen.add(v);
+            b.classList.toggle('on', chosen.has(v));
+            sync();
+          }));
+          btn.disabled = false;
+          btn.textContent = gi === GROUPS.length - 1 ? t('Готово') : t('Дальше');
+          return;
+        } catch {
+          // без ответа мастера — просто идём дальше
+        }
+      }
+      const ans = body.querySelector('#pw-ans')?.value.trim();
+      if (ans) { all.notes = { ...(all.notes || {}), [g.id]: ans }; }
+      if (gi < GROUPS.length - 1) { gi++; step(); return; }
+      const notes = all.notes || {};
+      delete all.notes;
+      savePantry({ groups: all, notes });
+      ui.closeSheet();
+      ui.render();
+      ui.toast(t('Список продуктов сохранён'));
+    });
+  };
+  step();
 }
