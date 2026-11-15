@@ -42,7 +42,7 @@ ALLOW_ORIGIN=https://solexvk.github.io
 
 ```
 [Unit]
-Description=Tai Chi server
+Description=Taiji server
 After=network.target
 
 [Service]

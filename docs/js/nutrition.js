@@ -96,6 +96,7 @@ const STEP2 = {
   properties: { title: { type: 'string' }, items: { type: 'array', items: ITEM }, confidence: { type: 'string', enum: ['low', 'medium', 'high'] }, advice: { type: 'string' } },
 };
 
+export const meilinPersona = () => persona();
 function persona() {
   const T = targets();
   const eaten = dayTotals();

@@ -10,10 +10,10 @@
 10 — very strong
 15 minutes in the morning and afternoon
 {min}, exercises: {n}. Level {level}, stage {stage}.
-Adapted “Eight Pieces of Brocade”, tai chi stepping, first movements of the form, more time in the stance.
+Adapted “Eight Pieces of Brocade”, taiji stepping, first movements of the form, more time in the stance.
 “Diary”
 “Dead bug”, easy version
-“Tai Chi Commencement”
+“Taiji Commencement”
 “Holding up the sky”
 “Bird-dog”
  · no corrections
@@ -48,7 +48,7 @@ In the last year, have you had falls or frequent dizziness?
 I have fallen
 In basic mode I only answer questions about the course: exercises, blood pressure, pain, food, sleep. For free conversation connect the server or an API key in settings.
 Your question
-Your tai chi master
+Your taiji master
 Your server
 Your program
 Your program is ready. Listen to where we begin.
@@ -199,7 +199,7 @@ End the session?
 End and count it
 Close
 No notes yet: they will appear when the AI is connected.
-Have you practised tai chi, qigong or yoga before?
+Have you practised taiji, qigong or yoga before?
 Session saved to the diary
 Session complete
 Session complete. You have worked well. Drink some water and note how you feel in the diary.
@@ -212,7 +212,7 @@ Wrists
 Your entries will appear here. The first one — tonight.
 A healthy back
 Hello. Before we begin, tell me, how did you sleep?
-Hello. I am your tai chi master. Before I build your program I need to get to know you. How should I address you?
+Hello. I am your taiji master. Before I build your program I need to get to know you. How should I address you?
 Meeting the master
 And the last one. What do you want to achieve?
 Walk calmly, without speeding up.

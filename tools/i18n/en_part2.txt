@@ -62,7 +62,7 @@ Setup
 Setup and breathing
 Settings
 Begin.
-Tai Chi Commencement. Feet shoulder-width apart, arms hanging freely along the body.
+Taiji Commencement. Feet shoulder-width apart, arms hanging freely along the body.
 Start
 Start session
 Start meeting
@@ -207,7 +207,7 @@ Checking the connection to the server…
 Checking…
 Progress
 We continue at the same pace
-We continue at the same pace. There is no hurry in tai chi; the body must get used to it.
+We continue at the same pace. There is no hurry in taiji; the body must get used to it.
 Continue
 Continue the session
 Steps completed:

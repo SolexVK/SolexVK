@@ -20,7 +20,7 @@ OUT = Path(os.environ.get('VOICE_OUT', ROOT / 'docs' / 'audio'))
 PHRASES = json.loads(Path(os.environ.get('VOICE_PHRASES', ROOT / 'tools' / 'voice' / 'phrases.json')).read_text(encoding='utf-8'))
 SPEAKER = 'Baldur Sanjin'
 # Голоса других мастеров: поле who в phrases.json -> голос XTTS.
-SPEAKERS = {'lao': SPEAKER, 'ligan': os.environ.get('LIGAN_SPEAKER', 'Damien Black')}
+SPEAKERS = {'lao': SPEAKER, 'ligan': os.environ.get('LIGAN_SPEAKER', 'Royston Min')}
 SPEED = 0.9
 TEMPO = 1.08  # итоговое ускорение речи без изменения тембра (ffmpeg atempo)
 TRIES = 6

@@ -6,7 +6,8 @@ import {
 import { courseInfo, buildSession, bpMode, BP_TEXT, SESSION_META, SAFETY_RULES, RED_FLAGS } from './course.js';
 import * as voice from './voice.js';
 import { cameraSupported } from './pose.js';
-import { askMaster, hasKey } from './master.js';
+import { hasKey } from './master.js';
+import { MASTERS, MASTER_IDS, chatOf, pushChat, askTeam } from './team.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
 import { PALETTES, applyPalette, CLOUD_RULE } from './theme.js';
@@ -65,7 +66,7 @@ function effectiveMode(d) {
   return m;
 }
 const todaySkip = (d) => d?.checkin?.decision?.skip || [];
-const TITLES = { today: t('Сегодня'), program: t('Программа'), food: t('Питание'), diary: t('Дневник'), progress: t('Прогресс'), master: t('Мастер Лао') };
+const TITLES = { today: t('Сегодня'), program: t('Программа'), food: t('Питание'), diary: t('Дневник'), progress: t('Прогресс'), master: t('Мастера') };
 
 function render() {
   if (!runner) ambient.setScene(document.body.classList.contains('focus') ? 'talk' : 'home');
@@ -524,7 +525,6 @@ function renderProgram() {
 }
 
 // ---------- мастер ----------
-const CHIPS = [t('Что у меня сегодня?'), t('Как стоять столбом?'), t('Болит поясница, что делать?'), t('Давление 160 на 100, заниматься?')];
 let masterBusy = false;
 let masterAbort = null;
 
@@ -535,26 +535,36 @@ function bubble(m) {
   return b;
 }
 
+let masterWho = (() => { try { return MASTERS[localStorage.getItem('taichi.master')] ? localStorage.getItem('taichi.master') : 'lao'; } catch { return 'lao'; } })();
 function renderMaster() {
-  $('#view-sub').textContent = hasKey() ? t('Живой разговор') : t('Базовый режим');
+  const who = masterWho;
+  const M = MASTERS[who];
+  $('#view-sub').textContent = `${t(M.full)} · ${hasKey() ? t('Живой разговор') : t('Базовый режим')}`;
   main.innerHTML = `
-    ${state.memory?.summary || state.log?.length ? `<details class="memory"><summary>${t('Что мастер помнит о вас')}</summary>
+    <nav class="mst-pick" aria-label="${t('Выберите мастера')}">${MASTER_IDS.map((id) => `<button type="button" class="mst ${id === who ? 'on' : ''}" data-master="${id}" aria-pressed="${id === who}"><span class="mst-seal" aria-hidden="true">${MASTERS[id].seal}</span><span class="mst-name">${t(MASTERS[id].name)}</span><span class="mst-role">${t(MASTERS[id].role)}</span></button>`).join('')}</nav>
+    ${who === 'lao' && (state.memory?.summary || state.log?.length) ? `<details class="memory"><summary>${t('Что мастер помнит о вас')}</summary>
       <p>${esc(state.memory?.summary || t('Заметок пока нет: они появятся, когда подключена нейросеть.'))}</p>
       ${state.log?.length ? `<h4>${t('Последние беседы')}</h4><ul class="journal">${state.log.slice(-12).reverse().map((e) => `<li><span>${new Date(e.at).toLocaleDateString(locale())} · ${esc({ intake: t('знакомство'), checkin: t('перед занятием'), review: t('пересмотр'), session: t('занятие'), chat: t('беседа') }[e.kind] || e.kind)}</span>${esc(e.role === 'user' ? t('Вы ответили на вопросы') : String(e.text).slice(0, 220))}</li>`).join('')}</ul>` : ''}
     </details>` : ''}
     <section class="chat" id="chat" aria-live="polite"></section>
     ${hasKey() ? '' : `<p class="note chat-note">${t('Без ключа наставник отвечает только по курсу. Свободный разговор включается в настройках.')} <button class="link" data-open="settings">${t('Открыть')}</button></p>`}
-    <div class="chips" id="chips">${CHIPS.map((c) => `<button class="chip">${esc(c)}</button>`).join('')}</div>
+    <div class="chips" id="chips">${M.chips.map((c) => `<button class="chip">${esc(t(c))}</button>`).join('')}</div>
     <form class="ask" id="ask-form">
       ${voice.sttSupported ? `<button type="button" class="mic" id="mic" aria-label="${t('Сказать голосом')}"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>` : ''}
       <textarea id="ask-input" rows="1" placeholder="${t('Ваш вопрос')}" aria-label="${t('Вопрос наставнику')}"></textarea>
       <button class="btn" type="submit">${t('Спросить')}</button>
     </form>`;
   const chat = $('#chat');
-  if (!state.chat.length) {
-    chat.append(bubble({ role: 'assistant', text: t('Я рядом. Спросите о любом упражнении, расскажите, как прошло занятие или что болит.') }));
-  }
-  state.chat.slice(-30).forEach((m) => chat.append(bubble(m)));
+  if (!chatOf(who).length) chat.append(bubble({ role: 'assistant', text: t(M.hello) }));
+  chatOf(who).slice(-30).forEach((m) => chat.append(bubble(m)));
+  $$('[data-master]').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.master === masterWho) return;
+    masterAbort?.abort();
+    voice.cancel();
+    masterWho = b.dataset.master;
+    try { localStorage.setItem('taichi.master', masterWho); } catch { /* не критично */ }
+    renderMaster();
+  }));
   // Чат прокручивается вместе со страницей: держим последнюю реплику над строкой ввода.
   const toEnd = () => window.scrollTo(0, document.documentElement.scrollHeight);
   requestAnimationFrame(toEnd);
@@ -574,17 +584,16 @@ function renderMaster() {
     let acc = '';
     masterAbort = new AbortController();
     try {
-      const res = await askMaster({
+      const res = await askTeam(who, {
         text, signal: masterAbort.signal,
-        onDelta: (dlt) => { acc += dlt; out.textContent = acc; out.classList.remove('pending'); toEnd(); if (view === 'master') say.push(dlt); },
+        onDelta: (dlt) => { acc += dlt; out.textContent = acc; out.classList.remove('pending'); toEnd(); if (view === 'master' && masterWho === who) say.push(dlt); },
       });
       out.textContent = res.text || acc;
       out.classList.remove('pending');
       toEnd();
-      state.chat.push({ role: 'user', text, at: Date.now() }, { role: 'assistant', text: res.text || acc, at: Date.now() });
-      state.chat = state.chat.slice(-40);
+      pushChat(who, { role: 'user', text, at: Date.now() }, { role: 'assistant', text: res.text || acc, at: Date.now() });
       save();
-      if (view === 'master') say.end();
+      if (view === 'master' && masterWho === who) say.end();
     } catch (err) {
       out.classList.remove('pending');
       out.classList.add('error');

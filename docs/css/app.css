@@ -742,3 +742,12 @@ body::after {
 .mm-row .btn.small { min-height: 36px; padding: 0 12px; font-size: 14px; }
 .pw-add { display: flex; gap: 6px; margin: 6px 0; } .pw-add input { flex: 1; }
 .btn.small { min-height: 36px; padding: 0 12px; font-size: 14px; }
+
+/* Выбор мастера в чате */
+.mst-pick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.mst { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); min-height: 44px; }
+.mst-seal { font-size: 22px; line-height: 1.2; color: var(--seal); }
+.mst-name { font-size: 13px; font-weight: 600; text-align: center; line-height: 1.15; }
+.mst-role { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.15; }
+.mst.on { background: var(--accent); border-color: transparent; }
+.mst.on .mst-seal, .mst.on .mst-name, .mst.on .mst-role { color: var(--accent-ink); }

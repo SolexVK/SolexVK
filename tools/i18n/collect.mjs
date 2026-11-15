@@ -37,5 +37,5 @@ for (const kind of ['morning', 'day', 'evening']) for (const pl of program.allPl
 // 3. index.html
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 for (const m of html.matchAll(/<span>([^<]*[А-Яа-я][^<]*)<\/span>|aria-label="([^"]*[А-Яа-я][^"]*)"/g)) add(m[1] || m[2]);
-add('Тай-Чи');
+add('Тайцзи');
 process.stdout.write(JSON.stringify([...keys].sort(), null, 1));

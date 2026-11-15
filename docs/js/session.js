@@ -6,7 +6,8 @@ import { Coach, POSES, describe } from './coach.js';
 import * as voice from './voice.js';
 import * as ambient from './ambient.js';
 import * as pose from './pose.js';
-import { askMaster, hasKey } from './master.js';
+import { hasKey } from './master.js';
+import { askTeam, pushChat } from './team.js';
 import { t } from './i18n.js';
 import { FigurePlayer, beatTarget } from './figplayer.js';
 import { applyRatings } from './strength.js';
@@ -515,13 +516,13 @@ export class SessionRunner {
     let acc = '';
     this.abort = new AbortController();
     try {
-      const res = await askMaster({
+      const who = this.plan.voice === 'ligan' ? 'ligan' : 'lao';
+      const res = await askTeam(who, {
         text: question, image, extra: this.stepContext(), signal: this.abort.signal,
         onDelta: (d) => { acc += d; if (out.isConnected) out.textContent = acc; if (this.overlayOpen) say.push(d); },
       });
       if (out.isConnected) out.textContent = res.text || acc;
-      state.chat.push({ role: 'user', text: question, at: Date.now() }, { role: 'assistant', text: res.text || acc, at: Date.now() });
-      state.chat = state.chat.slice(-40);
+      pushChat(who, { role: 'user', text: question, at: Date.now() }, { role: 'assistant', text: res.text || acc, at: Date.now() });
       save();
       if (this.overlayOpen) say.end();
     } catch (err) {

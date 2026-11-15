@@ -86,6 +86,8 @@ function merge(local, remote) {
     return [...m.values()].sort((a, b) => (a.at || 0) - (b.at || 0));
   };
   out.chat = byKey([...(remote.chat || []), ...(local.chat || [])]).slice(-60);
+  out.chats = {};
+  for (const k of new Set([...Object.keys(remote.chats || {}), ...Object.keys(local.chats || {})])) out.chats[k] = byKey([...(remote.chats?.[k] || []), ...(local.chats?.[k] || [])]).slice(-60);
   out.log = byKey([...(remote.log || []), ...(local.log || [])]).slice(-400);
   if ((remote.memory?.updatedAt || 0) > (local.memory?.updatedAt || 0)) out.memory = remote.memory;
   if (!local.program || (remote.program?.updatedAt || 0) > (local.program?.updatedAt || 0)) out.program = remote.program || local.program;

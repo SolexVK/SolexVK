@@ -30,6 +30,7 @@ function defaults() {
     days: {},
     tasks: {},
     chat: [],
+    chats: {}, // чаты с Мэйлин, Ли Ганом и доктором Шэном (чат Лао — chat)
     intake: null, // ответы анкеты
     program: null, // программа мастера: уровень, ступень, ограничения
     log: [], // журнал бесед: анкета, опросы перед занятием, пересмотры
@@ -48,7 +49,7 @@ function load() {
       ...d, ...s,
       profile: { ...d.profile, ...(s.profile || {}) },
       settings: { ...d.settings, ...(s.settings || {}) },
-      days: s.days || {}, tasks: s.tasks || {}, chat: s.chat || [],
+      days: s.days || {}, tasks: s.tasks || {}, chat: s.chat || [], chats: s.chats || {},
       log: s.log || [], memory: s.memory || d.memory, reviews: s.reviews || [],
     };
   } catch {

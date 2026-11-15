@@ -2,7 +2,7 @@
   "name": "taichi-server",
   "version": "1.0.0",
   "private": true,
-  "description": "Сервер приложения «Тай-Чи»: хранение данных ученика и доступ мастера к нейросети Claude",
+  "description": "Сервер приложения «Тайцзи»: хранение данных ученика и доступ мастера к нейросети Claude",
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": { "start": "node server.js" },
