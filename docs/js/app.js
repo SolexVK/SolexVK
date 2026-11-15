@@ -605,7 +605,7 @@ function openSettings() {
         <label for="set-mvol">${t('Громкость музыки:')} <output id="set-mvol-out">${Math.round((s.musicVolume ?? 0.5) * 100)}%</output></label>
         <input type="range" id="set-mvol" min="0.1" max="1" step="0.05" value="${s.musicVolume ?? 0.5}">
         <details class="credits"><summary>${t('Авторы музыки и звуков')}</summary>
-          <p class="note">«Ethereal Xiao Flute — Tranquil Chinese Melody» — MemoryMusic; «Ancient Temple» — Siarhei Korbut (Jamendo, CC BY-NC-ND 3.0).<br>
+          <p class="note">«Ethereal Xiao Flute — Tranquil Chinese Melody», «Calming Dizi — Inspirational Chinese Flute», «Wisdom of the Ancient — Soothing Asian Flute», «Ancient Temple — Meditative Shakuhachi Flute» — MemoryMusic; «Ancient Temple» — Siarhei Korbut (Jamendo, CC BY-NC-ND 3.0).<br>
           «Healing», «Kalimba Relaxation Music» — Kevin MacLeod (incompetech.com), CC BY 4.0.<br>
           ${t('Звуки природы и инструментов')} — BigSoundBank (bigsoundbank.com), CC0.</p>
         </details>

@@ -8,7 +8,12 @@ import { audioContext, onSpeaking } from './voice.js';
 const DIR = 'sounds/';
 const BASE = 0.8; // общий уровень при громкости 100 %
 const MUSIC = 0.42; // мелодия — тише природы
-const TRACKS = ['kalimba', 'xiao', 'healing', 'temple'];
+const TRACKS = ['kalimba', 'xiao', 'dizi', 'healing', 'wisdom', 'temple', 'shakuhachi'];
+// Мелодии по времени суток: утром светлые флейты и калимба, днём спокойные, вечером храмовые.
+const DAYPART = { morning: ['kalimba', 'xiao', 'dizi'], day: ['healing', 'wisdom', 'dizi'], evening: ['temple', 'shakuhachi', 'wisdom'] };
+// Редкие птичьи трели вдали: дрозд, зарянка, крапивник.
+const BIRDS = ['bird_blackbird1', 'bird_blackbird2', 'bird_blackbird3', 'bird_blackbird4', 'bird_robin1', 'bird_robin2', 'bird_robin3', 'bird_wren1', 'bird_wren2', 'bird_wren3'];
+const BIRD_GAP = 75; // не чаще, чем раз в столько секунд
 // Петли: файл содержит поля по 0,5 с, играем только область между ними — без щелчков на стыке.
 const LOOPS = {
   fountain: [0.5, 52.5],
@@ -21,14 +26,14 @@ const SHOTS = ['bowl', 'gong', 'chime1', 'chime2', 'chime3', 'windchime1', 'wind
 // Сцены: громкость слоёв природы и события.
 const SCENES = {
   off: { music: 0 },
-  home: { music: 1, fountain: 0.55, windchime: 1 / 150 },
+  home: { music: 1, fountain: 0.55, windchime: 1 / 150, bird: 1 / 120 },
   talk: { music: 0.8, fountain: 0.3 },
-  breath: { music: 1, wind: 0.45 },
+  breath: { music: 1, wind: 0.45, bird: 1 / 150 },
   warmup: { music: 0.9, fountain: 0.45, wood: 0.35 },
-  qigong: { music: 1, wind: 0.32, fountain: 0.22, breathChime: true },
-  hold: { music: 1, fountain: 0.4, drops: 0.35, minuteChime: true },
+  qigong: { music: 1, wind: 0.32, fountain: 0.22, breathChime: true, bird: 1 / 150 },
+  hold: { music: 1, fountain: 0.4, drops: 0.35, minuteChime: true, bird: 1 / 180 },
   strength: { music: 0.9, fountain: 0.4, wood: 0.45 },
-  rest: { music: 1, birds: 0.5, wind: 0.22 },
+  rest: { music: 1, birds: 0.5, wind: 0.22, bird: 1 / 200 },
 };
 
 let ctx = null;
@@ -46,6 +51,8 @@ let paused = false;
 let timer = 0;
 let holdStart = 0;
 let lastChime = 0;
+let lastBird = 0;
+let speakingNow = false;
 
 const now = () => ctx.currentTime;
 const ramp = (param, v, t = 1.5) => { param.cancelScheduledValues(now()); param.setTargetAtTime(v, now(), t / 3); };
@@ -74,11 +81,15 @@ function startMusic() {
   musicEl.preload = 'auto';
   musicEl.crossOrigin = 'anonymous';
   const h = new Date().getHours();
-  trackIdx = h >= 17 ? 3 : h >= 12 ? 2 : new Date().getDate() % 2;
-  musicEl.src = DIR + TRACKS[trackIdx] + '.mp3';
+  const part = DAYPART[h >= 17 ? 'evening' : h >= 12 ? 'day' : 'morning'];
+  // Сначала мелодии своего времени суток (с разной стартовой каждый день), потом остальные.
+  const shift = new Date().getDate() % part.length;
+  const playlist = [...part.slice(shift), ...part.slice(0, shift), ...TRACKS.filter((x) => !part.includes(x))];
+  trackIdx = 0;
+  musicEl.src = DIR + playlist[0] + '.mp3';
   musicEl.addEventListener('ended', () => {
-    trackIdx = (trackIdx + 1) % TRACKS.length;
-    musicEl.src = DIR + TRACKS[trackIdx] + '.mp3';
+    trackIdx = (trackIdx + 1) % playlist.length;
+    musicEl.src = DIR + playlist[trackIdx] + '.mp3';
     playMusic();
   });
   try {
@@ -122,7 +133,7 @@ async function ensureBed(name) {
 }
 
 // ---- одиночные звуки ----
-function play(name, vel = 0.7, when = 0) {
+function play(name, vel = 0.7, when = 0, pan = 0) {
   if (!ctx || !running || paused || !enabled()) return;
   const buf = ready(name);
   if (!buf) { load(name); return; }
@@ -131,7 +142,9 @@ function play(name, vel = 0.7, when = 0) {
   src.playbackRate.value = 0.97 + Math.random() * 0.06; // живая неровность
   const g = ctx.createGain();
   g.gain.value = vel;
-  src.connect(g).connect(out);
+  let node = src.connect(g);
+  if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; node = node.connect(p); }
+  node.connect(out);
   src.start(now() + when);
 }
 
@@ -139,6 +152,11 @@ function play(name, vel = 0.7, when = 0) {
 function tick() {
   if (!running || paused || document.hidden || !enabled()) return;
   if (cfg.windchime && Math.random() < cfg.windchime) play(pick(['windchime1', 'windchime2']), 0.45);
+  // Птица где-то вдали: редко, тихо, с разных сторон и не поверх голоса мастера.
+  if (cfg.bird && !speakingNow && now() - lastBird > BIRD_GAP && Math.random() < cfg.bird) {
+    const b = pick(BIRDS);
+    if (ready(b)) { play(b, 0.22 + Math.random() * 0.12, 0, (Math.random() * 1.2 - 0.6)); lastBird = now(); } else load(b);
+  }
   if (cfg.minuteChime && holdStart && now() - holdStart >= 60 && now() - lastChime > 55) {
     play(pick(['chime1', 'chime2', 'chime3']), 0.6);
     lastChime = now();
@@ -172,6 +190,7 @@ function build() {
   musicGain.connect(out);
   SHOTS.forEach(load);
   onSpeaking((speaking) => {
+    speakingNow = speaking;
     if (!ctx || !duck) return;
     duck.gain.cancelScheduledValues(now());
     duck.gain.setTargetAtTime(speaking ? 0.35 : 1, now(), speaking ? 0.08 : 0.6);
