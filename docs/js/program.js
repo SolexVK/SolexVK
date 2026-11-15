@@ -75,7 +75,7 @@ export function newProgram(intake) {
 
 // ---- план занятия на сегодня ----
 // Превращает программу в параметры для сценария: дозировки, опора, исключения.
-export function resolvePlan(prog = state.program) {
+export function resolvePlan(prog = state.program, { ignoreTime = false } = {}) {
   if (!prog || !prog.level) return null;
   const lvl = Math.min(Math.max(prog.level, 1), 4);
   const st = Math.min(Math.max(prog.stage || 1, 1), 4) - 1;
@@ -91,6 +91,8 @@ export function resolvePlan(prog = state.program) {
     if (ex.min > lvl) exclude.add(id);
   }
   const noFloor = flags.has('no_floor');
+  // Сколько минут на одно занятие: из настроек, иначе из анкеты («около 15 минут», «15 утром и днём», «час и больше»).
+  const maxMin = ignoreTime ? 0 : sessionMinutes();
   // Давление: удержания в планке не длиннее 20 секунд (натуживание поднимает давление).
   const holdCap = flags.has('hypertension') || flags.has('heart') ? 20 : 999;
   if (noFloor) Object.entries(EXERCISES).forEach(([id, ex]) => { if (ex.floor) exclude.add(id); });
@@ -105,7 +107,7 @@ export function resolvePlan(prog = state.program) {
     stolbSec: Math.max(30, Math.round(pick('stolbSec') * scale / 15) * 15),
     chairReps: reps('chairReps'), wallReps: reps('wallReps'), bridgeReps: reps('bridgeReps'),
     birdReps: reps('birdReps', 2), bugReps: reps('bugReps', 2), marchReps: reps('marchReps', 6), tiltReps: reps('tiltReps', 6),
-    walkMin: pick('walkMin'), skyReps: D.skyReps, qishiReps: D.qishiReps, shiftReps: D.shiftReps, unloadCycles: D.unloadCycles,
+    walkMin: fitWalk(pick('walkMin'), maxMin), maxMin, skyReps: D.skyReps, qishiReps: D.qishiReps, shiftReps: D.shiftReps, unloadCycles: D.unloadCycles,
     // уровни 3–4
     legsReps: reps('legsReps'), lungeReps: reps('lungeReps', 3), pushReps: reps('pushReps'), plankSec: Math.min(holdCap, secs('plankSec')), sideSec: Math.min(holdCap, secs('sideSec')),
     calfReps: reps('calfReps', 6), stepReps: reps('stepReps', 2), stretchSec: D.stretchSec || 0, bdjReps: D.bdjReps || 0,
@@ -113,6 +115,19 @@ export function resolvePlan(prog = state.program) {
     gentleNeck: flags.has('cervical'), noHeadDown: flags.has('hypertension') || flags.has('lumbar_radicular') || flags.has('osteo') || flags.has('heart'),
     gentleKneesDeep: flags.has('knee'), flags,
   };
+}
+
+export const SESSION_MIN = { 15: 15, 30: 18, 45: 0 };
+export function sessionMinutes() {
+  const s = state.settings?.sessionMin;
+  if (s != null && s !== '') return Number(s) || 0;
+  return SESSION_MIN[state.intake?.time] ?? 0;
+}
+// Ходьба занимает не больше половины занятия; длительность — из тех, что озвучены.
+const WALKS = [5, 6, 8, 10, 12, 15, 18, 20, 25, 30];
+function fitWalk(min, maxMin) {
+  if (!maxMin || min <= maxMin * 0.5) return min;
+  return WALKS.filter((w) => w <= Math.max(5, maxMin * 0.5)).pop() || 5;
 }
 
 // Все варианты плана — чтобы заранее озвучить все фразы.

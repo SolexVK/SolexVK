@@ -1319,5 +1319,11 @@ export default {
 "Повороты головы в половину амплитуды и мягкое втягивание подбородка назад. Без кругов, без запрокидывания и без наклонов к груди.": "Head turns at half range and a gentle chin tuck backwards. No circles, no tilting back and no bending to the chest.",
 "Теперь мягко втягиваем подбородок назад, будто делаем двойной подбородок. Голова не наклоняется, взгляд прямо.": "Now gently draw the chin back, as if making a double chin. The head does not tilt, look straight ahead.",
 "Затем возвращаемся в свободное положение.": "Then return to a relaxed position.",
-"Обновление приложения: упражнения и нагрузка уточнены": "App update: exercises and load were refined"
+"Обновление приложения: упражнения и нагрузка уточнены": "App update: exercises and load were refined",
+"Время на одно занятие": "Time per session",
+"По анкете": "From the questionnaire",
+"без ограничения": "no limit",
+"Если занятие не помещается, мастер убирает менее важные упражнения и укорачивает ходьбу. Дыхание, столб, вставание со стула, разгрузка поясницы и завершение остаются всегда.": "If a session does not fit, the master removes less important exercises and shortens the walk. Breathing, standing post, chair stands, lower-back release and the closing always stay.",
+"Время на одно занятие — около {n} мин.": "Time per session — about {n} min.",
+"Чтобы уложиться, сегодня убрано упражнений: {n}. Изменить можно в настройках.": "To fit in, {n} exercises are left out today. You can change this in settings."
 };

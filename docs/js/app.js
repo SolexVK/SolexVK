@@ -12,7 +12,7 @@ import { SessionRunner } from './session.js';
 import { PALETTES, applyPalette, CLOUD_RULE } from './theme.js';
 import * as ambient from './ambient.js';
 import { startIntake, runCheckin, runReview, reviewDue, currentPlan, todayCheckin, programHtml } from './flows.js';
-import { readiness, levelInfo } from './program.js';
+import { readiness, levelInfo, SESSION_MIN } from './program.js';
 import { renderSheet } from './sheet.js';
 import { GUIDES } from './guides.js';
 import { LEVELS } from './kb.js';
@@ -616,6 +616,10 @@ function openSettings() {
           ${t('Сисиодоси в саду храма Сисэн-до, Киото')} — Fg2, Wikimedia Commons, public domain.</p>
         </details>
       </fieldset>
+      <fieldset><legend>${t('Время на одно занятие')}</legend>
+        <select id="set-smin">${[['', `${t('По анкете')}: ${SESSION_MIN[state.intake?.time] ? `${SESSION_MIN[state.intake?.time]} ${t('мин')}` : t('без ограничения')}`], ['15', `15 ${t('мин')}`], ['20', `20 ${t('мин')}`], ['30', `30 ${t('мин')}`], ['45', `45 ${t('мин')}`], ['0', t('без ограничения')]].map(([v, l]) => `<option value="${v}" ${String(s.sessionMin ?? '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
+        <p class="note">${t('Если занятие не помещается, мастер убирает менее важные упражнения и укорачивает ходьбу. Дыхание, столб, вставание со стула, разгрузка поясницы и завершение остаются всегда.')}</p>
+      </fieldset>
       <fieldset><legend>${t('Голос наставника')}</legend>
         <label class="switch"><input type="checkbox" id="set-voice" ${s.voice ? 'checked' : ''}><span>${t('Говорить вслух')}</span></label>
         <label class="switch"><input type="checkbox" id="set-count" ${s.countAloud ? 'checked' : ''}><span>${t('Считать повторы вслух')}</span></label>
@@ -670,6 +674,7 @@ function openSettings() {
   $('#set-music').addEventListener('change', (e) => { s.music = e.target.checked; save(); ambient.refresh(); });
   $('#set-mvol').addEventListener('input', (e) => { s.musicVolume = Number(e.target.value); $('#set-mvol-out').textContent = `${Math.round(s.musicVolume * 100)}%`; ambient.refresh(); });
   $('#set-mvol').addEventListener('change', () => save());
+  $('#set-smin').addEventListener('change', (e) => { s.sessionMin = e.target.value === '' ? null : Number(e.target.value); save(); render(); });
   const showVoiceFx = () => {
     $('#set-vspeed-out').textContent = fmtSpeed(voice.voiceSpeed());
     $('#set-vpitch-out').textContent = fmtPitch(voice.voicePitch());

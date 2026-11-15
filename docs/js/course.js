@@ -640,6 +640,15 @@ function stretches(p) {
   ].filter((st) => !p.exclude.has(st.id));
 }
 
+// Порядок, в котором убираются упражнения, если занятие не помещается во время из анкеты.
+// Дыхание, «Поднять небо», «Начало тай-чи», столб, вставание или присед, разгрузка и завершение не убираются.
+const BDJ = ['bow', 'one_arm', 'look_back', 'sway', 'toes', 'fists', 'heels'];
+const TRIM_ORDER = {
+  morning: ['shift', '*bdj', 'cat_step', 'feet', 'wrists', 'pelvis', 'blades', 'knees', 'shoulders'],
+  day: ['side_knee', 'calf', 'bug', 'hip_stretch', 'ham_stretch', 'tilt', 'march', 'bird', 'lunge', 'bridge_one', 'bridge_march', 'plank', 'plank_knee', 'bridge', 'knee_push', 'table_push', 'wall'],
+  evening: [],
+};
+
 // Простейший план без анкеты: уровень 2, ступень по неделе курса.
 export function defaultPlan(week = 1) {
   return resolvePlan({ level: 2, stage: Math.min(Math.max(week, 1), 4), flags: [] });
@@ -723,8 +732,29 @@ export function buildSession(kind, planOrWeek, mode = 'full') {
     steps.push(closing(kind));
   }
 
-  const dur = steps.reduce((a, s2) => a + stepSeconds(s2), 0);
-  return { kind, level: p.level, stage: p.stage, week: p.stage, mode, steps, dur };
+  let dur = steps.reduce((a, s2) => a + stepSeconds(s2), 0);
+  // Ограничение по времени из анкеты: убираем сначала наименее важное. Основа занятия остаётся всегда.
+  let trimmed = [];
+  if (p.maxMin && dur > p.maxMin * 60 * 1.1) {
+    let order = TRIM_ORDER[kind] || [];
+    if (kind === 'morning') {
+      // Движения «Восьми кусков парчи» чередуются по дням: каждый день остаются разные, за неделю — все.
+      const n = Math.floor(Date.now() / 86400000) % BDJ.length;
+      const rot = [...BDJ.slice(n), ...BDJ.slice(0, n)];
+      order = order.flatMap((id) => (id === '*bdj' ? rot : [id]));
+    }
+    for (const id of order) {
+      if (dur <= p.maxMin * 60 * 1.05) break;
+      const i = steps.findIndex((s2) => s2.id.replace(/\d+$/, '') === id);
+      if (i < 0) continue;
+      // Хотя бы два движения «Восьми кусков парчи» остаются всегда.
+      if (BDJ.includes(id) && steps.filter((s2) => BDJ.includes(s2.id)).length <= 2) continue;
+      dur -= stepSeconds(steps[i]);
+      trimmed.push(steps[i].title);
+      steps.splice(i, 1);
+    }
+  }
+  return { kind, level: p.level, stage: p.stage, week: p.stage, mode, steps, dur, trimmed };
 }
 
 // Оценка длительности шага в секундах.

@@ -48,8 +48,10 @@ export function fmtDose(raw) {
 export const doseOf = (s) => fmtDose(doseRaw(s));
 
 // Снимок программы: что входит в каждое занятие и с какой дозировкой.
-export function sheetSnapshot(plan = resolvePlan(state.program)) {
+export function sheetSnapshot(plan = resolvePlan(state.program, { ignoreTime: true })) {
   if (!plan) return null;
+  // Снимок — полная программа без сокращения по времени: чередование по дням не должно выглядеть как изменение.
+  plan = { ...plan, maxMin: 0 };
   const snap = {};
   for (const kind of KINDS) {
     for (const s of buildSession(kind, plan, 'full').steps) {
@@ -149,12 +151,14 @@ export function renderSheet(root, { todayMode = 'full', todaySkip = [] } = {}) {
   for (const kind of KINDS) todayIds[kind] = new Set(buildSession(kind, todayPlan, todayMode === 'none' ? 'rest' : todayMode).steps.map((s) => baseId(s.id)));
   const ch = state.sheet?.changes?.[0];
   const fl = [...flags].map((f) => FLAG_TEXT[f]).filter(Boolean);
+  const cut = KINDS.reduce((a, k) => a + (buildSession(k, plan, 'full').trimmed || []).length, 0);
   root.innerHTML = `
     <section class="sheet-head">
       <p class="eyebrow">${t('Моя программа')}</p>
       <h2>${t('Уровень {n} · «{name}»', { n: pr.level, name: esc(t(L.name)) })}</h2>
       <p class="lead">${t('Ступень нагрузки {s} из 4', { s: plan.stage })}${pr.doseScale && pr.doseScale < 1 ? ` · ${t('облегчение')} ${Math.round((1 - pr.doseScale) * 100)}%` : ''}</p>
       ${fl.length ? `<p class="note">${t('Учтено:')} ${esc(fl.join(', '))}.</p>` : ''}
+      ${plan.maxMin ? `<p class="note">${t('Время на одно занятие — около {n} мин.', { n: plan.maxMin })}${cut ? ` ${t('Чтобы уложиться, сегодня убрано упражнений: {n}. Изменить можно в настройках.', { n: cut })}` : ''}</p>` : ''}
       ${todayMode !== 'full' ? `<div class="callout">${todayMode === 'none' ? t('Сегодня занятия нет: мастер отменил его по самочувствию или давлению.') : todayMode === 'rest' ? t('Сегодня день восстановления: упражнения, отмеченные бледным, пропускаем.') : t('Сегодня мягкий режим: упражнения, отмеченные бледным, пропускаем.')}</div>` : ''}
       ${ch ? `<details class="sheet-changes" ${ch.date === dateStr() ? 'open' : ''}><summary>${t('Что изменилось')} · ${esc(ch.date.split('-').reverse().join('.'))}</summary>
         ${ch.reason ? `<p class="note">${esc(reasonText(ch.reason))}</p>` : ''}
