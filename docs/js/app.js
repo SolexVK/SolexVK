@@ -91,7 +91,7 @@ function renderOnboard() {
   main.innerHTML = `
     <section class="onb">
       <div class="seal-mark big" aria-hidden="true">太極</div>
-      <h2>${t('Ваш мастер тай-чи')}</h2>
+      <h2>${t('Ваш мастер тайцзи')}</h2>
       <p class="lead">${t('Мастер начнёт со знакомства: голосом задаст около двадцати вопросов о здоровье, подвижности и целях, проведёт три простые проверки и подберёт программу под вас. Отвечать можно кнопками или голосом.')}</p>
       <div class="callout">
         <strong>${t('Приложение не заменяет врача.')}</strong> ${t('Если есть боль в спине, отдающая в ноги, повышенное давление или болезни сердца, покажитесь врачу в первые недели занятий.')}
@@ -855,7 +855,7 @@ if ('serviceWorker' in navigator && window.isSecureContext && !params.get('nosw'
 document.addEventListener('pointerdown', () => { voice.unlock(); ambient.start(); ambient.setScene(runner ? 'talk' : document.body.classList.contains('focus') ? 'talk' : 'home'); }, { once: true, capture: true });
 
 // Тексты из index.html на языке интерфейса.
-document.title = t('Тай-Чи');
+document.title = t('Тайцзи');
 $$('.tab span').forEach((el) => { el.textContent = t(el.textContent.trim()); });
 $$('[aria-label]').forEach((el) => { el.setAttribute('aria-label', t(el.getAttribute('aria-label'))); });
 
