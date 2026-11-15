@@ -84,6 +84,13 @@ def sentences(text):
     parts = re.findall(r'[^.!?…]+[.!?…»]*', text)
     return [x.strip() for x in parts if x.strip()]
 
+# Подсказки произношения для модели: на экране слово пишется как обычно, в записи звучит так.
+PRON = {'тайцзи': 'тайдзи', 'Тайцзи': 'Тайдзи'}
+def pron(t):
+    for a, b in PRON.items():
+        t = t.replace(a, b)
+    return t
+
 SENT_CACHE = {}
 
 def synth_sentence(text, seed):
@@ -94,9 +101,9 @@ def synth_sentence(text, seed):
     need = 0.9 if len(text) > 14 else 0.8
     for attempt in range(TRIES):
         torch.manual_seed(seed + attempt * 37)
-        wav = tts.tts(text=text, speaker=SPEAKER, language='ru', speed=SPEED, temperature=0.65 if attempt < 3 else 0.5)
+        wav = tts.tts(text=pron(text), speaker=SPEAKER, language='ru', speed=SPEED, temperature=0.65 if attempt < 3 else 0.5)
         y = clean(wav, sr)
-        sc, sim, heard, dur, y = score(text, y, sr)
+        sc, sim, heard, dur, y = score(pron(text), y, sr)
         y = clean(y, sr)
         if best is None or sc > best[0]:
             best = (sc, sim, heard, dur, y, attempt + 1)
