@@ -8,6 +8,7 @@ import { EXERCISES } from './kb.js';
 import { FLAG_TEXT } from './flows.js';
 import { t } from './i18n.js';
 import { figureSvg, hasFigure } from './figures.js';
+import { animateFigure } from './figplayer.js';
 import { GUIDES } from './guides.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -121,7 +122,7 @@ function card(kind, s, flags, skipped) {
   const k = `${kind}:${id}`;
   const g = GUIDES[id];
   return `<article class="ex ${skipped ? 'ex-off' : ''}" data-ex="${esc(id)}">
-    <div class="ex-fig">${hasFigure(id) ? figureSvg(id, figOpts) : ''}</div>
+    <div class="ex-fig" ${hasFigure(id) ? `data-anim="${esc(id)}"` : ''}></div>
     <div class="ex-body">
       <h4>${esc(t(s.title))} ${changeBadge(k)}</h4>
       <p class="ex-dose">${esc(doseOf(s))}${skipped ? ` · <em>${t('сегодня пропускаем')}</em>` : ''}</p>
@@ -129,6 +130,7 @@ function card(kind, s, flags, skipped) {
       ${cautionNote(id, flags)}
       ${g ? `<button type="button" class="btn ghost small" data-guide="${esc(id)}">▶ ${t('Как выполнять')}</button>` : ''}
     </div>
+    ${hasFigure(id) ? `<div class="ex-scheme" aria-label="${esc(t('Схема упражнения'))}">${figureSvg(id, figOpts)}</div>` : ''}
   </article>`;
 }
 
@@ -174,4 +176,6 @@ export function renderSheet(root, { todayMode = 'full', todaySkip = [] } = {}) {
       </section>`;
     }).join('')}
     <p class="note center">${t('Лист перестраивается сам, когда мастер меняет программу.')}</p>`;
+  // Манекены показывают движение по кругу (только видимые на экране карточки).
+  root.querySelectorAll('[data-anim]').forEach((el) => animateFigure(el, el.dataset.anim, figOpts));
 }

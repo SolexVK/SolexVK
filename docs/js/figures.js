@@ -362,20 +362,21 @@ const SOFT_F = { ...STAND_F, legR: [6, -3, 0.97, 1], legL: [6, -3, 0.97, 1] };
 const SUPINE = { torso: -90, head: -94, armN: [96, 92, 90], armF: [98, 94, 92] };
 
 const FIG = {
-  breath: { view: 'side', frames: [{ ...SOFT_S, reachN: { j: 'hip', d: [27, -36], hand: 20 }, reachF: { j: 'hip', d: [25, -60], hand: 20 } }],
+  breath: { view: 'side', ghosts: [], frames: [{ ...SOFT_S, reachN: { j: 'hip', d: [27, -36], hand: 20 }, reachF: { j: 'hip', d: [25, -60], hand: 20 } },
+    { ...SOFT_S, reachN: { j: 'hip', d: [33, -36], hand: 22 }, reachF: { j: 'hip', d: [30, -60], hand: 22 } }],
     marks: (J) => dblArrow(add(J.hip, [74, -40]), [1, 0], 12) + label(t('вдох 4 · выдох 6'), add(J.headC, [0, -44]), 'middle') },
   neck: { view: 'front', frames: [SOFT_F],
     marks: (J) => arcArrow(J.headC, 34, -150, -30, true, -1) + label('½', add(J.headC, [0, -62]), 'middle') },
-  shoulders: { view: 'side', frames: [SOFT_S],
+  shoulders: { view: 'side', ghosts: [], seq: [[1], [2], [0]], frames: [SOFT_S, { ...SOFT_S, armN: [-12, -8, -6], armF: [-14, -10, -8] }, { ...SOFT_S, armN: [14, 10, 8], armF: [12, 8, 6] }],
     marks: (J) => circleArrow(J.sh, 26) },
-  wrists: { view: 'side', frames: [{ ...SOFT_S, armN: [8, 92, 92], armF: [10, 94, 94] }],
+  wrists: { view: 'side', ghosts: [], seq: [[1], [2], [0]], frames: [{ ...SOFT_S, armN: [8, 92, 92], armF: [10, 94, 94] }, { ...SOFT_S, armN: [8, 92, 60], armF: [10, 94, 62] }, { ...SOFT_S, armN: [8, 92, 124], armF: [10, 94, 126] }],
     marks: (J) => circleArrow(J.haN, 15) },
   blades: { view: 'side', ghosts: [1], seq: [[2, 1], [2, 0]], frames: [
     { ...SOFT_S, armN: [-98, 62, 70], armF: [-96, 60, 68] },
     { ...SOFT_S, armN: [100, 178, 178], armF: [98, 176, 176] },
     { ...SOFT_S, armN: [0, 80, 90, 0.12, 0.8], armF: [0, 80, 90, 0.12, 0.8] }],
     marks: (J) => dblArrow(add(J.sh, [0, -46]), [1, 0], 52) + label(t('вдох'), add(J.sh, [-60, -58]), 'end') + label(t('выдох'), add(J.sh, [60, -58]), 'start') },
-  pelvis: { view: 'front', frames: [{ ...SOFT_F, armR: [28, -40, -40], armL: [28, -40, -40] }],
+  pelvis: { view: 'front', ghosts: [], seq: [[1], [0], [2], [0]], frames: [{ ...SOFT_F, armR: [28, -40, -40], armL: [28, -40, -40] }, { ...SOFT_F, shiftX: -8, torso: 178, armR: [28, -40, -40], armL: [28, -40, -40] }, { ...SOFT_F, shiftX: 8, torso: 182, armR: [28, -40, -40], armL: [28, -40, -40] }],
     marks: (J) => ellipseArrow(add(J.hip, [0, 6]), 58, 16) },
   knees: { view: 'side', anchor: 'anN', frames: [
     { ...SOFT_S, reachN: { j: 'knN', d: [6, -34], hand: 20 }, reachF: { j: 'knF', d: [6, -34], hand: 20 } },
@@ -409,7 +410,8 @@ const FIG = {
     props: ['ball'], marks: (J) => upArrow(add(J.headC, [0, -32]), 30) },
   close: { view: 'front', frames: [{ ...SOFT_F, armR: [14, -58, -78], armL: [14, -58, -78] }],
     marks: (J) => ringMark(add(J.hip, [0, -14]), 12) },
-  walk: { view: 'side', anchor: 'anF', frames: [{ ...STAND_S, torso: 177, legN: [24, 4, 70], legF: [-20, -30, 112], armN: [-22, -12, -10], armF: [24, 40, 40] }],
+  walk: { view: 'side', anchor: 'hip', ghosts: [], frames: [{ ...STAND_S, torso: 177, legN: [24, 4, 70], legF: [-20, -30, 112], armN: [-22, -12, -10], armF: [24, 40, 40] },
+    { ...STAND_S, torso: 177, legF: [24, 4, 70], legN: [-20, -30, 112], armF: [-22, -12, -10], armN: [24, 40, 40] }], free: true,
     marks: (J) => horArrow(add(J.headC, [22, -8]), 60) },
   chair: { view: 'side', anchor: 'anN', frames: [
     { ...STAND_S, torso: 160, head: 166, legN: [88, 2, 90], legF: [86, 2, 90], reachN: { j: 'sh', d: [26, 30], hand: 200 }, reachF: { j: 'sh', d: [22, 24], hand: 200 } },

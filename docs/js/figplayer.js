@@ -20,9 +20,10 @@ export class FigurePlayer {
     this.lastDrawn = '';
   }
 
-  // Новое упражнение: начальная поза.
+  // Новое упражнение: начальная поза, затем показ движения по кругу, пока не начнётся счёт.
   setStep(id) {
     if (id === this.id) return;
+    this.stopDemo();
     this.id = hasFigure(id) ? id : null;
     this.n = this.id ? frameCount(this.id, this.opts) : 0;
     this.seq = this.id ? frameSeq(this.id, this.opts) : null;
@@ -32,11 +33,33 @@ export class FigurePlayer {
     this.lastDrawn = '';
     this.el.classList.toggle('on', !!this.id);
     this.draw(0, 0, 0);
+    this.startDemo();
+  }
+
+  startDemo() {
+    const path = this.id ? demoPath(this.id, this.opts) : null;
+    if (!path) return;
+    this.demo = { path, t0: performance.now() };
+    const tick = (now) => {
+      if (!this.demo || !this.id) return;
+      if (!this.paused) {
+        const [a, b, k] = demoPose(this.demo.path, (now - this.demo.t0) / 1000);
+        this.draw(a, b, k);
+      } else this.demo.t0 += 16;
+      this.demoRaf = requestAnimationFrame(tick);
+    };
+    this.demoRaf = requestAnimationFrame(tick);
+  }
+
+  stopDemo() {
+    cancelAnimationFrame(this.demoRaf);
+    if (this.demo) { this.demo = null; this.cur = 0; }
   }
 
   // Плавно пройти через кадры targets (число или список) за sec секунд.
   moveTo(targets, sec) {
     if (!this.id || this.n < 2) return;
+    if (this.demo) { this.stopDemo(); this.draw(0, 0, 0); } // начался счёт — дальше в такт мастеру
     const list = (Array.isArray(targets) ? targets : [targets]).map((x) => Math.max(0, Math.min(this.n - 1, x)));
     this.path = [this.cur, ...list];
     this.cur = list[list.length - 1];
@@ -74,7 +97,7 @@ export class FigurePlayer {
     this.el.innerHTML = figureAt(this.id, this.opts, a, b, k);
   }
 
-  stop() { cancelAnimationFrame(this.raf); this.id = null; this.el.innerHTML = ''; this.el.classList.remove('on'); }
+  stop() { this.stopDemo(); cancelAnimationFrame(this.raf); this.id = null; this.el.innerHTML = ''; this.el.classList.remove('on'); }
 }
 
 // Куда двигаться на такте. Фазы одного повтора по очереди ведут в конечную позу и обратно
@@ -91,8 +114,69 @@ export function beatTarget(player, it, st) {
     st.moves = 0;
   }
   const m = st.moves++;
-  if (player.seq) return player.seq[m % player.seq.length];
+  // Особый порядок поз — по всем движениям подряд, в том числе при простом счёте.
+  if (player.seq) { st.k = (st.k ?? -1) + 1; return player.seq[st.k % player.seq.length]; }
   if (m === 0 && st.single) { st.alt = !st.alt; return st.alt ? 1 : 0; }
   if (m === 0) st.alt = true;
   return m % 2 === 0 ? 1 : (n >= 3 ? n - 1 : 0);
+}
+
+// ---- показ движения по кругу: на листе программы и пока мастер объясняет упражнение ----
+const MOVE = 1.7; // секунд на переход между позами
+const REST = 0.6; // пауза в крайней позе
+export function demoPath(id, opts) {
+  const n = frameCount(id, opts);
+  if (n < 2) return null;
+  const seq = frameSeq(id, opts);
+  if (seq) return [0, ...seq.flat()];
+  return n === 2 ? [0, 1, 0] : [...Array.from({ length: n }, (_, i) => i), 0];
+}
+// Поза в момент времени t (сек) для зацикленного показа: [a, b, k].
+export function demoPose(path, t) {
+  const segs = path.length - 1;
+  const per = MOVE + REST;
+  const x = (t % (segs * per)) / per;
+  const i = Math.floor(x);
+  const f = Math.min(1, ((x - i) * per) / MOVE);
+  return [path[i], path[i + 1], ease(f)];
+}
+
+// Общий таймер для всех видимых показов на странице (не чаще 30 кадров в секунду).
+const demos = new Set();
+let raf = 0;
+let lastFrame = 0;
+function loopDemos(now) {
+  raf = 0;
+  if (!demos.size) return;
+  if (now - lastFrame > 33) {
+    lastFrame = now;
+    for (const d of demos) {
+      if (!d.el.isConnected) { demos.delete(d); continue; }
+      const [a, b, k] = demoPose(d.path, (now - d.t0) / 1000);
+      const key = `${a}|${b}|${Math.round(k * 60)}`;
+      if (key !== d.key) { d.key = key; d.el.innerHTML = figureAt(d.id, d.opts, a, b, k); }
+    }
+  }
+  if (demos.size) raf = requestAnimationFrame(loopDemos);
+}
+let observer = null;
+// Оживить элемент: показ идёт, только пока элемент виден на экране.
+export function animateFigure(el, id, opts = {}) {
+  const path = demoPath(id, opts);
+  if (!path) { el.innerHTML = figureAt(id, opts, 0, 0, 0); return; }
+  const d = { el, id, opts, path, t0: performance.now() - Math.random() * 1500, key: '' };
+  el.__demo = d;
+  el.innerHTML = figureAt(id, opts, 0, 0, 0);
+  if (typeof IntersectionObserver === 'undefined') { demos.add(d); if (!raf) raf = requestAnimationFrame(loopDemos); return; }
+  if (!observer) {
+    observer = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const dd = e.target.__demo;
+        if (!dd) continue;
+        if (e.isIntersecting) demos.add(dd); else demos.delete(dd);
+      }
+      if (demos.size && !raf) raf = requestAnimationFrame(loopDemos);
+    });
+  }
+  observer.observe(el);
 }
