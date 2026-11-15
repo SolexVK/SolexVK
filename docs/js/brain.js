@@ -15,7 +15,7 @@ export class BrainError extends Error {
 // Есть ли доступ к нейросети: через свой сервер или по ключу на телефоне.
 export const aiAvailable = () => !!(serverConfig() || getApiKey());
 
-async function call(params, { signal } = {}) {
+export async function call(params, { signal } = {}) {
   const req = prepareRequest(params);
   const cfg = serverConfig();
   try {
@@ -44,7 +44,7 @@ async function call(params, { signal } = {}) {
   }
 }
 
-async function callJSON(params, opts) {
+export async function callJSON(params, opts) {
   const res = await call(params, opts);
   const text = responseText(res);
   if (text == null) throw new BrainError('refusal', t('Нейросеть не смогла ответить на этот запрос.'));

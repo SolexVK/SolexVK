@@ -444,7 +444,7 @@ tbody tr { cursor: pointer; }
 
 /* ---- нижняя навигация ---- */
 .tabs {
-  position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr);
+  position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(6, 1fr);
   background: var(--surface); border-top: 1px solid var(--line);
   padding: 4px max(8px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 4px) max(8px, env(safe-area-inset-left, 0px));
 }
@@ -700,3 +700,35 @@ body::after {
   display: block; left: auto; right: max(10px, env(safe-area-inset-right, 0px)); top: calc(env(safe-area-inset-top, 0px) + 66px);
   transform: none; width: 34vw; max-width: 170px; height: 26vh; border-radius: 14px; background: rgba(6, 12, 10, 0.55); padding: 4px;
 }
+
+/* ---- питание ---- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-top: 12px; }
+.nbar { margin: 8px 0; }
+.nbar-top { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
+.nbar-top b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.nbar-line { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.nbar-line i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.nbar.ok .nbar-line i { background: var(--good); }
+.nbar.over .nbar-line i { background: var(--warn); }
+.food-tip { margin: 10px 0 0; font-weight: 600; }
+.food-actions { display: grid; gap: 8px; margin-top: 12px; }
+.food-actions label.btn { display: flex; align-items: center; justify-content: center; }
+.meal { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: start; padding: 10px; margin-top: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.meal-ph { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
+.meal-ph.empty { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); font-size: 26px; }
+.meal h4 { margin: 0; font-size: 15px; } .meal h4 small { color: var(--muted); font-weight: 400; }
+.meal-n { margin: 2px 0; font-variant-numeric: tabular-nums; }
+.meal-adv { margin: 6px 0 0; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 6px; font-size: 14px; }
+.meal-del { width: 34px; height: 34px; background: var(--line); color: var(--ink); font-size: 14px; }
+.food-prev { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; margin-bottom: 8px; }
+.mf-q { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin: 8px 0; }
+.mf-q legend { font-weight: 600; padding: 0 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.chip { min-height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.chip.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.mf-other { width: 100%; }
+.mf-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.mf-name { font-weight: 600; } .mf-g input { width: 72px; } .mf-k { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.mm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mm-grid label { display: grid; gap: 4px; font-size: 14px; }
+.tab { font-size: 10px; }

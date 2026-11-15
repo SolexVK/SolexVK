@@ -14,6 +14,8 @@ import * as ambient from './ambient.js';
 import { startIntake, runCheckin, runReview, reviewDue, currentPlan, todayCheckin, programHtml } from './flows.js';
 import { readiness, levelInfo, SESSION_MIN } from './program.js';
 import { renderSheet } from './sheet.js';
+import { renderFood } from './food.js';
+import { targets } from './nutrition.js';
 import { GUIDES } from './guides.js';
 import { LEVELS } from './kb.js';
 import { aiAvailable, remember } from './brain.js';
@@ -62,7 +64,7 @@ function effectiveMode(d) {
   return m;
 }
 const todaySkip = (d) => d?.checkin?.decision?.skip || [];
-const TITLES = { today: t('Сегодня'), program: t('Программа'), diary: t('Дневник'), progress: t('Прогресс'), master: t('Мастер') };
+const TITLES = { today: t('Сегодня'), program: t('Программа'), food: t('Питание'), diary: t('Дневник'), progress: t('Прогресс'), master: t('Мастер') };
 
 function render() {
   if (!runner) ambient.setScene(document.body.classList.contains('focus') ? 'talk' : 'home');
@@ -74,6 +76,7 @@ function render() {
   if (view === 'today') renderToday();
   else if (view === 'diary') renderDiary();
   else if (view === 'program') renderProgram();
+  else if (view === 'food') renderFoodView();
   else if (view === 'progress') renderProgress();
   else if (view === 'master') renderMaster();
   return undefined;
@@ -475,6 +478,13 @@ function renderProgress() {
     weeks.push({ label: String(i + 1), value: n });
   }
   weekBars($('#ch-weeks'), { weeks: weeks.some((x) => x.value) ? weeks : [] });
+}
+
+// ---------- питание ----------
+function renderFoodView() {
+  const T = targets();
+  $('#view-sub').textContent = t('Норма {k} ккал, белок {p} г', { k: T.kcal, p: T.protein });
+  renderFood(main, { openSheet, closeSheet, toast, render });
 }
 
 // ---------- программа ----------

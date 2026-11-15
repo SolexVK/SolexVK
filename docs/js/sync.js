@@ -62,7 +62,10 @@ function mergeDay(r = {}, l = {}) {
     const o = sessions[k];
     sessions[k] = o && o.done && !v?.done ? o : { ...(o || {}), ...v };
   }
-  return { ...r, ...l, sessions, pain: { ...(r.pain || {}), ...(l.pain || {}) }, bp: l.bp || r.bp, checkin: l.checkin || r.checkin };
+  // Приёмы пищи — по id из обеих копий (удалённые помечены, поэтому не воскресают).
+  const meals = new Map();
+  for (const m of [...(r.meals || []), ...(l.meals || [])]) { const o = meals.get(m.id); meals.set(m.id, o?.deleted ? o : m); }
+  return { ...r, ...l, sessions, pain: { ...(r.pain || {}), ...(l.pain || {}) }, bp: l.bp || r.bp, checkin: l.checkin || r.checkin, food: { ...(r.food || {}), ...(l.food || {}) }, ...(meals.size ? { meals: [...meals.values()] } : {}) };
 }
 function merge(local, remote) {
   const out = { ...remote, ...local };
