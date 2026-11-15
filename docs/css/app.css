@@ -444,7 +444,7 @@ tbody tr { cursor: pointer; }
 
 /* ---- нижняя навигация ---- */
 .tabs {
-  position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr);
+  position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--surface); border-top: 1px solid var(--line);
   padding: 4px max(8px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 4px) max(8px, env(safe-area-inset-left, 0px));
 }
@@ -639,3 +639,44 @@ body::after {
 @media (prefers-reduced-motion: reduce) { .taiji { animation: none; } }
 .row-btns { display: flex; gap: 10px; flex-wrap: wrap; }
 .row-btns .btn { flex: 1 1 140px; }
+
+/* ---- схемы упражнений ---- */
+.fig { display: block; width: 100%; height: 100%; overflow: visible; }
+.fig .fg-body path, .fig .fg-body ellipse, .fig .fg-body circle,
+.fig .fg-ghost path, .fig .fg-ghost ellipse, .fig .fg-ghost circle {
+  fill: var(--fig-fill, color-mix(in srgb, var(--surface) 70%, var(--accent-soft)));
+  stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round;
+}
+.fig .fg-far path { fill: var(--fig-far, color-mix(in srgb, var(--surface) 45%, var(--line))); }
+.fig .fg-hair { fill: var(--ink) !important; }
+.fig .fg-ghost { opacity: 0.22; }
+.fig .fg-arrow { fill: none; stroke: var(--seal); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.fig .fg-ahead { fill: var(--seal); }
+.fig .fg-guide { fill: none; stroke: var(--seal); stroke-width: 2; stroke-dasharray: 5 6; opacity: 0.8; }
+.fig .fg-label { fill: var(--seal); font: 600 15px var(--font); }
+.fig .fg-floor { stroke: var(--muted); stroke-width: 2.5; stroke-linecap: round; opacity: 0.5; }
+.fig .fg-prop path { fill: none; stroke: var(--muted); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.fig .fg-prop .fg-hatch { stroke-width: 1.6; }
+.fig .fg-mat { fill: var(--accent-soft); opacity: 0.9; }
+
+/* ---- лист программы ---- */
+.sheet-head h2 { margin: 2px 0 4px; }
+.sheet-changes { margin: 12px 0 4px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.sheet-changes summary { font-weight: 600; cursor: pointer; }
+.sheet-changes ul { margin: 8px 0 0; padding-left: 18px; }
+.sheet-sec { margin-top: 22px; }
+.sheet-sec h3 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sheet-sec h3 .seal { font-size: 15px; padding: 2px 6px; border-radius: 6px; background: var(--seal); color: var(--seal-ink); }
+.sheet-sec h3 small { color: var(--muted); font-weight: 400; font-size: 13px; }
+.ex { display: grid; grid-template-columns: 124px 1fr; gap: 12px; padding: 12px; margin-top: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.ex-fig { height: 150px; cursor: zoom-in; }
+.ex:not(.open) .fig .fg-label { display: none; }
+.ex-body h4 { margin: 0; font-size: 16px; }
+.ex-dose { margin: 2px 0 4px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+.ex-text { margin: 0; font-size: 14px; color: var(--muted); }
+.ex-caution { margin: 6px 0 0; font-size: 13px; color: var(--warn); }
+.ex-new { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: var(--seal); color: var(--seal-ink); font-size: 11px; font-weight: 600; vertical-align: 2px; }
+.ex-off { opacity: 0.45; }
+.ex .btn.small { min-height: 34px; padding: 0 12px; margin-top: 8px; font-size: 14px; }
+.ex.open { grid-template-columns: 1fr; }
+.ex.open .ex-fig { height: 300px; cursor: zoom-out; }

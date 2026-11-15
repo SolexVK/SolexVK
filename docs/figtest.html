@@ -1,0 +1,9 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><link rel="stylesheet" href="css/app.css">
+<style>body{padding:12px;background:var(--bg)}.g{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.c{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px}.c div{height:220px}.c p{margin:4px;font:600 14px sans-serif;color:var(--ink)}</style></head>
+<body><div class="g" id="g"></div>
+<script type="module">
+import { figureSvg, figureIds } from './js/figures.js';
+const only = new URLSearchParams(location.search).get('only');
+const ids = only ? only.split(',') : figureIds();
+document.getElementById('g').innerHTML = ids.map((id) => `<div class="c"><div>${figureSvg(id)}</div><p>${id}</p></div>`).join('');
+</script></body></html>

@@ -13,6 +13,8 @@ import { PALETTES, applyPalette, CLOUD_RULE } from './theme.js';
 import * as ambient from './ambient.js';
 import { startIntake, runCheckin, runReview, reviewDue, currentPlan, todayCheckin, programHtml } from './flows.js';
 import { readiness, levelInfo } from './program.js';
+import { renderSheet } from './sheet.js';
+import { GUIDES } from './guides.js';
 import { LEVELS } from './kb.js';
 import { aiAvailable, remember } from './brain.js';
 import { startSync, serverConfig, setServer, syncStatus, onSyncStatus, pull, api } from './sync.js';
@@ -60,7 +62,7 @@ function effectiveMode(d) {
   return m;
 }
 const todaySkip = (d) => d?.checkin?.decision?.skip || [];
-const TITLES = { today: t('Сегодня'), diary: t('Дневник'), progress: t('Прогресс'), master: t('Мастер') };
+const TITLES = { today: t('Сегодня'), program: t('Программа'), diary: t('Дневник'), progress: t('Прогресс'), master: t('Мастер') };
 
 function render() {
   if (!runner) ambient.setScene(document.body.classList.contains('focus') ? 'talk' : 'home');
@@ -71,6 +73,7 @@ function render() {
   $$('.tab').forEach((b) => b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false'));
   if (view === 'today') renderToday();
   else if (view === 'diary') renderDiary();
+  else if (view === 'program') renderProgram();
   else if (view === 'progress') renderProgress();
   else if (view === 'master') renderMaster();
   return undefined;
@@ -469,6 +472,13 @@ function renderProgress() {
   weekBars($('#ch-weeks'), { weeks: weeks.some((x) => x.value) ? weeks : [] });
 }
 
+// ---------- программа ----------
+function renderProgram() {
+  const d = peekDay(dateStr());
+  $('#view-sub').textContent = state.program?.level ? t('Все упражнения и нагрузка') : '';
+  renderSheet(main, { todayMode: effectiveMode(d), todaySkip: todaySkip(d) });
+}
+
 // ---------- мастер ----------
 const CHIPS = [t('Что у меня сегодня?'), t('Как стоять столбом?'), t('Болит поясница, что делать?'), t('Давление 160 на 100, заниматься?')];
 let masterBusy = false;
@@ -744,12 +754,34 @@ function closeSheet() {
   $('#sheet-body').innerHTML = '';
 }
 
+// Объяснение упражнения голосом мастера: каждое предложение — отдельная запись.
+let guideBtn = null;
+function playGuide(id, btn) {
+  const lines = GUIDES[id];
+  if (!lines) return;
+  const stop = () => { if (guideBtn) { guideBtn.classList.remove('playing'); guideBtn.textContent = `▶ ${t('Как выполнять')}`; } guideBtn = null; };
+  if (guideBtn === btn) { voice.cancel(); stop(); return; }
+  voice.cancel();
+  stop();
+  guideBtn = btn;
+  btn.classList.add('playing');
+  btn.textContent = `■ ${t('Стоп')}`;
+  btn.closest('.ex')?.classList.add('open');
+  let last = null;
+  lines.forEach((line, i) => { last = voice.speak(line, { interrupt: i === 0, force: true }); });
+  last.then(() => { if (guideBtn === btn) stop(); });
+}
+
 // ---------- события ----------
 document.addEventListener('click', (e) => {
   const t = e.target;
   const tab = t.closest('.tab');
   if (tab) return go(tab.dataset.view);
   if (t.closest('[data-close]') || t === sheet) return closeSheet();
+  const gb = t.closest('[data-guide]');
+  if (gb) { voice.unlock(); return playGuide(gb.dataset.guide, gb); }
+  const exCard = t.closest('.ex');
+  if (exCard && !t.closest('button')) { exCard.classList.toggle('open'); return undefined; }
   const st = t.closest('[data-start]');
   if (st) { voice.unlock(); return openStart(st.dataset.start); }
   const g = t.closest('[data-go]');

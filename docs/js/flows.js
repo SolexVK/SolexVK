@@ -11,7 +11,7 @@ import * as ambient from './ambient.js';
 import { t } from './i18n.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const FLAG_TEXT = {
+export const FLAG_TEXT = {
   cervical: t('бережно к шее'), lumbar_radicular: t('бережно к пояснице'), lumbar_acute: t('острая боль в пояснице'), knee: t('щадящий режим для коленей'),
   hip: t('щадящий режим для тазобедренных суставов'), shoulder: t('бережно к плечам'), wrist: t('бережно к запястьям'), hypertension: t('контроль давления'),
   heart: t('нагрузка под контролем врача'), osteo: t('без нагрузки на позвоночник в наклоне'), balance: t('упражнения с опорой'), no_floor: t('без упражнений на полу'),
