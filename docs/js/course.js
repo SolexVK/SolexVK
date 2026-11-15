@@ -700,7 +700,7 @@ export function buildSession(kind, planOrWeek, mode = 'full') {
       steps.push(step({ id: 'walk', title: 'Ходьба', kind: 'hold', dur: walkSec,
         text: light ? 'Идите спокойно, без ускорений.' : 'Темп такой, чтобы стало тепло, но можно было говорить фразами. Телефон можно взять с собой.',
         items: [
-          say(`Ходьба, ${WORDS[walkMin] || walkMin} минут.`, light ? 'Идите спокойно, без ускорений.' : 'Темп такой, чтобы стало тепло, но можно было говорить фразами.'),
+          say(walkMin > 10 ? `Прогулка, ${WORDS[walkMin] || walkMin} минут.` : `Ходьба, ${WORDS[walkMin] || walkMin} минут.`, light ? 'Идите спокойно, без ускорений.' : 'Темп такой, чтобы стало тепло, но можно было говорить фразами.'),
           { t: 'hold', dur: walkSec, cues: wc.sort((a, b) => a.at - b.at) },
           say('Ходьба окончена.'),
         ] }));

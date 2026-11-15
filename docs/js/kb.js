@@ -97,13 +97,13 @@ export const DOSES = {
   },
   3: {
     stolbSec: [180, 240, 300, 360], walkMin: [12, 15, 18, 20], legsReps: [8, 10, 12, 12], pushReps: [8, 10, 12, 12],
-    bridgeReps: [6, 6, 8, 8], plankSec: [20, 25, 30, 30], calfReps: [10, 12, 15, 15], birdReps: [6, 6, 8, 8], bugReps: [8, 8, 10, 10],
+    bridgeReps: [6, 6, 8, 8], plankSec: [20, 20, 30, 30], calfReps: [10, 12, 15, 15], birdReps: [6, 6, 8, 8], bugReps: [8, 8, 10, 10],
     stepReps: [4, 6, 6, 8], marchReps: [16, 16, 20, 20], tiltReps: [12, 12, 12, 12], stretchSec: 30, bdjReps: 6,
     skyReps: 6, qishiReps: 6, shiftReps: 6, unloadCycles: 12, chairHands: false,
   },
   4: {
     stolbSec: [300, 360, 420, 480], walkMin: [20, 25, 30, 30], legsReps: [10, 12, 12, 15], lungeReps: [6, 8, 8, 10], pushReps: [6, 8, 10, 12],
-    bridgeReps: [6, 8, 8, 10], plankSec: [30, 40, 45, 60], sideSec: [15, 20, 25, 30], calfReps: [15, 15, 20, 20], birdReps: [8, 8, 10, 10], bugReps: [10, 10, 12, 12],
+    bridgeReps: [6, 8, 8, 10], plankSec: [30, 40, 50, 60], sideSec: [20, 20, 30, 30], calfReps: [15, 15, 20, 20], birdReps: [8, 8, 10, 10], bugReps: [10, 10, 12, 12],
     stepReps: [6, 8, 8, 10], marchReps: [16, 16, 20, 20], tiltReps: [12, 12, 12, 12], stretchSec: 40, bdjReps: 8,
     skyReps: 8, qishiReps: 6, shiftReps: 6, unloadCycles: 12, chairHands: false,
   },

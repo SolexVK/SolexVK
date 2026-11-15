@@ -83,7 +83,7 @@ export function resolvePlan(prog = state.program) {
   const scale = Math.min(1, Math.max(0.5, prog.doseScale || 1));
   const pick = (k) => (Array.isArray(D[k]) ? D[k][st] : D[k]);
   const reps = (k, min = 3) => (D[k] == null ? 0 : Math.max(min, Math.round(pick(k) * scale)));
-  const secs = (k, min = 10) => (D[k] == null ? 0 : Math.max(min, Math.round(pick(k) * scale / 5) * 5));
+  const secs = (k, min = 10) => (D[k] == null ? 0 : Math.max(min, Math.round(pick(k) * scale / 10) * 10)); // круглые числа: голосу так проще
   const flags = new Set(prog.flags || []);
   const exclude = new Set(prog.exclude || []);
   for (const [id, ex] of Object.entries(EXERCISES)) {

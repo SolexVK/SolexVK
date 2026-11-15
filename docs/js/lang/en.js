@@ -1303,5 +1303,11 @@ export default {
 "Колени: полуприседы": "Knees: half-squats",
 "Стопы: перекаты и вращения": "Feet: rolls and circles",
 "«Начало тай-чи»": "“Tai Chi Commencement”",
-"«Мёртвый жук», лёгкий": "“Dead bug”, easy"
+"«Мёртвый жук», лёгкий": "“Dead bug”, easy",
+"Прогулка, двенадцать минут.": "Walk, twelve minutes.",
+"Прогулка, пятнадцать минут.": "Walk, fifteen minutes.",
+"Прогулка, восемнадцать минут.": "Walk, eighteen minutes.",
+"Прогулка, двадцать минут.": "Walk, twenty minutes.",
+"Прогулка, двадцать пять минут.": "Walk, twenty-five minutes.",
+"Прогулка, тридцать минут.": "Walk, thirty minutes."
 };
