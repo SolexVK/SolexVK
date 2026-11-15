@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(os.environ.get('VOICE_OUT', ROOT / 'docs' / 'audio'))
 PHRASES = json.loads(Path(os.environ.get('VOICE_PHRASES', ROOT / 'tools' / 'voice' / 'phrases.json')).read_text(encoding='utf-8'))
 SPEAKER = 'Baldur Sanjin'
+# Голоса других мастеров: поле who в phrases.json -> голос XTTS.
+SPEAKERS = {'lao': SPEAKER, 'ligan': os.environ.get('LIGAN_SPEAKER', 'Damien Black')}
 SPEED = 0.9
 TEMPO = 1.08  # итоговое ускорение речи без изменения тембра (ffmpeg atempo)
 TRIES = 6
@@ -93,15 +95,15 @@ def pron(t):
 
 SENT_CACHE = {}
 
-def synth_sentence(text, seed):
+def synth_sentence(text, seed, speaker=SPEAKER):
     """Одно предложение: несколько попыток, лучшая по распознаванию."""
-    if text in SENT_CACHE:
-        return SENT_CACHE[text]
+    if (speaker, text) in SENT_CACHE:
+        return SENT_CACHE[(speaker, text)]
     best = None
     need = 0.9 if len(text) > 14 else 0.8
     for attempt in range(TRIES):
         torch.manual_seed(seed + attempt * 37)
-        wav = tts.tts(text=pron(text), speaker=SPEAKER, language='ru', speed=SPEED, temperature=0.65 if attempt < 3 else 0.5)
+        wav = tts.tts(text=pron(text), speaker=speaker, language='ru', speed=SPEED, temperature=0.65 if attempt < 3 else 0.5)
         y = clean(wav, sr)
         sc, sim, heard, dur, y = score(pron(text), y, sr)
         y = clean(y, sr)
@@ -110,7 +112,7 @@ def synth_sentence(text, seed):
         if sc >= need:
             break
     best = best + (best[0] >= need,)
-    SENT_CACHE[text] = best
+    SENT_CACHE[(speaker, text)] = best
     return best
 
 REDO = set(os.environ.get('VOICE_REDO', '').split(',')) - {''}
@@ -121,7 +123,8 @@ for idx, p in enumerate(todo, 1):
     text, key = p['text'], p['key']
     t0 = time.time()
     # Каждое предложение озвучиваем отдельно: так XTTS не вставляет лишних слогов на стыках.
-    parts = [synth_sentence(t, 1000 + idx * 11 + k) for k, t in enumerate(sentences(text))]
+    spk = SPEAKERS.get(p.get('who') or 'lao', SPEAKER)
+    parts = [synth_sentence(t, 1000 + idx * 11 + k, spk) for k, t in enumerate(sentences(text))]
     gap = np.zeros(int(sr * 0.3), dtype=np.float32)
     y = np.concatenate([q for part in parts for q in (part[4], gap)][:-1])
     y = clean(y, sr)
@@ -136,7 +139,7 @@ for idx, p in enumerate(todo, 1):
                         '-codec:a', 'libmp3lame', '-b:a', '48k', str(OUT / f'{key}.mp3')], check=True)
         os.unlink(f.name)
     clips[key] = round(dur / TEMPO, 2)
-    report[key] = {'text': text, 'heard': heard, 'sim': round(sim, 2), 'tries': tries, 'ok': ok}
+    report[key] = {'who': p.get('who') or 'lao', 'text': text, 'heard': heard, 'sim': round(sim, 2), 'tries': tries, 'ok': ok}
     man_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=0), encoding='utf-8')
     flag = '' if ok else '  <-- проверить'
     print(f'[{idx}/{len(todo)}] {time.time() - t0:4.0f}s sim={sim:.2f} x{tries} {text[:60]}{flag}', flush=True)

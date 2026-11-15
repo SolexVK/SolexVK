@@ -90,10 +90,12 @@ export function loadManifest() {
 }
 if (typeof window !== 'undefined') loadManifest();
 
-export const hasClip = (text) => !!(manifest?.clips && manifest.clips[clipKey(text)] != null);
-export const clipDuration = (text) => manifest?.clips?.[clipKey(text)] ?? null;
+// У каждого наставника свой голос: ключ записи учитывает, чей это голос (Лао — без приставки, остальные — «имя|текст»).
+export const voiceKey = (text, who) => (who ? clipKey(`${who}|${normText(text)}`) : clipKey(text));
+export const hasClip = (text, who) => !!(manifest?.clips && manifest.clips[voiceKey(text, who)] != null);
+export const clipDuration = (text, who) => manifest?.clips?.[voiceKey(text, who)] ?? null;
 // Сколько длится запись фразы в исходном виде, если она прозвучит записью (иначе 0).
-export const clipSeconds = (text) => (state.settings.voice && ctx && text ? clipDuration(normText(text)) || 0 : 0);
+export const clipSeconds = (text, who) => (state.settings.voice && ctx && text ? clipDuration(normText(text), who) || 0 : 0);
 
 // ---- подстройка звучания: скорость речи и высота голоса ----
 export const SPEED_RANGE = [0.85, 1.25];
@@ -115,9 +117,9 @@ function variant(key, buf, speed, pitch) {
 }
 // Скорость для фразы: если фраза звучит внутри такта упражнения (fit — длина такта в секундах),
 // замедленный голос ускоряется ровно настолько, чтобы уложиться в такт. Темп упражнения не меняется.
-function speedFor(text, fit) {
+function speedFor(text, fit, who) {
   let sp = voiceSpeed();
-  const d = clipDuration(text);
+  const d = clipDuration(text, who);
   if (fit && d && d / sp > fit) sp = Math.ceil((d / fit) * 100) / 100;
   return sp;
 }
@@ -135,10 +137,10 @@ function loadClip(key) {
 }
 
 // Заранее загружаем фразы занятия, чтобы голос не запаздывал.
-export async function preload(texts, onProgress) {
+export async function preload(texts, onProgress, who) {
   await loadManifest();
   if (!ctx) return;
-  const keys = [...new Set(texts.filter(hasClip).map(clipKey))];
+  const keys = [...new Set([...texts.filter((x) => hasClip(x, who)).map((x) => voiceKey(x, who)), ...texts.filter((x) => who && hasClip(x)).map((x) => clipKey(x))])];
   // Память телефона не безгранична: записи прошлых занятий и их обработанные варианты отпускаем.
   const need = new Set(keys);
   for (const k of [...buffers.keys()]) if (!need.has(k)) buffers.delete(k);
@@ -204,16 +206,16 @@ export function unlock() {
   } catch { /* не критично */ }
 }
 
-export function speak(text, { interrupt = false, force = false, fit = 0 } = {}) {
+export function speak(text, { interrupt = false, force = false, fit = 0, who = '' } = {}) {
   return new Promise((resolve) => {
     if ((!state.settings.voice && !force) || !text) return resolve(false);
     if (interrupt) cancel();
     unlocked = true;
     const whole = normText(text);
-    const parts = hasClip(whole) && ctx ? [whole] : split(whole);
+    const parts = (hasClip(whole, who) || hasClip(whole)) && ctx ? [whole] : split(whole);
     if (!parts.length) return resolve(false);
     if (!ctx && !ttsSupported) return resolve(false);
-    parts.forEach((t, i) => queue.push({ text: t, fit: parts.length === 1 ? fit : 0, resolve: i === parts.length - 1 ? resolve : null }));
+    parts.forEach((t, i) => queue.push({ text: t, who: hasClip(t, who) ? who : '', fit: parts.length === 1 ? fit : 0, resolve: i === parts.length - 1 ? resolve : null }));
     pump();
     return undefined;
   });
@@ -249,8 +251,8 @@ function run() {
   me.finish = (ok) => { try { stopFn?.(); } catch { /* noop */ } finish(ok); };
   current = me;
 
-  if (ctx && hasClip(item.text)) {
-    const key = clipKey(item.text);
+  if (ctx && hasClip(item.text, item.who)) {
+    const key = voiceKey(item.text, item.who);
     // Страховка: если запись не загрузилась за 6 секунд, фразу скажет голос телефона, а не тишина.
     let late = false;
     const guard = setTimeout(() => { late = true; if (!done) speakSynth(item, finish, (f) => { stopFn = f; }, (t) => { wd = t; }); }, 6000);
@@ -258,7 +260,7 @@ function run() {
       clearTimeout(guard);
       if (done || late) return;
       if (ctx.state !== 'running') ctx.resume().catch(() => {});
-      const buf = variant(key, raw, speedFor(item.text, item.fit), voicePitch());
+      const buf = variant(key, raw, speedFor(item.text, item.fit, item.who), voicePitch());
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(ctx.destination);

@@ -16,6 +16,7 @@ import { readiness, levelInfo, SESSION_MIN } from './program.js';
 import { renderSheet } from './sheet.js';
 import { renderFood } from './food.js';
 import { targets } from './nutrition.js';
+import { st as strengthState, strengthToday, phaseDef, phaseCriteria, nextPhase, BAND_NAME, PHASES as SPHASES } from './strength.js';
 import { GUIDES } from './guides.js';
 import { LEVELS } from './kb.js';
 import { aiAvailable, remember } from './brain.js';
@@ -64,7 +65,7 @@ function effectiveMode(d) {
   return m;
 }
 const todaySkip = (d) => d?.checkin?.decision?.skip || [];
-const TITLES = { today: t('Сегодня'), program: t('Программа'), food: t('Питание'), diary: t('Дневник'), progress: t('Прогресс'), master: t('Мастер') };
+const TITLES = { today: t('Сегодня'), program: t('Программа'), food: t('Питание'), diary: t('Дневник'), progress: t('Прогресс'), master: t('Мастер Лао') };
 
 function render() {
   if (!runner) ambient.setScene(document.body.classList.contains('focus') ? 'talk' : 'home');
@@ -94,7 +95,7 @@ function renderOnboard() {
   main.innerHTML = `
     <section class="onb">
       <div class="seal-mark big" aria-hidden="true">太極</div>
-      <h2>${t('Ваш мастер тайцзи')}</h2>
+      <h2>${t('Ваш мастер тайцзи')} — ${t('мастер Лао')}</h2>
       <p class="lead">${t('Мастер начнёт со знакомства: голосом задаст около двадцати вопросов о здоровье, подвижности и целях, проведёт три простые проверки и подберёт программу под вас. Отвечать можно кнопками или голосом.')}</p>
       <div class="callout">
         <strong>${t('Приложение не заменяет врача.')}</strong> ${t('Если есть боль в спине, отдающая в ноги, повышенное давление или болезни сердца, покажитесь врачу в первые недели занятий.')}
@@ -136,6 +137,29 @@ function sessionCard(kind, ci, d) {
     </article>`;
 }
 
+// Силовое с Ли Ганом: по расписанию (2 раза в неделю), только в день без облегчения.
+const WEEKDAYS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+function strengthCard(d) {
+  const S = strengthState();
+  const tday = strengthToday();
+  const mode = effectiveMode(d);
+  const rec = d?.sessions?.strength;
+  const plan = buildSession('strength', currentPlan(todaySkip(d)), 'full');
+  const blocked = mode !== 'full';
+  const when = (S.days || []).map((x) => t(WEEKDAYS[x])).join(', ');
+  return `
+    <article class="sess sess-strength ${rec?.done ? 'is-done' : ''}" data-kind="strength">
+      <div class="stamp ${rec?.done ? 'done' : ''}" aria-hidden="true">力</div>
+      <div class="sess-body">
+        <h3>${t('Сила с Ли Ганом')}</h3>
+        <p class="sess-sub">${t('Этап «{p}»', { p: t(phaseDef().name) })} · ${minutes(plan.dur)} · ${tday.planned ? t('по плану сегодня') : `${t('по плану')}: ${esc(when || '—')}`}</p>
+        ${blocked ? `<p class="note">${t('Сегодня без силовой: мастер Лао облегчил день по самочувствию или давлению.')}</p>` : ''}
+        ${rec?.done ? `<p class="sess-done">${t('Сделано')}</p>` : ''}
+      </div>
+      <button class="btn ${rec?.done || !tday.planned ? 'ghost' : ''}" data-start="strength" ${blocked ? 'disabled' : ''}>${rec?.done ? t('Ещё раз') : t('Начать')}</button>
+    </article>`;
+}
+
 function renderToday() {
   const today = dateStr();
   const ci = courseInfo(today);
@@ -171,6 +195,7 @@ function renderToday() {
     ${CLOUD_RULE}
     <section class="sessions" id="sessions" aria-label="${t('Занятия на сегодня')}">
       ${SESSION_KINDS.map((k) => sessionCard(k, ci, d)).join('')}
+      ${state.program?.level ? strengthCard(d) : ''}
     </section>
 
     <section class="tiles">
@@ -226,6 +251,10 @@ async function openStart(kind) {
     const dec = await runCheckin(main, kind);
     render();
     if (!dec || dec.mode === 'none') return;
+  }
+  if (kind === 'strength' && effectiveMode(peekDay(today)) !== 'full') {
+    toast(t('Сегодня без силовой: мастер Лао облегчил день по самочувствию или давлению.'));
+    return;
   }
   const d = day(today);
   const meta = SESSION_META[kind];
@@ -626,6 +655,15 @@ function openSettings() {
           ${t('Сисиодоси в саду храма Сисэн-до, Киото')} — Fg2, Wikimedia Commons, public domain.</p>
         </details>
       </fieldset>
+      <fieldset><legend>${t('Ли Ган · силовые')}</legend>
+        <p class="note">${t('Этап «{p}»: подходов {s}, отдых {r} с.', { p: t(phaseDef().name), s: phaseDef().sets, r: phaseDef().rest })}</p>
+        <label class="switch"><input type="checkbox" id="set-docok" ${strengthState().doctorOk ? 'checked' : ''}><span>${t('Врач разрешил силовые нагрузки')}</span></label>
+        <p class="note">${t('Дни силовых (2 в неделю, с перерывом):')}</p>
+        <div class="ov-row">${[1, 2, 3, 4, 5, 6, 0].map((x) => `<button type="button" class="btn small ${strengthState().days.includes(x) ? '' : 'ghost'}" data-sday="${x}">${t(WEEKDAYS[x])}</button>`).join('')}</div>
+        <p class="note">${t('Какие резинки есть:')}</p>
+        <div class="ov-row">${[1, 2, 3, 4].map((b) => `<button type="button" class="btn small ${strengthState().bands.includes(b) ? '' : 'ghost'}" data-band="${b}">${t(BAND_NAME[b])}</button>`).join('')}</div>
+        ${(() => { const c = phaseCriteria(); return c.next ? `<p class="note">${t('Переход на этап «{p}»:', { p: t(SPHASES[c.next].name) })}</p><ul class="crit">${c.crit.map((x) => `<li class="${x.ok ? 'ok' : ''}"><span class="crit-mark">${x.ok ? '✓' : '○'}</span><span>${esc(t(x.text))}${x.have ? ` <small>${esc(x.have)}</small>` : ''}</span></li>`).join('')}</ul>${c.crit.every((x) => x.ok) ? `<button type="button" class="btn" id="set-sphase">${t('Перейти на этап «{p}»', { p: t(SPHASES[c.next].name) })}</button>` : ''}` : ''; })()}
+      </fieldset>
       <fieldset><legend>${t('Время на одно занятие')}</legend>
         <select id="set-smin">${[['', `${t('По анкете')}: ${SESSION_MIN[state.intake?.time] ? `${SESSION_MIN[state.intake?.time]} ${t('мин')}` : t('без ограничения')}`], ['15', `15 ${t('мин')}`], ['20', `20 ${t('мин')}`], ['30', `30 ${t('мин')}`], ['45', `45 ${t('мин')}`], ['0', t('без ограничения')]].map(([v, l]) => `<option value="${v}" ${String(s.sessionMin ?? '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
         <p class="note">${t('Если занятие не помещается, мастер убирает менее важные упражнения и укорачивает ходьбу. Дыхание, столб, вставание со стула, разгрузка поясницы и завершение остаются всегда.')}</p>
@@ -684,6 +722,18 @@ function openSettings() {
   $('#set-music').addEventListener('change', (e) => { s.music = e.target.checked; save(); ambient.refresh(); });
   $('#set-mvol').addEventListener('input', (e) => { s.musicVolume = Number(e.target.value); $('#set-mvol-out').textContent = `${Math.round(s.musicVolume * 100)}%`; ambient.refresh(); });
   $('#set-mvol').addEventListener('change', () => save());
+  $('#set-docok').addEventListener('change', (e) => { strengthState().doctorOk = e.target.checked; save(); });
+  $$('[data-sday]').forEach((b) => b.addEventListener('click', () => {
+    const S = strengthState(); const x = Number(b.dataset.sday);
+    S.days = S.days.includes(x) ? S.days.filter((y) => y !== x) : [...S.days, x].sort();
+    b.classList.toggle('ghost', !S.days.includes(x)); save();
+  }));
+  $$('[data-band]').forEach((b) => b.addEventListener('click', () => {
+    const S = strengthState(); const x = Number(b.dataset.band);
+    S.bands = S.bands.includes(x) ? S.bands.filter((y) => y !== x) : [...S.bands, x].sort();
+    b.classList.toggle('ghost', !S.bands.includes(x)); save();
+  }));
+  $('#set-sphase')?.addEventListener('click', () => { if (nextPhase()) { toast(t('Ли Ган: новый этап!')); closeSheet(); render(); } });
   $('#set-smin').addEventListener('change', (e) => { s.sessionMin = e.target.value === '' ? null : Number(e.target.value); save(); render(); });
   const showVoiceFx = () => {
     $('#set-vspeed-out').textContent = fmtSpeed(voice.voiceSpeed());

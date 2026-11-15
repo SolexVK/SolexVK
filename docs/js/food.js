@@ -76,7 +76,7 @@ export function renderFood(main, ui) {
           </div>
           <button class="s-icon meal-del" data-del-meal="${esc(m.id)}" aria-label="${t('Удалить')}">✕</button>
         </article>`;
-      }).join('') : `<p class="note">${t('Пока пусто. Сфотографируйте тарелку перед едой — мастер оценит калории и белок.')}</p>`}
+      }).join('') : `<p class="note">${t('Пока пусто. Сфотографируйте тарелку перед едой — Мэйлин оценит калории и белок.')}</p>`}
     </section>
     <section class="food-check card">
       <h3>${t('Чек-лист дня')}</h3>
@@ -87,7 +87,7 @@ export function renderFood(main, ui) {
       <p class="note">${ws.daysLogged ? t('Дней с записями: {n} из 7. В среднем {k} ккал и {p} г белка в день.', { n: ws.daysLogged, k: ws.kcal, p: ws.protein }) : t('Записей за неделю пока нет.')}
       ${ws.change != null ? ` ${t('Средний вес за неделю изменился на {c} кг.', { c: n1(ws.change) })}` : ''}</p>
       ${state.nutrition?.lastSay ? `<p class="meal-adv">${esc(state.nutrition.lastSay)}</p>` : ''}
-      ${ai ? `<button class="btn ghost" id="food-week">${t('Разбор недели с диетологом')}</button>` : ''}
+      ${ai ? `<button class="btn ghost" id="food-week">${t('Разбор недели с Мэйлин')}</button>` : ''}
     </section>
     <details class="food-norm"><summary>${t('Как считается норма')}</summary>
       <label for="food-phase">${t('Этап')}</label>
@@ -113,8 +113,8 @@ export function renderFood(main, ui) {
   main.querySelector('#food-week')?.addEventListener('click', async (e) => {
     const b = e.currentTarget;
     b.disabled = true;
-    b.textContent = t('Диетолог смотрит неделю…');
-    try { await weekReview(); ui.render(); } catch (err) { ui.toast(err.message || t('Не получилось получить ответ.')); b.disabled = false; b.textContent = t('Разбор недели с диетологом'); }
+    b.textContent = t('Мэйлин смотрит неделю…');
+    try { await weekReview(); ui.render(); } catch (err) { ui.toast(err.message || t('Не получилось получить ответ.')); b.disabled = false; b.textContent = t('Разбор недели с Мэйлин'); }
   });
   main.querySelectorAll('[data-fcheck]').forEach((c) => c.addEventListener('change', () => {
     const dd = day(today);
@@ -131,24 +131,24 @@ export function renderFood(main, ui) {
 // ---- добавление еды с нейросетью ----
 function mealFlow(ui, { photo }) {
   const pv = photo ? `<img class="food-prev" src="data:image/jpeg;base64,${photo.base64}" alt="">` : '';
-  ui.openSheet(`<h3>${t('Мастер-диетолог')}</h3>${pv}
+  ui.openSheet(`<h3>${t('Мэйлин · питание')}</h3>${pv}
     <label for="mf-text">${photo ? t('Пояснение (необязательно)') : t('Что вы съели? Опишите блюда и примерный размер порций')}</label>
     <textarea id="mf-text" rows="${photo ? 2 : 4}" placeholder="${photo ? t('Например: жарено на оливковом масле, хлеб не ел') : t('Например: тарелка гречки, две котлеты, салат из огурцов со сметаной, чай без сахара')}"></textarea>
-    <button class="btn wide" id="mf-go">${t('Отправить мастеру')}</button>
+    <button class="btn wide" id="mf-go">${t('Отправить Мэйлин')}</button>
     <button class="btn ghost wide" data-close>${t('Отмена')}</button>`);
   const body = document.querySelector('#sheet-body');
   body.querySelector('#mf-go').addEventListener('click', async () => {
     const text = body.querySelector('#mf-text').value.trim();
     if (!photo && !text) { ui.toast(t('Опишите, что вы съели.')); return; }
     body.querySelector('#mf-go').disabled = true;
-    body.querySelector('#mf-go').textContent = t('Мастер смотрит…');
+    body.querySelector('#mf-go').textContent = t('Мэйлин смотрит…');
     try {
       const first = await analyzeMeal({ photo: photo?.base64, text });
       askStep(ui, { photo, text, first });
     } catch (err) {
       ui.toast(err.message || t('Не получилось получить ответ.'));
       body.querySelector('#mf-go').disabled = false;
-      body.querySelector('#mf-go').textContent = t('Отправить мастеру');
+      body.querySelector('#mf-go').textContent = t('Отправить Мэйлин');
     }
   });
 }
@@ -274,7 +274,7 @@ export function menuSectionHTML() {
   const ai = aiAvailable();
   if (!P) {
     return `<section class="card menu-card"><h3>${t('Меню на неделю')}</h3>
-      <p class="note">${t('Мастер-диетолог составит меню на каждый день из продуктов, которые вы покупаете: простые блюда и быстрая готовка. Сначала расскажите ему о своих продуктах — это 5–10 минут.')}</p>
+      <p class="note">${t('Мэйлин составит меню на каждый день из продуктов, которые вы покупаете: простые блюда и быстрая готовка. Сначала расскажите ей о своих продуктах — это 5–10 минут.')}</p>
       <button class="btn wide" id="pantry-go">${t('Рассказать о продуктах')}</button></section>`;
   }
   const eatenIds = new Set(dayMeals().map((x) => x.fromMenu).filter(Boolean));
@@ -308,7 +308,7 @@ function bindMealCards(root, ui, after) {
     });
     card.querySelectorAll('[data-like]').forEach((b) => b.addEventListener('click', () => {
       rateMeal(x.name, b.dataset.like === '1');
-      ui.toast(b.dataset.like === '1' ? t('Мастер учтёт в следующем меню') : t('Больше не предложу. Можно заменить сейчас.'));
+      ui.toast(b.dataset.like === '1' ? t('Мэйлин учтёт в следующем меню') : t('Больше не предложу. Можно заменить сейчас.'));
     }));
     card.querySelector('[data-swap]')?.addEventListener('click', async (e) => {
       if (!aiAvailable()) { ui.toast(t('Нейросеть не подключена.')); return; }
@@ -322,7 +322,7 @@ function bindMealCards(root, ui, after) {
 
 async function makeMenuUI(btn, ui) {
   btn.disabled = true;
-  btn.textContent = t('Мастер составляет меню… это до двух минут');
+  btn.textContent = t('Мэйлин составляет меню… это до двух минут');
   try { await makeMenu(); ui.render(); ui.toast(t('Меню на неделю готово')); } catch (err) {
     ui.toast(err.message || t('Не получилось получить ответ.'));
     btn.disabled = false;
@@ -367,7 +367,7 @@ function pantryWizard(ui, { offline = false } = {}) {
     const g = GROUPS[gi];
     const chosen = new Set(all[g.id] || []);
     const extra = (all[g.id] || []).filter((x) => !g.items.includes(x));
-    ui.openSheet(`<p class="eyebrow">${t('Мастер-диетолог')} · ${gi + 1} / ${GROUPS.length}</p>
+    ui.openSheet(`<p class="eyebrow">${t('Мэйлин · питание')} · ${gi + 1} / ${GROUPS.length}</p>
       <h3>${t(g.title)}</h3>
       <p class="note">${g.negative ? t('Отметьте, что вы не едите или плохо переносите. Можно дописать своё.') : g.id === 'kitchen' ? t('Что есть на кухне и сколько времени вы готовы готовить?') : t('Что из этого вы покупаете или можете купить? Отметьте и допишите своё.')}</p>
       <div class="fchips">${[...g.items, ...extra].map((x) => `<button type="button" class="chip ${chosen.has(x) ? 'on' : ''}" data-it="${esc(x)}">${esc(t(x))}</button>`).join('')}</div>
@@ -398,7 +398,7 @@ function pantryWizard(ui, { offline = false } = {}) {
         reviewed = true;
         const btn = e.currentTarget;
         btn.disabled = true;
-        btn.textContent = t('Мастер смотрит…');
+        btn.textContent = t('Мэйлин смотрит…');
         try {
           const r = await reviewGroup(g, [...chosen], all);
           const box = body.querySelector('#pw-master');

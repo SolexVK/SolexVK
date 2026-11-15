@@ -652,6 +652,7 @@ body::after {
 .fig .fg-ghost { opacity: 0.22; }
 .fig .fg-arrow { fill: none; stroke: var(--seal); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
 .fig .fg-ahead { fill: var(--seal); }
+.fig .fg-band { fill: none; stroke: #d0803a; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .fig .fg-guide { fill: none; stroke: var(--seal); stroke-width: 2; stroke-dasharray: 5 6; opacity: 0.8; }
 .fig .fg-label { fill: var(--seal); font: 600 15px var(--font); }
 .fig .fg-floor { stroke: var(--muted); stroke-width: 2.5; stroke-linecap: round; opacity: 0.5; }

@@ -9,6 +9,7 @@ import * as pose from './pose.js';
 import { askMaster, hasKey } from './master.js';
 import { t } from './i18n.js';
 import { FigurePlayer, beatTarget } from './figplayer.js';
+import { applyRatings } from './strength.js';
 
 const params = new URLSearchParams(location.search);
 const SPEED = Math.max(1, Number(params.get('speed')) || 1);
@@ -42,7 +43,7 @@ export class SessionRunner {
     this.camOn = false;
     this.modelReady = false;
     this.doneSteps = 0;
-    this.results = { quality: [], stolbSec: 0, chairReps: 0, repsTotal: 0, cues: 0 };
+    this.results = { quality: [], stolbSec: 0, chairReps: 0, repsTotal: 0, cues: 0, ratings: {} };
     this.startedAt = Date.now();
     this.date = dateStr(); // занятие после полуночи засчитывается в день начала
     this.build();
@@ -94,7 +95,7 @@ export class SessionRunner {
     this.onClick = (e) => {
       const b = e.target.closest('[data-act]');
       if (!b) return;
-      this.act(b.dataset.act);
+      this.act(b.dataset.act, b);
     };
     this.root.addEventListener('click', this.onClick);
     this.onVis = () => {
@@ -120,7 +121,7 @@ export class SessionRunner {
     this.preparing = true;
     this.go(0);
     const texts = this.steps.flatMap((st) => st.items.flatMap((it) => [it.text, ...(it.cues || []).map((c) => c.text)])).filter(Boolean);
-    const pre = voice.preload([...texts, ...COACH_TEXTS], (d, n) => { if (this.preparing) this.el.unit.textContent = `${t('готовлю голос мастера:')} ${Math.round((d / n) * 100)}%`; });
+    const pre = voice.preload([...texts, ...COACH_TEXTS], (d, n) => { if (this.preparing) this.el.unit.textContent = `${t('готовлю голос мастера:')} ${Math.round((d / n) * 100)}%`; }, this.plan.voice);
     Promise.race([pre, new Promise((r) => setTimeout(r, 12000))]).catch(() => {}).then(() => {
       if (this.ended) return;
       this.preparing = false;
@@ -202,7 +203,7 @@ export class SessionRunner {
     const tok = st.token;
     st.speaking = true;
     const t0 = performance.now();
-    voice.speak(text, { interrupt: true, fit }).then((ok) => {
+    voice.speak(text, { interrupt: true, fit, who: this.plan.voice || '' }).then((ok) => {
       if (this.st !== st || tok !== st.token) return;
       // Голос выключен или недоступен: выдерживаем примерное время фразы.
       const est = ok ? 0 : Math.max(0, (0.5 + text.length * 0.07) / SPEED - (performance.now() - t0) / 1000);
@@ -230,7 +231,7 @@ export class SessionRunner {
       if (tg != null) this.fig.moveTo(tg, Math.min(6, it.dur / SPEED) * 0.9);
       // Длина такта считается по исходной записи фразы, а не по подстроенному голосу:
       // быстрее или медленнее говорит мастер — счёт идёт в том же темпе.
-      const win = Math.max(it.dur, voice.clipSeconds(it.text) * SPEED);
+      const win = Math.max(it.dur, voice.clipSeconds(it.text, this.plan.voice) * SPEED);
       st.beatLeft = win;
       if (it.rep) { st.rep = it.rep; st.maxRep = Math.max(st.maxRep, it.rep); }
       if (it.breath && it.breath !== st.breath) {
@@ -334,6 +335,35 @@ export class SessionRunner {
     if (s.track === 'chair') this.results.chairReps = Math.max(this.results.chairReps, skipped ? st.maxRep - 1 : st.maxRep, this.coach?.reps || 0);
     if (s.kind === 'move' && s.reps) this.results.repsTotal += skipped ? Math.max(0, st.maxRep - 1) : st.maxRep;
     if (!skipped) this.doneSteps++;
+    // Силовое упражнение: как прошло? От ответа зависит нагрузка в следующий раз.
+    if (s.rate && !skipped && !this.ended) { this.rateStep(s); return; }
+    this.go(this.i + 1);
+  }
+
+  rateStep(s) {
+    this.openOverlay(`<div class="ov-card"><p class="ov-eyebrow">${esc(t(s.title))}</p><h3>${t('Как прошло упражнение?')}</h3>
+      <div class="ov-col">
+        <button class="btn" data-act="rate" data-r="easy">${t('Легко')}</button>
+        <button class="btn" data-act="rate" data-r="ok">${t('В самый раз')}</button>
+        <button class="btn" data-act="rate" data-r="hard">${t('Тяжело')}</button>
+        <button class="btn danger" data-act="rate" data-r="pain">${t('Было больно')}</button>
+      </div></div>`);
+    this.rateFor = s.id;
+    clearTimeout(this.rateTimer);
+    // Не ответили за 15 секунд — считаем «в самый раз» и идём дальше.
+    this.rateTimer = setTimeout(() => { if (this.rateFor === s.id) this.rate('ok'); }, 15000);
+  }
+
+  rate(r) {
+    clearTimeout(this.rateTimer);
+    if (!this.rateFor) return;
+    this.results.ratings[this.rateFor] = r;
+    this.rateFor = null;
+    this.el.overlay.hidden = true;
+    this.el.overlay.innerHTML = '';
+    this.overlayOpen = false;
+    if (r === 'pain') this.flash(t('Хорошо, что сказали. В следующий раз Ли Ган облегчит это упражнение. Если боль не проходит — остановитесь.'));
+    this.lastTick = performance.now();
     this.go(this.i + 1);
   }
 
@@ -347,10 +377,11 @@ export class SessionRunner {
     this.startItem();
   }
 
-  act(name) {
+  act(name, el) {
     // После окончания занятия работают только кнопки итогового окна.
     if (this.ended && !['summary-save', 'finish-save', 'finish-drop'].includes(name)) return undefined;
     if (name === 'pause') return this.paused ? this.resume() : this.pause();
+    if (name === 'rate') return this.rate(el?.dataset?.r || 'ok');
     if (name === 'next') return this.finishStep(true);
     if (name === 'prev') return this.go(this.i - 1);
     if (name === 'cam') return this.camOn ? this.disableCamera() : this.enableCamera();
@@ -565,7 +596,9 @@ export class SessionRunner {
         mode: this.plan.mode, partial: !this.completed, quality: q ?? prev.quality ?? null,
         stolbSec: Math.max(r.stolbSec, prev.stolbSec || 0), chairReps: Math.max(r.chairReps, prev.chairReps || 0),
         reps: r.repsTotal,
+        ...(kind === 'strength' ? { ratings: r.ratings } : {}),
       };
+      if (kind === 'strength' && Object.keys(r.ratings).length) applyRatings(r.ratings);
       if (fromSummary) {
         const range = this.el.overlay.querySelector('#s-pain');
         if (range?.dataset.touched === '1') d.pain.back = Number(range.value);

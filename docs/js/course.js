@@ -1,6 +1,7 @@
 // Курс: этап 1 (недели 1–4) расписан по шагам; этапы 2 и 3 откроются после пересмотра.
 import { state, daysBetween, dateStr } from './store.js';
 import { resolvePlan, allPlans } from './program.js';
+import { buildStrength } from './strength.js';
 
 export const PHASES = [
   { n: 1, name: 'Разбудить тело', weeks: [1, 4], text: 'Дыхание, суставная разминка, три движения цигун, стояние столбом. Днём ходьба и пять упражнений для кора и ног.' },
@@ -657,6 +658,10 @@ export function defaultPlan(week = 1) {
 // plan — параметры из программы ученика (program.resolvePlan). mode: full | light | rest.
 export function buildSession(kind, planOrWeek, mode = 'full') {
   const p = typeof planOrWeek === 'object' && planOrWeek ? planOrWeek : defaultPlan(planOrWeek || 1);
+  if (kind === 'strength') {
+    const sp = buildStrength(p);
+    return { ...sp, dur: sp.steps.reduce((a, s2) => a + stepSeconds(s2), 0), trimmed: [] };
+  }
   const light = mode === 'light';
   const rest = mode === 'rest';
   const steps = [];
@@ -797,6 +802,7 @@ export const SESSION_LINES = {
 };
 
 export const SESSION_META = {
+  strength: { title: 'Сила', seal: '力', sub: 'Резинки и вес тела с Ли Ганом' },
   morning: { title: 'Утро', seal: '晨', sub: 'Дыхание, разминка, цигун, столб' },
   day: { title: 'День', seal: '午', sub: 'Ходьба, пять упражнений, разгрузка' },
   evening: { title: 'Вечер', seal: '夜', sub: 'Разгрузка поясницы перед сном' },
@@ -839,3 +845,6 @@ export function phase2Criteria(st) {
     { ok: bestWeek >= 10, text: 'Не меньше 10 занятий за неделю', have: `лучшая неделя: ${bestWeek} из 14` },
   ];
 }
+
+// Помощники сценария — для занятий других наставников (Ли Ган).
+export { say, gap, count, cycle, breathing, step, holds };

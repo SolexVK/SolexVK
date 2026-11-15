@@ -537,6 +537,59 @@ Object.assign(FIG, {
     props: ['chairBack'], marks: (J) => horArrow(add(J.hip, [-30, 40]), 40) },
 });
 
+// ---- силовые с резинкой (Ли Ган) ----
+// band(J) — линия резинки; рисуется и на схеме, и в анимации (следует за руками и ногами).
+const lerpP = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+const bandLine = (...pts) => `<path class="fg-band" d="M${pts.map((q) => `${f1(q[0])} ${f1(q[1])}`).join('L')}"/>`;
+// Петля резинки на бедре чуть выше колена (вид сбоку).
+const thighLoop = (J, s = 'N') => {
+  const a = lerpP(J.hip, J['kn' + s], 0.78);
+  const ang = Math.atan2(J['kn' + s][1] - J.hip[1], J['kn' + s][0] - J.hip[0]) * 180 / Math.PI;
+  return `<rect class="fg-band" x="${f1(a[0] - 5.5)}" y="${f1(a[1] - 17)}" width="11" height="34" rx="5" transform="rotate(${f1(ang)} ${f1(a[0])} ${f1(a[1])})"/>`;
+};
+const FIST = 90;
+Object.assign(FIG, {
+  band_row: { view: 'side', anchor: 'hip', frames: [
+    { ...STAND_S, torso: 181, legN: [82, 38, 130], legF: [80, 36, 128], reachN: { j: 'hip', d: [92, -52], hand: FIST }, reachF: { j: 'hip', d: [90, -50], hand: FIST } },
+    { ...STAND_S, torso: 182, legN: [82, 38, 130], legF: [80, 36, 128], reachN: { j: 'hip', d: [22, -40], hand: FIST, bend: -1 }, reachF: { j: 'hip', d: [20, -38], hand: FIST, bend: -1 } }],
+    props: ['chair'], band: (J) => bandLine(J.wrN, lerpP(J.anN, J.toeN, 0.5)),
+    arrows: [{ j: 'wrN', off: 18 }], labels: [{ text: () => t('выдох'), j: 'sh', dx: 40, dy: -40 }] },
+  band_press: { view: 'side', frames: [
+    { ...SOFT_S, reachN: { j: 'sh', d: [26, 36], hand: FIST }, reachF: { j: 'sh', d: [24, 34], hand: FIST } },
+    { ...SOFT_S, reachN: { j: 'sh', d: [116, 22], hand: FIST }, reachF: { j: 'sh', d: [114, 20], hand: FIST } }],
+    band: (J) => bandLine(add(J.sh, [-16, 18]), add(J.sh, [-4, 30]), J.wrN),
+    arrows: [{ j: 'wrN', off: 16 }], both: true, labels: [{ text: () => t('выдох'), j: 'sh', dx: 60, dy: -36 }] },
+  band_pullapart: { view: 'front', frames: [
+    { ...SOFT_F, reachR: { j: 'sh', d: [-20, 26], hand: 0, fs: 0.42 }, reachL: { j: 'sh', d: [20, 26], hand: 0, fs: 0.42 } },
+    { ...SOFT_F, armR: [90, 90, 90], armL: [90, 90, 90] }],
+    band: (J) => bandLine(J.wrR, J.wrL),
+    marks: (J) => dblArrow(add(J.sh, [0, -78]), [1, 0], 96) + label(t('выдох'), add(J.sh, [0, -92]), 'middle') },
+  band_curl: { view: 'side', frames: [
+    { ...STAND_S, armN: [4, 6, 6], armF: [-2, 2, 2] },
+    { ...STAND_S, armN: [8, 150, 150], armF: [2, 146, 146] }],
+    band: (J) => bandLine(J.wrN, lerpP(J.anN, J.toeN, 0.45)),
+    arrows: [{ j: 'wrN', off: 16 }], both: true },
+  band_squat: { view: 'side', anchor: 'anN', chairFrame: 1, frames: [
+    { ...STAND_S, armN: [90, 90, 90], armF: [88, 88, 88] },
+    { ...STAND_S, torso: 150, head: 156, legN: [72, -22, 90], legF: [70, -21, 90], armN: [96, 96, 96], armF: [94, 94, 94] }],
+    props: ['chair'], band: (J) => thighLoop(J), arrows: [{ j: 'hip', off: 18 }], both: true },
+  band_bridge: { view: 'side', anchor: 'sh', groundPad: 4, frames: [
+    { ...SUPINE, legN: [150, 30, 90], legF: [146, 28, 92] },
+    { ...SUPINE, torso: -70, head: -92, legN: [130, 18, 90], legF: [126, 16, 92] }],
+    props: ['mat'], band: (J) => thighLoop(J), arrows: [{ j: 'hip', off: 18 }] },
+  band_sidestep: { view: 'front', frames: [
+    { ...SOFT_F, legR: [10, -4, 0.94, 1], legL: [10, -4, 0.94, 1], armR: [28, -40, -40], armL: [28, -40, -40] },
+    { ...SOFT_F, shiftX: 10, legR: [6, -2, 0.94, 1], legL: [24, -8, 0.96, 1], armR: [28, -40, -40], armL: [28, -40, -40] }],
+    band: (J) => bandLine(lerpP(J.hipjR, J.knR, 0.8), lerpP(J.hipjL, J.knL, 0.8)),
+    marks: (J) => horArrow(add(J.hip, [40, 120]), 56) },
+  pallof: { view: 'front', frames: [
+    { ...SOFT_F, reachR: { j: 'sh', d: [-6, 40], hand: 0, fs: 0.5 }, reachL: { j: 'sh', d: [6, 40], hand: 0, fs: 0.5 } },
+    { ...SOFT_F, reachR: { j: 'sh', d: [-4, 30], hand: 0, fs: 0.22 }, reachL: { j: 'sh', d: [4, 30], hand: 0, fs: 0.22 } }],
+    band: (J) => bandLine(lerpP(J.wrR, J.wrL, 0.5), [J.hip[0] + 170, J.sh[1] + 30]),
+    marks: (J) => `<g class="fg-prop"><path d="M${f1(J.hip[0] + 178)} ${GROUND}V${f1(J.headC[1] - 40)}"/><circle cx="${f1(J.hip[0] + 172)}" cy="${f1(J.sh[1] + 30)}" r="4"/></g>`
+      + label(t('корпус не поворачивается'), add(J.headC, [0, -40]), 'middle') },
+});
+
 // ---- значки ----
 const ARW = 'marker-end="url(#fg-ah)"';
 function label(text, p, anchor = 'middle') { return `<text class="fg-label" x="${f1(p[0])}" y="${f1(p[1])}" text-anchor="${anchor}">${text}</text>`; }
@@ -607,7 +660,7 @@ export function figureAt(id, opts = {}, a = 0, b = a, k = 0) {
   const J = a === b ? frames[a].J : place(def, P, frames[0].J);
   const body = def.view === 'front' ? drawFront(J, P) : drawSide(J, P);
   const nearOnTop = def.farFront === false && def.view === 'side' ? armS(J, 'N', false) : '';
-  return `<svg class="fig" viewBox="${vb.map(f1).join(' ')}" aria-hidden="true">${props}<g class="fg-body">${body}${nearOnTop}</g></svg>`;
+  return `<svg class="fig" viewBox="${vb.map(f1).join(' ')}" aria-hidden="true">${props}<g class="fg-body">${body}${nearOnTop}</g>${def.band ? def.band(J) : ''}</svg>`;
 }
 // Особый порядок кадров для движения (например, руки вверх перед телом, а вниз — через стороны).
 export const frameSeq = (id, opts) => defOf(id, opts)?.seq || null;
@@ -641,6 +694,7 @@ export function figureSvg(id, opts = {}) {
       marks.push(`<path class="fg-arrow" d="${arrowPath(pts, ar.off ?? 14, centre)}" ${ARW} ${def.both ? 'marker-start="url(#fg-ah)"' : ''}/>`);
     }
   }
+  if (def.band) marks.unshift(def.band(J0));
   if (!opts.bare && def.marks) marks.push(def.marks(J0));
   if (!opts.bare) for (const lb of def.labels || []) marks.push(label(lb.text(), add(J0[lb.j], [lb.dx || 0, lb.dy || 0]), lb.anchor || 'start'));
   const props = ['floor', ...(def.props || [])].map((p) => PROPS[p](J0, box, frames, def)).join('');
