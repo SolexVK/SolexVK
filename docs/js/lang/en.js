@@ -1841,4 +1841,9 @@ export default {
   "Файл «{n}» больше 5 МБ. Сфотографируйте нужные страницы или сожмите PDF.": "The file “{n}” is larger than 5 MB. Photograph the pages you need or compress the PDF.",
   "Файл «{n}» пока не поддерживается. Пришлите фото, PDF или текстовый файл.": "The file “{n}” is not supported yet. Send a photo, a PDF or a text file.",
   "Чтобы мастер посмотрел фото или файл, подключите сервер или ключ API в настройках. Без нейросети я отвечаю только на вопросы по курсу.": "For a master to look at a photo or file, connect the server or an API key in settings. Without the AI I can only answer questions about the course.",
+  "Таблица «{n}» больше 10 МБ. Оставьте в ней только нужные листы.": "The spreadsheet “{n}” is larger than 10 MB. Keep only the sheets you need.",
+  "Не загрузилась программа для чтения Excel. Проверьте интернет и попробуйте ещё раз.": "The Excel reader did not load. Check your connection and try again.",
+  "Не получилось прочитать таблицу «{n}». Сохраните её как .xlsx или CSV.": "Could not read the spreadsheet “{n}”. Save it as .xlsx or CSV.",
+  "Таблица «{n}» пустая.": "The spreadsheet “{n}” is empty.",
+  "Файл «{n}» пока не поддерживается. Пришлите фото, PDF, таблицу Excel или текстовый файл.": "The file “{n}” is not supported yet. Send a photo, a PDF, an Excel spreadsheet or a text file.",
 };

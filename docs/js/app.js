@@ -538,7 +538,7 @@ function bubble(m) {
     const fl = document.createElement('div');
     fl.className = 'msg-files';
     for (const f of m.files) {
-      if (f.thumb) { const img = document.createElement('img'); img.src = f.thumb; img.alt = f.name; fl.append(img); } else { const s = document.createElement('span'); s.className = 'msg-file'; s.textContent = `${f.kind === 'pdf' ? '📄' : '📝'} ${f.name}`; fl.append(s); }
+      if (f.thumb) { const img = document.createElement('img'); img.src = f.thumb; img.alt = f.name; fl.append(img); } else { const s = document.createElement('span'); s.className = 'msg-file'; s.textContent = `${f.kind === 'pdf' ? '📄' : f.kind === 'sheet' ? '📊' : '📝'} ${f.name}`; fl.append(s); }
     }
     b.prepend(fl);
   }
@@ -625,7 +625,7 @@ function renderMaster() {
   const attRow = $('#att-row');
   const drawAtt = () => {
     attRow.hidden = !pending.length;
-    attRow.innerHTML = pending.map((f, i) => `<span class="att">${f.thumb ? `<img src="${esc(f.thumb)}" alt="">` : `<span class="att-ic">${f.kind === 'pdf' ? '📄' : '📝'}</span>`}<span class="att-n">${esc(f.name)}</span><button type="button" data-att-del="${i}" aria-label="${t('Убрать')}">✕</button></span>`).join('');
+    attRow.innerHTML = pending.map((f, i) => `<span class="att">${f.thumb ? `<img src="${esc(f.thumb)}" alt="">` : `<span class="att-ic">${f.kind === 'pdf' ? '📄' : f.kind === 'sheet' ? '📊' : '📝'}</span>`}<span class="att-n">${esc(f.name)}</span><button type="button" data-att-del="${i}" aria-label="${t('Убрать')}">✕</button></span>`).join('');
     attRow.querySelectorAll('[data-att-del]').forEach((x) => x.addEventListener('click', () => { pending.splice(Number(x.dataset.attDel), 1); drawAtt(); }));
   };
   $('#att-input').addEventListener('change', async (e) => {
