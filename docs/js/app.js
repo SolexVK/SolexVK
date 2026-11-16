@@ -9,6 +9,7 @@ import { cameraSupported } from './pose.js';
 import { hasKey } from './master.js';
 import { MASTERS, MASTER_IDS, chatOf, pushChat, askTeam } from './team.js';
 import { applyAction } from './meilin.js';
+import { readAttachment, rememberFiles, fileMeta, ACCEPT, MAX_FILES } from './attach.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
 import { PALETTES, applyPalette, CLOUD_RULE } from './theme.js';
@@ -533,6 +534,14 @@ function bubble(m) {
   const b = document.createElement('div');
   b.className = `msg ${m.role}`;
   b.textContent = m.text;
+  if (m.files?.length) {
+    const fl = document.createElement('div');
+    fl.className = 'msg-files';
+    for (const f of m.files) {
+      if (f.thumb) { const img = document.createElement('img'); img.src = f.thumb; img.alt = f.name; fl.append(img); } else { const s = document.createElement('span'); s.className = 'msg-file'; s.textContent = `${f.kind === 'pdf' ? '📄' : '📝'} ${f.name}`; fl.append(s); }
+    }
+    b.prepend(fl);
+  }
   // Предложения агента (Мэйлин): кнопки действий под ответом.
   if (m.actions?.length) {
     const row = document.createElement('div');
@@ -588,7 +597,10 @@ function renderMaster() {
     <section class="chat" id="chat" aria-live="polite"></section>
     ${hasKey() ? '' : `<p class="note chat-note">${t('Без ключа наставник отвечает только по курсу. Свободный разговор включается в настройках.')} <button class="link" data-open="settings">${t('Открыть')}</button></p>`}
     <div class="chips" id="chips">${M.chips.map((c) => `<button class="chip">${esc(t(c))}</button>`).join('')}</div>
+    <div class="att-row" id="att-row" hidden></div>
     <form class="ask" id="ask-form">
+      <label class="mic att-btn" for="att-input" aria-label="${t('Приложить фото или файл')}" title="${t('Приложить фото или файл')}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></label>
+      <input type="file" id="att-input" accept="${ACCEPT}" multiple hidden>
       ${voice.sttSupported ? `<button type="button" class="mic" id="mic" aria-label="${t('Сказать голосом')}"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>` : ''}
       <textarea id="ask-input" rows="1" placeholder="${t('Ваш вопрос')}" aria-label="${t('Вопрос наставнику')}"></textarea>
       <button class="btn" type="submit">${t('Спросить')}</button>
@@ -608,13 +620,38 @@ function renderMaster() {
   const toEnd = () => window.scrollTo(0, document.documentElement.scrollHeight);
   requestAnimationFrame(toEnd);
 
+  // Вложения, ожидающие отправки.
+  let pending = [];
+  const attRow = $('#att-row');
+  const drawAtt = () => {
+    attRow.hidden = !pending.length;
+    attRow.innerHTML = pending.map((f, i) => `<span class="att">${f.thumb ? `<img src="${esc(f.thumb)}" alt="">` : `<span class="att-ic">${f.kind === 'pdf' ? '📄' : '📝'}</span>`}<span class="att-n">${esc(f.name)}</span><button type="button" data-att-del="${i}" aria-label="${t('Убрать')}">✕</button></span>`).join('');
+    attRow.querySelectorAll('[data-att-del]').forEach((x) => x.addEventListener('click', () => { pending.splice(Number(x.dataset.attDel), 1); drawAtt(); }));
+  };
+  $('#att-input').addEventListener('change', async (e) => {
+    const list = [...e.target.files];
+    e.target.value = '';
+    for (const f of list) {
+      if (pending.length >= MAX_FILES) { toast(t('Не больше {n} файлов за раз.', { n: MAX_FILES })); break; }
+      try { pending.push(await readAttachment(f)); } catch (err) { toast(err.message); }
+    }
+    drawAtt();
+  });
+
   const send = async (text) => {
     text = text.trim();
-    if (!text || masterBusy) return;
+    const files = pending;
+    if ((!text && !files.length) || masterBusy) return;
+    if (!text) text = t('Посмотрите, пожалуйста, что я приложил.');
     voice.unlock();
     masterBusy = true;
     $('#ask-input').value = '';
-    chat.append(bubble({ role: 'user', text }));
+    pending = [];
+    drawAtt();
+    const at = Date.now();
+    const userMsg = { role: 'user', text, at, ...(files.length ? { files: fileMeta(files) } : {}) };
+    rememberFiles(at, files);
+    chat.append(bubble(userMsg));
     const out = bubble({ role: 'assistant', text: t('Думаю…') });
     out.classList.add('pending');
     chat.append(out);
@@ -624,13 +661,13 @@ function renderMaster() {
     masterAbort = new AbortController();
     try {
       const res = await askTeam(who, {
-        text, signal: masterAbort.signal,
+        text, files, signal: masterAbort.signal,
         onDelta: (dlt) => { acc += dlt; out.textContent = acc; out.classList.remove('pending'); toEnd(); if (view === 'master' && masterWho === who) say.push(dlt); },
       });
       const reply = { role: 'assistant', text: res.text || acc, at: Date.now(), ...(res.actions?.length ? { actions: res.actions } : {}), ...(res.remembered?.length ? { remembered: res.remembered } : {}) };
       out.replaceWith(bubble(reply));
       toEnd();
-      pushChat(who, { role: 'user', text, at: Date.now() }, reply);
+      pushChat(who, userMsg, reply);
       save();
       if (view === 'master' && masterWho === who) say.end();
     } catch (err) {

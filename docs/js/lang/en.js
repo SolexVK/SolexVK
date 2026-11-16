@@ -1832,4 +1832,13 @@ export default {
   "Не нашла это блюдо в меню.": "I could not find that dish in the menu.",
   "Нечего записать.": "Nothing to log.",
   "Неизвестное действие.": "Unknown action.",
+  "Приложить фото или файл": "Attach a photo or file",
+  "Убрать": "Remove",
+  "Не больше {n} файлов за раз.": "No more than {n} files at a time.",
+  "Посмотрите, пожалуйста, что я приложил.": "Please take a look at what I attached.",
+  "файл": "file",
+  "Не получилось открыть изображение «{n}». Попробуйте сохранить его как JPEG.": "Could not open the image “{n}”. Try saving it as JPEG.",
+  "Файл «{n}» больше 5 МБ. Сфотографируйте нужные страницы или сожмите PDF.": "The file “{n}” is larger than 5 MB. Photograph the pages you need or compress the PDF.",
+  "Файл «{n}» пока не поддерживается. Пришлите фото, PDF или текстовый файл.": "The file “{n}” is not supported yet. Send a photo, a PDF or a text file.",
+  "Чтобы мастер посмотрел фото или файл, подключите сервер или ключ API в настройках. Без нейросети я отвечаю только на вопросы по курсу.": "For a master to look at a photo or file, connect the server or an API key in settings. Without the AI I can only answer questions about the course.",
 };

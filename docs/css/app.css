@@ -757,3 +757,15 @@ body::after {
 .mfacts { margin: 8px 0 0; padding: 0; list-style: none; }
 .mfacts li { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
 .mfacts button { flex: none; min-width: 36px; min-height: 36px; border: 0; background: none; color: var(--muted); font-size: 18px; }
+
+/* Вложения в чате */
+.att-btn { cursor: pointer; }
+.att-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
+.att { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 4px 4px 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; }
+.att img { width: 36px; height: 36px; object-fit: cover; border-radius: 8px; }
+.att-ic { font-size: 20px; }
+.att-n { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att button { min-width: 32px; min-height: 32px; border: 0; background: none; color: var(--muted); }
+.msg-files { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
+.msg-files img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; }
+.msg-file { display: inline-block; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.12); font-size: 13px; }

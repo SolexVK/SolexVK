@@ -193,15 +193,16 @@ export async function reviewProgress(ready) {
 
 // ---- 5. Свободная беседа (Haiku) ----
 // system/history — для других мастеров команды (team.js); по умолчанию — мастер Лао и его чат.
-export async function chatReply(text, { extra = '', image = null, signal, system = null, history = null } = {}) {
+// blocks — вложения (фото, PDF, текст) из attach.js; с ними отвечает более сильная модель.
+export async function chatReply(text, { extra = '', image = null, signal, system = null, history = null, blocks = null } = {}) {
   history = history ? [...history] : state.chat.slice(-10).map((m) => ({ role: m.role, content: m.text }));
   while (history.length && history[0].role !== 'user') history.shift();
   const preface = `${extra ? `[Сейчас]\n${extra}\n\n` : ''}[Слова ученика]\n${text}`;
   const content = image
     ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } }, { type: 'text', text: preface }]
-    : preface;
+    : blocks?.length ? [...blocks, { type: 'text', text: preface }] : preface;
   const res = await call({
-    model: MODELS.daily, effort: 'low', maxTokens: 4000,
+    model: blocks?.length || history.some((h) => Array.isArray(h.content)) ? MODELS.expert : MODELS.daily, effort: 'low', maxTokens: 4000,
     system: system || `${PERSONA}\n\nОтвечай коротко: две–четыре фразы, один совет за раз. Если приложено фото с камеры, оцени положение тела в текущем упражнении: одно, что получается, и одно-два исправления. Внешность и обстановку не обсуждай. ${VOICE_RULES}\n\n${studentContext()}`,
     messages: [...history, { role: 'user', content }],
   }, { signal });

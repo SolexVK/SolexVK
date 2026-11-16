@@ -9,6 +9,7 @@ import { meilinChat, meilinBrief } from './meilin.js';
 import { st as strength, phaseDef, strengthToday, LIGAN_EX, BAND_NAME } from './strength.js';
 import { bpMode } from './course.js';
 import { t, aiLanguage } from './i18n.js';
+import { blocksFor, cachedBlocks, filesNote } from './attach.js';
 
 export const MASTERS = {
   lao: { name: 'Лао', full: 'Мастер Лао', role: 'тайцзи и цигун', seal: '道',
@@ -43,6 +44,8 @@ export function pushChat(who, ...msgs) {
 const TEAM = `Команда наставников в приложении: мастер Лао — тайцзи и цигун, решает, какой сегодня день (полное занятие, облегчённое, отдых); Мэйлин — питание; Ли Ган — силовые тренировки с резинками и весом тела; доктор Шэн — здоровье: давление, вес, боль, анализы, лекарства и разрешения врача, он согласует работу остальных. Отвечай только в своей области. Если вопрос к коллеге, кратко скажи, что думаешь, и предложи спросить его во вкладке «Мастера». Не противоречь решениям коллег: облегчённый день от Лао и ограничения доктора Шэна обязательны для всех.`;
 
 const SAFETY = `Безопасность важнее прогресса. Ты не ставишь диагнозов, не назначаешь и не отменяешь лекарства. При боли или давлении в груди, внезапной слабости или онемении, нарушении речи, проблемах с мочеиспусканием, давлении выше ста восьмидесяти на сто десять — прекратить нагрузку и звонить 103 или 112.`;
+
+const FILES = 'Ученик может прикладывать к сообщению фото, PDF и текстовые файлы: анализы, выписки, заключения врачей, фото еды и этикеток, фото упражнения. Разбирай их по своей специализации, называй конкретные значения из файла. Если вложение не по твоей части — скажи главное и к кому из коллег с ним обратиться: анализы и выписки подробно разбирает доктор Шэн. Если текст на фото не читается — попроси переснять.';
 
 const VOICE = () => `Пиши на ${aiLanguage()} языке. Ответ прозвучит вслух: простые фразы, без списков, скобок, эмодзи и разметки. Коротко: две–пять фраз, один главный совет. Обращайся на «вы». Ты ИИ-наставник; если спросят — так и скажи.`;
 
@@ -100,7 +103,7 @@ function strengthContext() {
 }
 
 function systemFor(who) {
-  const common = `${TEAM}\n\n${SAFETY}\n\n${VOICE()} Если приложено фото с камеры во время занятия, оцени положение тела в текущем упражнении: одно, что получается, и одно-два исправления; внешность и обстановку не обсуждай.\n\n[Решения команды]\n${teamState()}\n\n${recentWithOthers(who)}`;
+  const common = `${TEAM}\n\n${SAFETY}\n\n${FILES}\n\n${VOICE()} Если приложено фото с камеры во время занятия, оцени положение тела в текущем упражнении: одно, что получается, и одно-два исправления; внешность и обстановку не обсуждай.\n\n[Решения команды]\n${teamState()}\n\n${recentWithOthers(who)}`;
   if (who === 'ligan') {
     return `Ты — Ли Ган, наставник по силовым тренировкам в личном приложении ученика. Тренируешь людей зрелого возраста с больной спиной и повышенным давлением: резинки-эспандеры, стул и вес тела, два раза в неделю до часа. Цель ученика — сохранить и нарастить мышцы, сжечь висцеральный жир, укрепить спину. Говоришь бодро, коротко и уверенно, но бережно.
 Твои правила: пока врач не разрешил силовые — только умеренная интенсивность, когда можно говорить фразами; выдох на усилии, без задержки дыхания и натуживания; никакой осевой нагрузки на позвоночник, скручиваний с весом, наклонов с круглой спиной и резких рывков; шея нейтрально (протрузия C5–C6); боль, отдающая в ногу или руку, — стоп. Прогрессия медленная: сначала повторы, потом резинка туже. Мышечная усталость на следующий день — нормально, острая боль в суставе или спине — нет.
@@ -150,23 +153,33 @@ function offlineFor(who, text) {
 }
 
 // Вопрос мастеру. Возвращает { text, offline }.
-export async function askTeam(who, { text, image, extra, onDelta, signal }) {
+export async function askTeam(who, { text, image, extra, onDelta, signal, files = [] }) {
   if (!aiAvailable()) {
-    const ans = offlineFor(who, text);
+    const ans = files.length ? t('Чтобы мастер посмотрел фото или файл, подключите сервер или ключ API в настройках. Без нейросети я отвечаю только на вопросы по курсу.') : offlineFor(who, text);
     onDelta?.(ans);
     return { text: ans, offline: true };
   }
   try {
-    const history = chatOf(who).slice(-12).map((m) => ({ role: m.role, content: m.text }));
+    // История: тексты; к недавним сообщениям с вложениями — сами файлы, пока приложение открыто.
+    const blocks = files.length ? blocksFor(files) : null;
+    // Запрос к серверу — до 8 МБ: старые вложения добавляем, только пока хватает места.
+    let room = 6e6 - (blocks ? JSON.stringify(blocks).length : 0);
+    const history = chatOf(who).slice(-12).reverse().map((m) => {
+      const txt = `${m.text}${filesNote(m.files)}`;
+      let cb = m.role === 'user' ? cachedBlocks(m.at) : null;
+      if (cb) { const sz = JSON.stringify(cb).length; if (sz > room) cb = null; else room -= sz; }
+      return { role: m.role, content: cb ? [...cb, { type: 'text', text: txt }] : txt };
+    }).reverse();
     while (history.length && history[0].role !== 'user') history.shift();
+    if (files.length) text = `${text}${filesNote(files)}`;
     if (who === 'meilin') {
       // Мэйлин — агент: видит полное досье и может предлагать действия (записать еду, заменить блюдо, покупки).
-      const extra2 = `${TEAM}\n\n${SAFETY}\n\n[Решения команды]\n${teamState()}\n\n${recentWithOthers(who)}${extra ? `\n\n[Сейчас]\n${extra}` : ''}`;
-      const r = await meilinChat(text, { history, extra: extra2, signal });
+      const extra2 = `${TEAM}\n\n${SAFETY}\n\n${FILES}\n\n[Решения команды]\n${teamState()}\n\n${recentWithOthers(who)}${extra ? `\n\n[Сейчас]\n${extra}` : ''}`;
+      const r = await meilinChat(text, { history, extra: extra2, signal, blocks });
       onDelta?.(r.text);
       return { text: r.text, actions: r.actions, remembered: r.remembered, offline: false };
     }
-    const out = await chatReply(text, { extra, image, signal, system: systemFor(who), history });
+    const out = await chatReply(text, { extra: who === 'lao' && blocks ? `${extra || ''}${extra ? '\n' : ''}${FILES}` : extra, image, signal, system: systemFor(who), history, blocks });
     onDelta?.(out);
     return { text: out, offline: false };
   } catch (err) {

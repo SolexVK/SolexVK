@@ -208,13 +208,14 @@ const AGENT_RULES = `Как ты отвечаешь в чате:
   make_menu — составить новое меню на неделю, text — что учесть.
   label — короткая надпись на кнопке («Записать обед», «Заменить ужин в среду»). Неиспользуемые поля: day −1, slot none, пустые строки и массивы.
 - remember — новые устойчивые факты об ученике для твоей памяти (режим дня, вкусы, непереносимость, бюджет, кто готовит, где обедает, реакция на блюда). Только новое, коротко; обычно пусто.
+- Если приложено фото еды, этикетка, чек, меню ресторана, анализы или файл — разбери по своей части: еду оцени и предложи записать (log_meal), этикетку оцени по соли, сахару и белку, анализы свяжи с питанием (холестерин, глюкоза, мочевая кислота, ферритин, витамин D и т. п.), а медицинскую оценку оставь доктору Шэну.
 - Если ученик хочет познакомиться поближе — задавай по одному вопросу за раз: режим дня и время приёмов пищи, завтракает ли, где обедает, кто готовит, бюджет, алкоголь, перекусы и сладкое, что любит и не любит, непереносимость, вода. Каждый ответ запоминай.`;
 
-export async function meilinChat(text, { history = [], extra = '', signal } = {}) {
+export async function meilinChat(text, { history = [], extra = '', signal, blocks = null } = {}) {
   const out = await callJSON({
     model: MODELS.expert, effort: 'low', schema: REPLY, maxTokens: 4000,
     system: `${meilinSystem(extra)}\n\n${AGENT_RULES}`,
-    messages: [...history, { role: 'user', content: text }],
+    messages: [...history, { role: 'user', content: blocks?.length ? [...blocks, { type: 'text', text }] : text }],
   }, { signal });
   addFacts(out.remember);
   const actions = (out.actions || []).slice(0, 3).filter((a) => ACTION.properties.type.enum.includes(a.type));
