@@ -28,7 +28,7 @@ export async function runRequest(client, req, opts = {}) {
   const msg = req.beta
     ? await client.beta.messages.create(req.body, opts)
     : await client.messages.create(req.body, opts);
-  return { content: msg.content, stop_reason: msg.stop_reason, model: msg.model };
+  return { content: msg.content, stop_reason: msg.stop_reason, model: msg.model, usage: msg.usage || null };
 }
 
 // Достаёт текст ответа; при отказе модели возвращает null.

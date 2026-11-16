@@ -15,8 +15,74 @@ export class BrainError extends Error {
 // Есть ли доступ к нейросети: через свой сервер или по ключу на телефоне.
 export const aiAvailable = () => !!(serverConfig() || getApiKey());
 
+// ---- кэширование подсказок ----
+// Неизменная часть подсказки (роль, методика, досье) и история разговора помечаются для кэша:
+// повторное чтение из кэша стоит 5–10 % обычной цены, а модель и качество ответа не меняются.
+// system: строка (кэшируется целиком) или массив [постоянная часть, …переменные части] — кэшируется только первая.
+const CC = { type: 'ephemeral' };
+function withCache(params) {
+  if (params.cache === false) { const { cache, ...p } = params; return p; }
+  const { cache, ...p } = params;
+  if (Array.isArray(p.system)) {
+    const parts = p.system.filter(Boolean);
+    p.system = parts.map((text, i) => ({ type: 'text', text, ...(i === 0 ? { cache_control: CC } : {}) }));
+  } else if (typeof p.system === 'string' && p.system.length > 1500) {
+    p.system = [{ type: 'text', text: p.system, cache_control: CC }];
+  }
+  // Точка кэша на конце истории: следующий вопрос в том же разговоре прочитает её из кэша.
+  if (p.messages?.length >= 3) {
+    p.messages = p.messages.map((m, i) => {
+      if (i !== p.messages.length - 2) return m;
+      const blocks = typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : [...m.content];
+      const last = blocks.length - 1;
+      blocks[last] = { ...blocks[last], cache_control: CC };
+      return { ...m, content: blocks };
+    });
+  }
+  return p;
+}
+
+// ---- учёт расхода (только на этом устройстве) ----
+const PRICE = { // $ за миллион токенов: вход, выход; чтение кэша — доля входа, запись — 1,25 входа
+  'claude-haiku-5-5': { in: 0.10, out: 0.50, read: 0.1 },
+  'claude-sonnet-5-5': { in: 2, out: 10, read: 0.05 },
+};
+const USAGE_KEY = 'taichi.usage';
+function addUsage(model, u) {
+  try {
+    const all = JSON.parse(localStorage.getItem(USAGE_KEY) || '{}');
+    const day = dateStr();
+    const m = ((all[day] = all[day] || {})[model] = all[day][model] || { n: 0, known: 0, cost: 0, in: 0, out: 0, cr: 0, cw: 0 });
+    m.n++;
+    if (u) {
+      const P = PRICE[model] || PRICE['claude-sonnet-5-5'];
+      const inp = u.input_tokens || 0; const out = u.output_tokens || 0; const cr = u.cache_read_input_tokens || 0; const cw = u.cache_creation_input_tokens || 0;
+      m.known++; m.in += inp; m.out += out; m.cr += cr; m.cw += cw;
+      m.cost += (inp * P.in + out * P.out + cr * P.in * P.read + cw * P.in * 1.25) / 1e6;
+    }
+    for (const k of Object.keys(all).sort().slice(0, -30)) delete all[k];
+    localStorage.setItem(USAGE_KEY, JSON.stringify(all));
+  } catch { /* не критично */ }
+}
+export function usageReport(days = 7) {
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem(USAGE_KEY) || '{}'); } catch { /* пусто */ }
+  const out = [];
+  for (let i = 0; i < days; i++) {
+    const ds = addDays(dateStr(), -i);
+    if (all[ds]) out.push({ date: ds, models: all[ds] });
+  }
+  return out;
+}
+
 export async function call(params, { signal } = {}) {
-  const req = prepareRequest(params);
+  const req = prepareRequest(withCache(params));
+  const res = await callRaw(req, { signal });
+  addUsage(req.body.model, res?.usage);
+  return res;
+}
+
+async function callRaw(req, { signal } = {}) {
   const cfg = serverConfig();
   try {
     if (cfg) {

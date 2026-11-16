@@ -22,7 +22,7 @@ import { targets } from './nutrition.js';
 import { st as strengthState, strengthToday, phaseDef, phaseCriteria, nextPhase, BAND_NAME, PHASES as SPHASES } from './strength.js';
 import { GUIDES } from './guides.js';
 import { LEVELS } from './kb.js';
-import { aiAvailable, remember } from './brain.js';
+import { aiAvailable, remember, usageReport } from './brain.js';
 import { startSync, serverConfig, setServer, syncStatus, onSyncStatus, pull, api } from './sync.js';
 import { t, locale, lang, LANGS } from './i18n.js';
 
@@ -700,6 +700,26 @@ function renderMaster() {
   });
 }
 
+// Расход нейросети за неделю (считается на этом устройстве по ответам Claude).
+function usageHTML() {
+  const rep = usageReport(7);
+  if (!rep.length) return `<p class="note">${t('Запросов к нейросети пока не было.')}</p>`;
+  const name = { 'claude-haiku-5-5': 'Haiku', 'claude-sonnet-5-5': 'Sonnet' };
+  let unknown = 0;
+  const rows = rep.map((d) => {
+    const parts = Object.entries(d.models).map(([m, u]) => { unknown += u.n - u.known; return `${name[m] || m}: ${u.n}`; });
+    const cost = Object.values(d.models).reduce((a, u) => a + u.cost, 0);
+    const known = Object.values(d.models).some((u) => u.known);
+    return `<li><span>${esc(new Date(`${d.date}T12:00:00`).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }))}</span><span>${parts.join(' · ')}${known ? ` · ≈ $${cost.toFixed(3)}` : ''}</span></li>`;
+  }).join('');
+  const all = rep.flatMap((d) => Object.values(d.models));
+  const cr = all.reduce((a, u) => a + u.cr, 0);
+  const inp = all.reduce((a, u) => a + u.in + u.cw, 0);
+  return `<ul class="usage">${rows}</ul>
+    ${cr + inp ? `<p class="note">${t('Из кэша прочитано {p} % подсказок — это в 10–20 раз дешевле.', { p: Math.round((100 * cr) / (cr + inp)) })}</p>` : ''}
+    ${unknown ? `<p class="note">${t('Для {n} запросов сервер не сообщил токены, поэтому стоимость не посчитана. Это старая версия сервера: её обновление — в плане переноса.', { n: unknown })}</p>` : ''}`;
+}
+
 // ---------- настройки ----------
 function openSettings() {
   const p = state.profile;
@@ -780,6 +800,7 @@ function openSettings() {
         <label for="set-key">${t('Ключ API')}</label>
         <input id="set-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-…" value="${esc(getApiKey())}">
       </fieldset>
+      <fieldset><legend>${t('Расход нейросети')}</legend>${usageHTML()}</fieldset>
       <fieldset><legend>${t('Данные')}</legend>
         <p class="note">${serverConfig() ? t('Данные хранятся на телефоне и на вашем сервере.') : t('Без сервера данные хранятся только в этом браузере. Очистка данных сайта сотрёт их — раз в неделю сохраняйте копию.')}</p>
         <div class="ov-row"><button type="button" class="btn ghost" id="set-export">${t('Скопировать копию')}</button><button type="button" class="btn ghost" id="set-import">${t('Восстановить')}</button></div>

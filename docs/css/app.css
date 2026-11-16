@@ -769,3 +769,5 @@ body::after {
 .msg-files { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
 .msg-files img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; }
 .msg-file { display: inline-block; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.12); font-size: 13px; }
+.usage { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.usage li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }

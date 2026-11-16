@@ -1846,4 +1846,8 @@ export default {
   "Не получилось прочитать таблицу «{n}». Сохраните её как .xlsx или CSV.": "Could not read the spreadsheet “{n}”. Save it as .xlsx or CSV.",
   "Таблица «{n}» пустая.": "The spreadsheet “{n}” is empty.",
   "Файл «{n}» пока не поддерживается. Пришлите фото, PDF, таблицу Excel или текстовый файл.": "The file “{n}” is not supported yet. Send a photo, a PDF, an Excel spreadsheet or a text file.",
+  "Расход нейросети": "AI usage",
+  "Запросов к нейросети пока не было.": "No AI requests yet.",
+  "Из кэша прочитано {p} % подсказок — это в 10–20 раз дешевле.": "{p}% of prompts were read from the cache, which is 10–20 times cheaper.",
+  "Для {n} запросов сервер не сообщил токены, поэтому стоимость не посчитана. Это старая версия сервера: её обновление — в плане переноса.": "For {n} requests the server did not report tokens, so the cost is not counted. This is the old server version; updating it is part of the migration plan.",
 };

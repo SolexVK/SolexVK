@@ -107,7 +107,7 @@ function foodBlock() {
   const T = targets();
   const meals = dayMeals(today);
   const e = dayTotals(today);
-  const lines = [`Сейчас ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.`];
+  const lines = [];
   lines.push(meals.length
     ? `Съедено сегодня: ${meals.map((m) => `${new Date(m.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} «${m.title}» (${m.items.map((x) => `${x.name} ${x.grams || '?'} г`).join(', ')}) ${Math.round(m.items.reduce((a, x) => a + (Number(x.kcal) || 0), 0))} ккал`).join('; ')}. Итого ${e.kcal} ккал, белок ${r1(e.protein)}, жиры ${r1(e.fat)}, углеводы ${r1(e.carbs)}, соль ${r1(e.salt)} г. Осталось до нормы: ${T.kcal - e.kcal} ккал, белка ${Math.round(T.protein - e.protein)} г.`
     : 'Сегодня еду ещё не записывали.');
@@ -171,9 +171,14 @@ export function meilinDossier() {
 [Что ты помнишь об ученике]\n${f.length ? f.map((x) => `- ${x.text}`).join('\n') : 'Пока ничего: узнавай привычки, режим дня, вкусы, бюджет, кто готовит, где ест — и запоминай.'}`;
 }
 
-// Полная системная подсказка Мэйлин: роль, методика, досье. extra — команда и безопасность из team.js.
-export function meilinSystem(extra = '') {
-  return `${MEILIN_ROLE}\n\n${MEILIN_METHOD}\n\nПиши на ${aiLanguage()} языке, обращайся на «вы».\n\n${extra}\n\n${meilinDossier()}`;
+// Системная подсказка Мэйлин — массив: [постоянная часть, задача].
+// Постоянная часть (роль, методика, досье) одинакова в чате, разборе фото, меню, заменах и разборе недели,
+// поэтому кэшируется один раз и читается всеми её запросами за ближайшие минуты (см. withCache в brain.js).
+// Время и задача — после неё, чтобы не сбивать кэш.
+export function meilinSystem(task = '') {
+  const stable = `${MEILIN_ROLE}\n\n${MEILIN_METHOD}\n\nПиши на ${aiLanguage()} языке, обращайся на «вы».\n\n${meilinDossier()}`;
+  const now = `Сейчас ${new Date().toLocaleString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}.`;
+  return [stable, `${now}${task ? `\n\n${task}` : ''}`];
 }
 
 // ---- чат-агент ----
@@ -214,7 +219,7 @@ const AGENT_RULES = `Как ты отвечаешь в чате:
 export async function meilinChat(text, { history = [], extra = '', signal, blocks = null } = {}) {
   const out = await callJSON({
     model: MODELS.expert, effort: 'low', schema: REPLY, maxTokens: 4000,
-    system: `${meilinSystem(extra)}\n\n${AGENT_RULES}`,
+    system: meilinSystem(`${extra}\n\n${AGENT_RULES}`),
     messages: [...history, { role: 'user', content: blocks?.length ? [...blocks, { type: 'text', text }] : text }],
   }, { signal });
   addFacts(out.remember);

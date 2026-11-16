@@ -50,7 +50,7 @@ const FILES = 'Ученик может прикладывать к сообще�
 const VOICE = () => `Пиши на ${aiLanguage()} языке. Ответ прозвучит вслух: простые фразы, без списков, скобок, эмодзи и разметки. Коротко: две–пять фраз, один главный совет. Обращайся на «вы». Ты ИИ-наставник; если спросят — так и скажи.`;
 
 // Что решили другие мастера сегодня и о чём недавно говорили с ними.
-export function teamState() {
+export function teamState({ forMeilin = false } = {}) {
   const today = dateStr();
   const d = peekDay(today) || {};
   const lines = [];
@@ -59,7 +59,7 @@ export function teamState() {
   if (d.bp?.sys) lines.push(`Давление сегодня ${d.bp.sys}/${d.bp.dia} (правило: ${bpMode(d.bp.sys, d.bp.dia)}).`);
   const S = state.strength;
   if (S) lines.push(`Силовые (Ли Ган): этап «${phaseDef().name}», дни ${S.days.join(',')} (0 — вс), врач разрешил силовые: ${S.doctorOk ? 'да' : 'нет, пока только умеренно'}.`);
-  try { lines.push(meilinBrief()); } catch { /* нет данных */ }
+  if (!forMeilin) { try { lines.push(meilinBrief()); } catch { /* нет данных */ } }
   const h = state.health;
   if (h?.meds?.length) lines.push(`Лекарства: ${h.meds.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}`).join('; ')}.`);
   if (h?.notes) lines.push(`Заметки доктора Шэна: ${h.notes}`);
@@ -174,7 +174,7 @@ export async function askTeam(who, { text, image, extra, onDelta, signal, files 
     if (files.length) text = `${text}${filesNote(files)}`;
     if (who === 'meilin') {
       // Мэйлин — агент: видит полное досье и может предлагать действия (записать еду, заменить блюдо, покупки).
-      const extra2 = `${TEAM}\n\n${SAFETY}\n\n${FILES}\n\n[Решения команды]\n${teamState()}\n\n${recentWithOthers(who)}${extra ? `\n\n[Сейчас]\n${extra}` : ''}`;
+      const extra2 = `${TEAM}\n\n${SAFETY}\n\n${FILES}\n\n[Решения команды]\n${teamState({ forMeilin: true })}\n\n${recentWithOthers(who)}${extra ? `\n\n[Сейчас]\n${extra}` : ''}`;
       const r = await meilinChat(text, { history, extra: extra2, signal, blocks });
       onDelta?.(r.text);
       return { text: r.text, actions: r.actions, remembered: r.remembered, offline: false };
