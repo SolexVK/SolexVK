@@ -8,6 +8,7 @@ import * as voice from './voice.js';
 import { cameraSupported } from './pose.js';
 import { hasKey } from './master.js';
 import { MASTERS, MASTER_IDS, chatOf, pushChat, askTeam } from './team.js';
+import { applyAction } from './meilin.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
 import { PALETTES, applyPalette, CLOUD_RULE } from './theme.js';
@@ -532,6 +533,44 @@ function bubble(m) {
   const b = document.createElement('div');
   b.className = `msg ${m.role}`;
   b.textContent = m.text;
+  // Предложения агента (Мэйлин): кнопки действий под ответом.
+  if (m.actions?.length) {
+    const row = document.createElement('div');
+    row.className = 'msg-acts';
+    m.actions.forEach((a, i) => {
+      const done = m.applied?.[i];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `btn small ${done ? 'ghost' : ''}`;
+      btn.disabled = !!done;
+      btn.textContent = done ? `✓ ${a.label}` : a.label;
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const old = btn.textContent;
+        btn.textContent = t('Выполняю…');
+        try {
+          const msg = await applyAction(a);
+          m.applied = { ...(m.applied || {}), [i]: true };
+          save();
+          btn.textContent = `✓ ${a.label}`;
+          btn.classList.add('ghost');
+          toast(t(msg));
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = old;
+          toast(t(err.message || 'Не получилось.'));
+        }
+      });
+      row.append(btn);
+    });
+    b.append(row);
+  }
+  if (m.remembered?.length) {
+    const r = document.createElement('p');
+    r.className = 'msg-mem';
+    r.textContent = `${t('Запомнила:')} ${m.remembered.join('; ')}`;
+    b.append(r);
+  }
   return b;
 }
 
@@ -588,10 +627,10 @@ function renderMaster() {
         text, signal: masterAbort.signal,
         onDelta: (dlt) => { acc += dlt; out.textContent = acc; out.classList.remove('pending'); toEnd(); if (view === 'master' && masterWho === who) say.push(dlt); },
       });
-      out.textContent = res.text || acc;
-      out.classList.remove('pending');
+      const reply = { role: 'assistant', text: res.text || acc, at: Date.now(), ...(res.actions?.length ? { actions: res.actions } : {}), ...(res.remembered?.length ? { remembered: res.remembered } : {}) };
+      out.replaceWith(bubble(reply));
       toEnd();
-      pushChat(who, { role: 'user', text, at: Date.now() }, { role: 'assistant', text: res.text || acc, at: Date.now() });
+      pushChat(who, { role: 'user', text, at: Date.now() }, reply);
       save();
       if (view === 'master' && masterWho === who) say.end();
     } catch (err) {
@@ -866,6 +905,8 @@ document.addEventListener('click', (e) => {
   if (exCard && !t.closest('button')) { exCard.classList.toggle('open'); return undefined; }
   const st = t.closest('[data-start]');
   if (st) { voice.unlock(); return openStart(st.dataset.start); }
+  const mg = t.closest('[data-master-go]');
+  if (mg) { masterWho = mg.dataset.masterGo; try { localStorage.setItem('taichi.master', masterWho); } catch { /* не критично */ } return go('master'); }
   const g = t.closest('[data-go]');
   if (g) return go(g.dataset.go);
   if (t.closest('[data-open="settings"]') || t.closest('#btn-settings')) return openSettings();

@@ -4,7 +4,8 @@
 import { state, dateStr, addDays, peekDay } from './store.js';
 import { chatReply, aiAvailable, studentContext } from './brain.js';
 import { offlineAnswer, MasterError } from './master.js';
-import { meilinPersona, targets, dayTotals } from './nutrition.js';
+import { targets, dayTotals } from './nutrition.js';
+import { meilinChat, meilinBrief } from './meilin.js';
 import { st as strength, phaseDef, strengthToday, LIGAN_EX, BAND_NAME } from './strength.js';
 import { bpMode } from './course.js';
 import { t, aiLanguage } from './i18n.js';
@@ -14,8 +15,8 @@ export const MASTERS = {
     hello: 'Я рядом. Спросите о любом упражнении, расскажите, как прошло занятие или что болит.',
     chips: ['Что у меня сегодня?', 'Как стоять столбом?', 'Болит поясница, что делать?', 'Давление 160 на 100, заниматься?'] },
   meilin: { name: 'Мэйлин', full: 'Мэйлин', role: 'питание', seal: '食',
-    hello: 'Здравствуйте, я Мэйлин. Спросите про еду, норму на день, перекусы или что приготовить из того, что есть дома.',
-    chips: ['Сколько мне ещё можно съесть сегодня?', 'Чем перекусить вечером?', 'Что приготовить на ужин быстро?', 'Как есть меньше соли?'] },
+    hello: 'Здравствуйте, я Мэйлин, ваш нутрициолог. Я вижу ваш вес, давление, нагрузку, всё, что вы едите, меню и список покупок. Спросите о питании, расскажите, что съели, — я запишу, поправлю меню и покупки.',
+    chips: ['Давайте познакомимся поближе', 'Сколько мне ещё можно съесть сегодня?', 'Что мне купить на эту неделю?', 'Чем заменить ужин сегодня?', 'Как идёт моё питание за неделю?'] },
   ligan: { name: 'Ли Ган', full: 'Ли Ган', role: 'силовые', seal: '力',
     hello: 'Ли Ган на связи. Спросите про силовые, резинки, технику или как прошло занятие.',
     chips: ['Когда следующее силовое?', 'Какую резинку брать?', 'После силовой болят мышцы — это нормально?', 'Как дышать при усилии?'] },
@@ -55,7 +56,7 @@ export function teamState() {
   if (d.bp?.sys) lines.push(`Давление сегодня ${d.bp.sys}/${d.bp.dia} (правило: ${bpMode(d.bp.sys, d.bp.dia)}).`);
   const S = state.strength;
   if (S) lines.push(`Силовые (Ли Ган): этап «${phaseDef().name}», дни ${S.days.join(',')} (0 — вс), врач разрешил силовые: ${S.doctorOk ? 'да' : 'нет, пока только умеренно'}.`);
-  try { const T = targets(); lines.push(`Норма Мэйлин: ${T.kcal} ккал, белок ${T.protein} г, соль до ${T.salt} г.`); } catch { /* нет данных */ }
+  try { lines.push(meilinBrief()); } catch { /* нет данных */ }
   const h = state.health;
   if (h?.meds?.length) lines.push(`Лекарства: ${h.meds.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}`).join('; ')}.`);
   if (h?.notes) lines.push(`Заметки доктора Шэна: ${h.notes}`);
@@ -100,7 +101,6 @@ function strengthContext() {
 
 function systemFor(who) {
   const common = `${TEAM}\n\n${SAFETY}\n\n${VOICE()} Если приложено фото с камеры во время занятия, оцени положение тела в текущем упражнении: одно, что получается, и одно-два исправления; внешность и обстановку не обсуждай.\n\n[Решения команды]\n${teamState()}\n\n${recentWithOthers(who)}`;
-  if (who === 'meilin') return `${meilinPersona()}\n\n${common}`;
   if (who === 'ligan') {
     return `Ты — Ли Ган, наставник по силовым тренировкам в личном приложении ученика. Тренируешь людей зрелого возраста с больной спиной и повышенным давлением: резинки-эспандеры, стул и вес тела, два раза в неделю до часа. Цель ученика — сохранить и нарастить мышцы, сжечь висцеральный жир, укрепить спину. Говоришь бодро, коротко и уверенно, но бережно.
 Твои правила: пока врач не разрешил силовые — только умеренная интенсивность, когда можно говорить фразами; выдох на усилии, без задержки дыхания и натуживания; никакой осевой нагрузки на позвоночник, скручиваний с весом, наклонов с круглой спиной и резких рывков; шея нейтрально (протрузия C5–C6); боль, отдающая в ногу или руку, — стоп. Прогрессия медленная: сначала повторы, потом резинка туже. Мышечная усталость на следующий день — нормально, острая боль в суставе или спине — нет.
@@ -157,7 +157,15 @@ export async function askTeam(who, { text, image, extra, onDelta, signal }) {
     return { text: ans, offline: true };
   }
   try {
-    const history = chatOf(who).slice(-10).map((m) => ({ role: m.role, content: m.text }));
+    const history = chatOf(who).slice(-12).map((m) => ({ role: m.role, content: m.text }));
+    while (history.length && history[0].role !== 'user') history.shift();
+    if (who === 'meilin') {
+      // Мэйлин — агент: видит полное досье и может предлагать действия (записать еду, заменить блюдо, покупки).
+      const extra2 = `${TEAM}\n\n${SAFETY}\n\n[Решения команды]\n${teamState()}\n\n${recentWithOthers(who)}${extra ? `\n\n[Сейчас]\n${extra}` : ''}`;
+      const r = await meilinChat(text, { history, extra: extra2, signal });
+      onDelta?.(r.text);
+      return { text: r.text, actions: r.actions, remembered: r.remembered, offline: false };
+    }
     const out = await chatReply(text, { extra, image, signal, system: systemFor(who), history });
     onDelta?.(out);
     return { text: out, offline: false };

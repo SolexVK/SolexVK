@@ -2,7 +2,8 @@
 // Нейросеть видит фото тарелки и ответы ученика; оценка по фото приблизительная, важен тренд за неделю.
 import { state, save, dateStr, day, peekDay, addDays } from './store.js';
 import { MODELS } from './ai-request.js';
-import { callJSON, studentContext } from './brain.js';
+import { callJSON } from './brain.js';
+import { meilinSystem } from './meilin.js';
 import { t, aiLanguage } from './i18n.js';
 
 // ---- норма ----
@@ -96,16 +97,8 @@ const STEP2 = {
   properties: { title: { type: 'string' }, items: { type: 'array', items: ITEM }, confidence: { type: 'string', enum: ['low', 'medium', 'high'] }, advice: { type: 'string' } },
 };
 
-export const meilinPersona = () => persona();
 function persona() {
-  const T = targets();
-  const eaten = dayTotals();
-  return `Ты — Мэйлин, наставница по питанию (диетолог) в личном приложении ученика, который занимается тайцзи и цигун с мастером Лао. Цель ученика — похудеть, убрать висцеральный жир, сохранить и нарастить мышцы. Отвечай на ${aiLanguage()} языке, на «вы», коротко, тепло и по делу, без морализаторства.
-Правила: никаких жёстких диет и голодания; не меньше нормы белка; соль до 5 г в день (повышенное давление); не назначай лекарства и добавки; при диабете, болезнях почек и приёме лекарств советуй согласовать с врачом. Оценки калорий и БЖУ давай по стандартным таблицам продуктов, учитывай способ приготовления и масло.
-Норма ученика на день: ${T.kcal} ккал, белок ${T.protein} г, жиры ${T.fat} г, углеводы ${T.carbs} г, соль до ${T.salt} г.
-Уже съедено сегодня: ${eaten.kcal} ккал, белок ${eaten.protein} г, жиры ${eaten.fat} г, углеводы ${eaten.carbs} г. Сейчас ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.
-
-${studentContext({ days: 3 })}`;
+  return meilinSystem();
 }
 
 function userContent(photo, text) {

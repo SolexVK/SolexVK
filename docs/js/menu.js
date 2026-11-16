@@ -3,9 +3,10 @@
 // простые блюда, быстрая готовка, сходится с нормой. Каждую неделю — новое меню с учётом веса, вкусов и этапа.
 import { state, save, dateStr, addDays, daysBetween } from './store.js';
 import { MODELS } from './ai-request.js';
-import { callJSON, studentContext } from './brain.js';
+import { callJSON } from './brain.js';
 import { aiLanguage } from './i18n.js';
 import { targets, weekStats } from './nutrition.js';
+import { meilinSystem } from './meilin.js';
 
 // Группы продуктов: простые и доступные варианты для выбора одним касанием.
 export const GROUPS = [
@@ -86,9 +87,9 @@ export async function makeMenu() {
   const ph = phase();
   const out = await callJSON({
     model: MODELS.expert, effort: 'medium', schema: MENU, maxTokens: 16000,
-    system: `Ты — Мэйлин, наставница по питанию в личном приложении ученика. Пиши на ${aiLanguage()} языке. Составляешь меню из простых доступных продуктов с быстрой готовкой, как у практичного домашнего повара. Принципы: белок в каждом приёме пищи, половина тарелки — овощи, цельные крупы, жирная рыба 2 раза в неделю, бобовые, мало соли (до 5 г в день, повышенное давление: меньше колбас, солений, полуфабрикатов), без сахара в напитках, последний приём пищи за 3 часа до сна. Без экзотики и редких продуктов. Можно готовить сразу на 2 дня и использовать остатки — так меньше времени у плиты.
+    system: `${meilinSystem()}
 
-${studentContext({ days: 3 })}`,
+Сейчас ты составляешь меню как практичный домашний повар: простые доступные продукты, быстрая готовка, без экзотики. Белок в каждом приёме пищи, половина тарелки — овощи, цельные крупы, жирная рыба 2 раза в неделю, бобовые, соль до 5 г в день, без сахара в напитках, последний приём пищи за 3 часа до сна. Можно готовить сразу на 2 дня и использовать остатки. Учитывай всё, что знаешь об ученике: вкусы, режим дня, что не понравилось, и силовые дни.`,
     messages: [{ role: 'user', content: `Составь меню на 7 дней, начиная с сегодняшнего (${new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}).
 Этап: ${ph === 'maintain' ? 'поддержание веса и рост мышц' : 'похудение с сохранением мышц, уменьшение висцерального жира'}.
 Норма на день: ${T.kcal} ккал (допуск ±5 %), белок не меньше ${T.protein} г, жиры около ${T.fat} г, углеводы около ${T.carbs} г, соль до ${T.salt} г.
@@ -96,6 +97,7 @@ ${studentContext({ days: 3 })}`,
 ${list}
 Не ест / ограничения: ${avoid || 'нет'}.
 Кухня и время: ${kitchen || 'плита, до 30 минут'}.
+Дни меню: ${Array.from({ length: 7 }, (_, i) => { const ds = addDays(dateStr(), i); const w = new Date(`${ds}T12:00:00`).getDay(); return `${i + 1}) ${ds}${state.strength?.days?.includes(w) ? ' — силовое с Ли Ганом: белковый приём пищи после тренировки, чуть больше углеводов' : ''}`; }).join('; ')}.
 ${likes.length ? `Понравилось раньше: ${likes.slice(-15).join(', ')}.` : ''}${dislikes.length ? ` Не понравилось, не повторять: ${dislikes.slice(-15).join(', ')}.` : ''}
 ${s.change != null ? `За прошлую неделю средний вес изменился на ${s.change} кг.` : ''}
 
@@ -108,15 +110,15 @@ ${s.change != null ? `За прошлую неделю средний вес и�
 }
 
 // Заменить одно блюдо на похожее по калориям и белку.
-export async function replaceMeal(di, mi) {
+export async function replaceMeal(di, mi, wish = '') {
   const m = menu();
   const old = m.days[di].meals[mi];
   const P = pantry();
   const list = Object.entries(P?.groups || {}).filter(([k]) => k !== 'avoid' && k !== 'kitchen').flatMap(([, v]) => v).join(', ');
   const out = await callJSON({
     model: MODELS.daily, effort: 'low', schema: MEAL, maxTokens: 2000,
-    system: `Ты — Мэйлин, наставница по питанию. Пиши на ${aiLanguage()} языке. Простые продукты, быстрая готовка, мало соли.`,
-    messages: [{ role: 'user', content: `Замени блюдо «${old.name}» (${old.slot}) на другое: примерно ${Math.round(old.kcal)} ккал и не меньше ${Math.round(old.protein)} г белка, до 20 минут готовки, только из продуктов: ${list}. Не повторяй: ${m.days.flatMap((d) => d.meals.map((x) => x.name)).join(', ')}. Ограничения: ${(P?.groups?.avoid || []).join(', ') || 'нет'}.` }],
+    system: `${meilinSystem()}\n\nСейчас ты заменяешь одно блюдо в меню. Простые продукты, быстрая готовка, мало соли.`,
+    messages: [{ role: 'user', content: `${wish ? `Пожелание ученика: ${wish}. ` : ''}Замени блюдо «${old.name}» (${old.slot}) на другое: примерно ${Math.round(old.kcal)} ккал и не меньше ${Math.round(old.protein)} г белка, до 20 минут готовки, только из продуктов: ${list}. Не повторяй: ${m.days.flatMap((d) => d.meals.map((x) => x.name)).join(', ')}. Ограничения: ${(P?.groups?.avoid || []).join(', ') || 'нет'}.` }],
   });
   m.days[di].meals[mi] = { ...out, slot: old.slot };
   save();

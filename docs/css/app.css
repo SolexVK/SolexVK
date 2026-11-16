@@ -751,3 +751,9 @@ body::after {
 .mst-role { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.15; }
 .mst.on { background: var(--accent); border-color: transparent; }
 .mst.on .mst-seal, .mst.on .mst-name, .mst.on .mst-role { color: var(--accent-ink); }
+
+.msg-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; white-space: normal; }
+.msg-mem { margin: 8px 0 0; font-size: 13px; color: var(--muted); white-space: normal; }
+.mfacts { margin: 8px 0 0; padding: 0; list-style: none; }
+.mfacts li { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.mfacts button { flex: none; min-width: 36px; min-height: 36px; border: 0; background: none; color: var(--muted); font-size: 18px; }

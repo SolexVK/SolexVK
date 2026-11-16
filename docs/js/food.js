@@ -6,6 +6,7 @@ import {
   targets, dayMeals, dayTotals, mealTotals, saveMeal, deleteMeal, scaleItem,
   analyzeMeal, finishMeal, weekReview, weekStats, shrinkPhoto, newMealId,
 } from './nutrition.js';
+import { facts, dropFact } from './meilin.js';
 import { GROUPS, pantry, savePantry, reviewGroup, menu, menuStale, menuDay, makeMenu, replaceMeal, rateMeal } from './menu.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -89,6 +90,12 @@ export function renderFood(main, ui) {
       ${state.nutrition?.lastSay ? `<p class="meal-adv">${esc(state.nutrition.lastSay)}</p>` : ''}
       ${ai ? `<button class="btn ghost" id="food-week">${t('Разбор недели с Мэйлин')}</button>` : ''}
     </section>
+    <section class="food-meilin card">
+      <h3>${t('Мэйлин — ваш нутрициолог')}</h3>
+      <p class="note">${t('Она видит ваш вес, давление, нагрузку от Лао и Ли Гана, всё, что вы едите, меню и покупки. Расскажите ей о вкусах и режиме дня, спросите совета — она запишет еду, заменит блюдо или поправит список покупок.')}</p>
+      <button class="btn wide" data-master-go="meilin">${t('Написать Мэйлин')}</button>
+      ${facts().length ? `<details><summary>${t('Что Мэйлин помнит о вас')} (${facts().length})</summary><ul class="mfacts">${facts().map((f, i) => `<li><span>${esc(f.text)}</span><button type="button" data-fact-del="${i}" aria-label="${t('Удалить')}">✕</button></li>`).join('')}</ul></details>` : ''}
+    </section>
     <details class="food-norm"><summary>${t('Как считается норма')}</summary>
       <label for="food-phase">${t('Этап')}</label>
       <select id="food-phase"><option value="loss" ${state.nutrition?.phase !== 'maintain' ? 'selected' : ''}>${t('Похудение с сохранением мышц')}</option><option value="maintain" ${state.nutrition?.phase === 'maintain' ? 'selected' : ''}>${t('Поддержание веса и рост мышц')}</option></select>
@@ -96,6 +103,7 @@ export function renderFood(main, ui) {
     </details>`;
 
   bindMenu(main, ui);
+  main.querySelectorAll('[data-fact-del]').forEach((b) => b.addEventListener('click', () => { dropFact(Number(b.dataset.factDel)); ui.render(); }));
   main.querySelector('#food-phase')?.addEventListener('change', (e) => {
     state.nutrition = { ...(state.nutrition || {}), phase: e.target.value };
     save();
