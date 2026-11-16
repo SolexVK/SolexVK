@@ -157,9 +157,12 @@
 
 - Код находится в `/opt/taichi` — это клон ветки `Тай-Чи`.
 - Служба systemd `taichi` слушает `127.0.0.1:9170`.
-- Caddy проксирует `taichi.aidemiko.ru` на `127.0.0.1:9170`. Блок добавлен рядом с другими сайтами, например `planner.aidemiko.ru` на порту 9100.
+- Caddy: `taichi.aidemiko.ru` раздаёт приложение из `/opt/taichi/docs`, `/api/*` → `127.0.0.1:9170` (блок как в `server/deploy/Caddyfile.taichi`). Рядом другие сайты пользователя (`planner.aidemiko.ru` и др.) — не трогать. Копии Caddyfile: `/etc/caddy/Caddyfile.bak.<дата>`.
+- Служба `taichi` работает от пользователя `taichi`, пишет только в `server/data`. В `.env`: `PORT=9170`, `DATA_DIR`, `ALLOW_ORIGIN=https://taichi.aidemiko.ru,https://solexvk.github.io`, `APP_HOME=https://taichi.aidemiko.ru`.
+- **Автообновление:** таймер `taichi-update.timer` (каждые 10 минут, `/usr/local/sbin/taichi-update`) забирает ветку `Тай-Чи`; всё, что отправлено в ветку, через 10 минут уже у пользователя. Журнал: `journalctl -u taichi-update`.
+- GitHub Pages продолжает работать как запасная копия: она предлагает перейти на новый адрес.
 - Проверка: `https://taichi.aidemiko.ru/api/health` должен ответить `{"ok":true,"ai":true}`.
-- **Переезд на `https://taichi.aidemiko.ru` (16.11.2026, в работе):** Caddy раздаёт `/opt/taichi/docs`, `/api/*` → 9170
+- **Переезд на `https://taichi.aidemiko.ru` — выполнен 16.11.2026, телефон переехал без потерь.** Caddy раздаёт `/opt/taichi/docs`, `/api/*` → 9170
   (`server/deploy/Caddyfile.taichi`), автообновление — таймер `taichi-update` (`server/deploy/`). Переход данных:
   `js/move.js` — старая копия узнаёт новый адрес из `home` в `/api/health` (переменная `APP_HOME` в `.env`), досылает
   правки (`flushSync`) и предлагает перейти, скопировав ключ; новая копия на адресе сервера сама просит ключ и тянет всё
@@ -235,7 +238,7 @@ cd /opt/taichi && git pull && cd server && sudo npm ci --omit=dev && sudo system
   Время движения = длина такта, от голоса не зависит. Особые пути — `seq` в описании фигуры (например, «Поднять небо»:
   вверх перед телом, вниз через стороны), `ghosts` — какие кадры показывать тенью на схеме. Углы интерполируются по
   кратчайшей дуге (`lerpA`). При включённой камере манекен скрыт. Проверка переходов — `docs/animtest.html`.
-- **Перенос приложения на `https://taichi.aidemiko.ru` — отложен пользователем** (нужен его терминал). Сейчас домен
+- **Перенос приложения на `https://taichi.aidemiko.ru` — выполнен 16.11.2026** (см. раздел «Сервер»). Старая заметка: Сейчас домен
   отдаёт только `/api`. План: в блоке Caddy `taichi.aidemiko.ru` раздавать `/opt/taichi/docs` (`file_server`, умеет Range
   для музыки на iPhone), `/api/*` — на 127.0.0.1:9170; автообновление клона по расписанию; на телефоне — новая иконка,
   подключить сервер, данные подтянутся. Сначала только смотреть конфиг, менять после согласия пользователя.
