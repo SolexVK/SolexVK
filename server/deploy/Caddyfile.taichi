@@ -1,0 +1,23 @@
+# Блок для /etc/caddy/Caddyfile: приложение и сервер на одном адресе.
+# Приложение — файлы из /opt/taichi/docs (Caddy сам отдаёт части файлов для музыки на iPhone),
+# /api/* — сервер «Тайцзи» на 127.0.0.1:9170.
+taichi.aidemiko.ru {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:9170
+	}
+
+	handle {
+		root * /opt/taichi/docs
+		# Главная страница и сервис-воркер — всегда свежие, иначе новая версия не подхватится.
+		@fresh path / /index.html /sw.js /manifest.webmanifest
+		header @fresh Cache-Control "no-cache"
+		header {
+			X-Content-Type-Options nosniff
+			Referrer-Policy no-referrer
+			-Server
+		}
+		file_server
+	}
+}

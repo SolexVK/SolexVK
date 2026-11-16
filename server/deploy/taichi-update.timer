@@ -1,0 +1,10 @@
+[Unit]
+Description=Taiji: check for updates every 10 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

@@ -99,6 +99,31 @@ sudo systemctl reload caddy
   Claude Sonnet 5.5 — составление программы и еженедельный пересмотр. Сервер пропускает только эти две модели
   и не больше 30 запросов в минуту.
 
+## Приложение и сервер на одном адресе (рекомендуется)
+
+Caddy раздаёт само приложение из `/opt/taichi/docs`, а `/api/*` передаёт серверу. Блок — в
+`server/deploy/Caddyfile.taichi` (поменяйте адрес и порт под себя). В `.env` добавьте:
+
+```
+ALLOW_ORIGIN=https://taichi.example.ru,https://solexvk.github.io
+APP_HOME=https://taichi.example.ru
+```
+
+`APP_HOME` включайте последним, когда новый адрес уже открывается: старые копии приложения (GitHub Pages) увидят его
+в `/api/health` и предложат перейти, скопировав ключ доступа. На новом адресе приложение само попросит ключ
+и загрузит все данные с сервера.
+
+### Автообновление
+
+```bash
+sudo install -m 755 /opt/taichi/server/deploy/taichi-update.sh /usr/local/sbin/taichi-update
+sudo cp /opt/taichi/server/deploy/taichi-update.service /opt/taichi/server/deploy/taichi-update.timer /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now taichi-update.timer
+```
+
+Раз в 10 минут скрипт забирает новую версию из GitHub; при изменении кода сервера перезапускает службу.
+Журнал: `journalctl -u taichi-update`.
+
 ## Обновление
 
 ```bash

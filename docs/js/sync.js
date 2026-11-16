@@ -170,6 +170,16 @@ subscribe(() => {
   if (cfg) schedulePush();
 });
 
+// Дослать несохранённые правки сейчас (перед переездом на другой адрес).
+export async function flushSync() {
+  if (!cfg) return true;
+  clearTimeout(timer);
+  for (let i = 0; i < 3 && (dirty || pushing); i++) {
+    if (pushing) await new Promise((r) => setTimeout(r, 400)); else await push();
+  }
+  return !dirty;
+}
+
 export function startSync() {
   if (!cfg) return;
   pull();

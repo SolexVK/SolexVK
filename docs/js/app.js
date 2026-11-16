@@ -24,6 +24,7 @@ import { GUIDES } from './guides.js';
 import { LEVELS } from './kb.js';
 import { aiAvailable, remember, usageReport } from './brain.js';
 import { startSync, serverConfig, setServer, syncStatus, onSyncStatus, pull, api } from './sync.js';
+import { checkMove } from './move.js';
 import { t, locale, lang, LANGS } from './i18n.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -1012,8 +1013,10 @@ if ('serviceWorker' in navigator && window.isSecureContext && !params.get('nosw'
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
   // Пришла новая версия приложения — перезагружаемся, если сейчас не идёт занятие или беседа.
   let reloaded = false;
+  // Первая установка (раньше не было версии) — не перезагружаем: человек мог уже начать вводить данные.
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloaded || runner || document.body.classList.contains('focus')) return;
+    if (!hadController || reloaded || runner || document.body.classList.contains('focus')) return;
     reloaded = true;
     location.reload();
   });
@@ -1029,3 +1032,5 @@ $$('[aria-label]').forEach((el) => { el.setAttribute('aria-label', t(el.getAttri
 
 applyPalette();
 render();
+// Переезд на собственный адрес: старая копия предлагает перейти, новая — подключиться к серверу.
+if (!params.get('nosw') || params.get('move')) checkMove({ openSheet, closeSheet, toast, copyText, render });

@@ -9,6 +9,7 @@
 //   DATA_DIR           — папка данных, по умолчанию ./data
 //   ALLOW_ORIGIN       — откуда разрешены запросы, по умолчанию https://solexvk.github.io
 //   SERVE_APP=1        — раздавать само приложение из ../docs (тогда сайт и сервер на одном адресе)
+//   APP_HOME           — адрес, где теперь живёт приложение (https://…); старые копии предложат туда перейти
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -23,6 +24,7 @@ const TOKEN = process.env.APP_TOKEN || '';
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(here, 'data'));
 const ORIGINS = (process.env.ALLOW_ORIGIN || 'https://solexvk.github.io').split(',').map((s) => s.trim());
 const SERVE_APP = process.env.SERVE_APP === '1';
+const HOME = /^(https:\/\/[a-z0-9.-]+|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?)$/i.test(process.env.APP_HOME || '') ? process.env.APP_HOME : null;
 const APP_DIR = path.resolve(here, '..', 'docs');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 const MAX_BODY = 8 * 1024 * 1024;
@@ -142,7 +144,7 @@ async function handle(req, res) {
     if (SERVE_APP && req.method === 'GET') return serveStatic(url, res);
     return send(res, 404, { error: 'not_found' });
   }
-  if (url.pathname === '/api/health') return send(res, 200, { ok: true, ai: !!claude });
+  if (url.pathname === '/api/health') return send(res, 200, { ok: true, ai: !!claude, home: HOME });
   if (!authorized(req)) return send(res, 401, { error: 'unauthorized' });
 
   try {
