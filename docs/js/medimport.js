@@ -46,8 +46,8 @@ function upload(file, onPct) {
 const cost = (u) => (u ? (u.input * 2 + u.output * 10) / 1e6 : 0);
 
 function boxHTML() {
-  if (!serverConfig()) return `<p class="note">${t('Загрузка архива медкарты работает, когда приложение подключено к вашему серверу.')}</p>`;
-  const pick = `<label class="btn wide mi-pick" for="mi-file">${t('Загрузить архив медкарты (zip)')}</label><input type="file" id="mi-file" accept=".zip,application/zip,application/x-zip-compressed,.json,application/json" hidden>`;
+  const pick = `<label class="btn wide mi-pick" for="mi-file">${t('Загрузить медкарту: архив zip или файл json')}</label><input type="file" id="mi-file" hidden>`;
+  if (!serverConfig() && !local) return `${pick}<p class="note">${t('Архив zip разбирается на вашем сервере — для него подключите сервер в настройках. Готовый файл разбора (.json) загружается и без сервера.')}</p>`;
   if (uploading) return `<p><b>${t('Отправляю архив на сервер: {p} %', { p: uploading.pct })}</b></p><progress max="100" value="${uploading.pct}"></progress><p class="note">${t('Не закрывайте приложение, пока архив не отправится.')}</p>`;
   const j = local || last;
   if (!j) return `${pick}<p class="note">${t('Соберите все документы — анализы, выписки, заключения, МРТ, фото и сканы — в один zip-архив. Сервер распакует его, доктор Шэн прочитает каждый документ, а вы одной кнопкой внесёте всё в медкарту.')}</p>`;
@@ -140,6 +140,17 @@ export function applyImport(j) {
 export function importBoxHTML() { return `<div class="mi-box" id="mi-box">${boxHTML()}</div>`; }
 
 // ui: { toast, onApplied(memo) } — onApplied перерисовывает медкарту и предлагает разговор с доктором.
+let redraw = null;
+// Разбор медкарты (.json), приложенный скрепкой в чате: показать итог в окне загрузки над картой.
+export function isPrepared(text) {
+  try { return JSON.parse(text)?.format === 'taichi-medarchive'; } catch { return false; }
+}
+export function showPrepared(text) {
+  local = readPrepared(JSON.parse(text));
+  redraw?.();
+  document.getElementById('mi-box')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 export function bindImport(ui) {
   const draw = () => {
     const box = document.getElementById('mi-box');
@@ -159,13 +170,17 @@ export function bindImport(ui) {
       const f = e.target.files[0];
       e.target.value = '';
       if (!f) return;
-      if (/\.json$/i.test(f.name)) {
-        // Готовый разбор архива (файл taichi-medarchive): показываем итог, вносится той же кнопкой.
-        try { local = readPrepared(JSON.parse(await f.text())); } catch (err) { ui.toast(err.message || t('Файл не похож на разбор медкарты.')); return; }
+      if (!/\.zip$/i.test(f.name) && !/zip/.test(f.type)) {
+        // Не zip — значит, готовый разбор медкарты (.json). Узнаём по содержимому: на телефоне имя и тип файла
+        // могут измениться при сохранении (например, «медкарта.json.txt»).
+        if (f.size > 50 * 1024 * 1024) { ui.toast(t('Нужен архив .zip или файл разбора медкарты .json.')); return; }
+        let data;
+        try { data = JSON.parse(await f.text()); } catch { ui.toast(t('Нужен архив .zip или файл разбора медкарты .json.')); return; }
+        try { local = readPrepared(data); } catch (err) { ui.toast(err.message); return; }
         draw();
         return;
       }
-      if (!/\.zip$/i.test(f.name) && !/zip/.test(f.type)) { ui.toast(t('Нужен архив .zip.')); return; }
+      if (!serverConfig()) { ui.toast(t('Архив zip разбирается на вашем сервере — подключите сервер в настройках.')); return; }
       local = null;
       uploading = { pct: 0 };
       draw();
@@ -208,6 +223,7 @@ export function bindImport(ui) {
       ui.onApplied(j.summary?.memo || '');
     });
   };
+  redraw = draw;
   draw();
   if (!serverConfig()) return;
   getStatus().then(() => { draw(); if (last && RUNNING.includes(last.state)) poll(); }).catch(() => {});

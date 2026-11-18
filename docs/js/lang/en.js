@@ -1942,4 +1942,9 @@ export default {
   "Разберите мой архив медкарты: что сейчас главное, какие вопросы вам нужно мне задать, какие обследования нужны и какие указания дать мастерам.": "Review my medical record archive: what matters most now, what questions you need to ask me, which examinations are needed and what instructions to give the masters.",
   "История болезни по годам": "Medical history by year",
   "Что обследовать: {n}": "Examinations to do: {n}",
+  "Загрузить медкарту: архив zip или файл json": "Upload medical record: zip archive or json file",
+  "Архив zip разбирается на вашем сервере — для него подключите сервер в настройках. Готовый файл разбора (.json) загружается и без сервера.": "A zip archive is processed on your server, so connect the server in settings. A ready review file (.json) can be loaded without a server.",
+  "Архив zip разбирается на вашем сервере — подключите сервер в настройках.": "A zip archive is processed on your server; connect the server in settings.",
+  "Нужен архив .zip или файл разбора медкарты .json.": "A .zip archive or a medical record review .json file is needed.",
+  "Это разбор медкарты. Проверьте итог вверху и нажмите «Внести всё в медкарту».": "This is a medical record review. Check the summary at the top and tap “Add everything to the medical record”.",
 };

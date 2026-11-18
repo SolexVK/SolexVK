@@ -11,7 +11,7 @@ import { MASTERS, MASTER_IDS, chatOf, pushChat, askTeam } from './team.js';
 import { applyAction } from './meilin.js';
 import { applyShenAction } from './shen.js';
 import { medcardHTML, bindMedcard } from './medcard.js';
-import { bindImport, importBoxHTML } from './medimport.js';
+import { bindImport, importBoxHTML, isPrepared, showPrepared } from './medimport.js';
 import { readAttachment, rememberFiles, fileMeta, ACCEPT, MAX_FILES } from './attach.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
@@ -674,6 +674,15 @@ function renderMaster() {
     const list = [...e.target.files];
     e.target.value = '';
     for (const f of list) {
+      // Файл разбора медкарты (.json) — не в чат нейросети, а в медкарту доктора Шэна (окно «Загрузить медкарту»).
+      if ((/\.(json|txt)$/i.test(f.name) || /json|text\/plain/.test(f.type) || !/\.\w+$/.test(f.name)) && f.size < 50 * 1024 * 1024) {
+        const txt = await f.text();
+        if (isPrepared(txt)) {
+          if (masterWho !== 'shen') { masterWho = 'shen'; try { localStorage.setItem('taichi.master', 'shen'); } catch { /* не критично */ } renderMaster(); }
+          try { showPrepared(txt); toast(t('Это разбор медкарты. Проверьте итог вверху и нажмите «Внести всё в медкарту».')); } catch (err) { toast(err.message); }
+          continue;
+        }
+      }
       if (pending.length >= MAX_FILES) { toast(t('Не больше {n} файлов за раз.', { n: MAX_FILES })); break; }
       try { pending.push(await readAttachment(f)); } catch (err) { toast(err.message); }
     }
