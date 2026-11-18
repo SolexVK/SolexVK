@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
 import { ALLOWED_MODELS, prepareRequest, runRequest } from '../docs/js/ai-request.js';
+import { createMedImport } from './medimport.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8787);
@@ -35,6 +36,9 @@ if (TOKEN.length < 16) {
 }
 await fs.mkdir(path.join(DATA_DIR, 'backups'), { recursive: true });
 const claude = process.env.ANTHROPIC_API_KEY ? new Anthropic({ maxRetries: 2 }) : null;
+// Архив медкарты: распаковка и разбор документов доктором Шэном (server/medimport.js).
+const med = createMedImport({ dataDir: DATA_DIR, appDir: APP_DIR, claude });
+await med.resume();
 
 // ---- хранилище: один файл, запись через временный файл ----
 // Пустое состояние — только если файла ещё нет. Испорченный или нечитаемый файл — ошибка, а не повод его затереть.
@@ -165,6 +169,16 @@ async function handle(req, res) {
       if (out.conflict) return send(res, 409, out.conflict);
       return send(res, 200, { rev: out.doc.rev, updatedAt: out.doc.updatedAt });
     }
+    if (url.pathname === '/api/med/import' && req.method === 'POST') {
+      const [code, body] = await med.upload(req);
+      return send(res, code, body);
+    }
+    if (url.pathname === '/api/med/import' && req.method === 'GET') return send(res, 200, med.status());
+    const ap = url.pathname.match(/^\/api\/med\/import\/([\w-]{6,40})\/(applied|retry)$/);
+    if (ap && req.method === 'POST') {
+      const [code, body] = await (ap[2] === 'retry' ? med.retry(ap[1]) : med.applied(ap[1]));
+      return send(res, code, body);
+    }
     if (url.pathname === '/api/messages' && req.method === 'POST') {
       if (!claude) return send(res, 503, { error: 'ai_not_configured' });
       if (rateLimited()) return send(res, 429, { error: 'rate_limited' });
@@ -197,4 +211,6 @@ async function handle(req, res) {
   }
 }
 
+// Большой архив с телефона может грузиться долго: не обрываем запрос через 5 минут (по умолчанию в Node).
+server.requestTimeout = 60 * 60 * 1000;
 server.listen(PORT, () => console.log(`Тайцзи сервер слушает порт ${PORT}${claude ? ', нейросеть подключена' : ', без нейросети'}${SERVE_APP ? ', раздаёт приложение' : ''}`));

@@ -155,6 +155,16 @@
   строже общих 150/95 и 171/106), `program.resolvePlan` исключает упражнения из `healthExclude()` (и цигун, и силовые),
   `strength_clearance` ставит `strength.doctorOk`.
 - Проверка: `shen.test.js` (мок нейросети, 8 действий, рамки у всех мастеров, пороги, исключение моста).
+- **Архив медкарты (zip, 100+ документов).** Кнопка в разделе Шэна → `POST /api/med/import` (тело — zip, до 800 МБ).
+  Сервер (`server/medimport.js`, зависимости `yauzl`, `jpeg-js` — чистый JS) распаковывает в `DATA_DIR/med/<id>/files`
+  (имена: UTF-8 или cp866 из Windows), читает каждый документ Sonnet по 3 параллельно (`docs/js/medimport-kb.js`:
+  `IMPORT_SYSTEM`/`DOC_SCHEMA`; PDF до 30 МБ, фото JPEG ужимаются до 3,6 МБ, Excel — SheetJS из `docs/vendor`,
+  docx — текст из XML; HEIC и .doc пропускаются с причиной), потом сводка (`SUMMARY_*`: диагнозы, история лекарств,
+  memo). Ход — `job.json`, после перезапуска службы разбор продолжается (`resume`). `GET /api/med/import` — статус,
+  `POST …/<id>/retry` — повторить сбойные, `…/applied` — отметка. Внесение — в приложении (`js/medimport.js`,
+  `applyImport`): `health.docs` (опись документов), labs, studies, allergies, diagnoses (из сводки), `medHistory`
+  (status likely_current/past — что принимается сейчас, Шэн уточняет у ученика; другим мастерам — «возможно, принимает»).
+  Оригиналы остаются на сервере. Проверка: `mi/` в scratchpad (мок Claude через `ANTHROPIC_BASE_URL`).
 
 ### Язык интерфейса
 

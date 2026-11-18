@@ -4,7 +4,15 @@
   "private": true,
   "description": "Сервер приложения «Тайцзи»: хранение данных ученика и доступ мастера к нейросети Claude",
   "type": "module",
-  "engines": { "node": ">=20" },
-  "scripts": { "start": "node server.js" },
-  "dependencies": { "@anthropic-ai/sdk": "^1.8.0" }
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "jpeg-js": "^0.4.4",
+    "yauzl": "^3.4.0"
+  }
 }

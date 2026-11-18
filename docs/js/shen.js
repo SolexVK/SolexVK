@@ -112,7 +112,7 @@ export function applyShenAction(a) {
         if (dup) Object.assign(dup, rec); else { h.labs.push({ id: newId(), ...rec }); n++; }
       }
       h.labs.sort((x, y) => String(x.date).localeCompare(String(y.date)));
-      if (h.labs.length > 400) h.labs = h.labs.slice(-400);
+      if (h.labs.length > 6000) h.labs = h.labs.slice(-6000);
       save(); return `Анализы внесены в медкарту: ${labs.length}.`;
     }
     case 'add_study': {

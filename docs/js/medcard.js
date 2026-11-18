@@ -24,7 +24,7 @@ function labsTable(labs) {
 export function medcardHTML() {
   const h = health();
   const meds = h.meds.filter((m) => !m.stopped);
-  const empty = !h.diagnoses.length && !meds.length && !h.labs.length && !h.studies.length && !h.allergies.length && !h.rules.length && !h.exclude.length && !h.bp;
+  const empty = !h.diagnoses.length && !meds.length && !h.labs.length && !h.studies.length && !h.allergies.length && !h.rules.length && !h.exclude.length && !h.bp && !h.docs.length;
   const L = bpLimits();
   const S = state.strength;
   const li = (list, x, body) => `<li><span>${body}${sub(x) ? `<small>${sub(x)}</small>` : ''}</span>${del(list, x.id)}</li>`;
@@ -34,9 +34,11 @@ export function medcardHTML() {
     ${empty ? `<p>${t('Карта пока пустая. Пришлите доктору выписки, анализы или заключения (фото, PDF, Excel) или расскажите о себе — он предложит, что внести, а вы подтвердите кнопкой.')}</p>` : ''}
     ${sec('Диагнозы', h.diagnoses.map((d) => li('diagnoses', d, esc(d.text))))}
     ${sec('Лекарства', meds.map((m) => li('meds', m, `<b>${esc(m.name)}</b> ${esc(m.dose)}${m.when ? ` — ${esc(m.when)}` : ''}`)))}
+    ${h.medHistory.length ? `<details class="mc-sub"><summary>${t('История лекарств из архива: {n}', { n: h.medHistory.length })}</summary><ul class="mc-list">${h.medHistory.map((m) => li('medHistory', { ...m, date: [m.first, m.last].filter(Boolean).join(' — '), source: m.status === 'likely_current' ? t('возможно, принимаете сейчас — уточните у доктора') : t('в прошлом') }, `<b>${esc(m.name)}</b> ${esc(m.dose)}${m.how ? ` — ${esc(m.how)}` : ''}`)).join('')}</ul></details>` : ''}
     ${sec('Аллергии и непереносимость', h.allergies.map((a) => li('allergies', a, esc(a.text))))}
-    ${h.labs.length ? `<h4>${t('Анализы')}</h4>${labsTable(h.labs)}` : ''}
-    ${sec('Обследования и заключения', h.studies.slice().reverse().map((s) => li('studies', s, esc(s.text))))}
+    ${h.labs.length ? `<details class="mc-sub" ${h.labs.length < 40 ? 'open' : ''}><summary>${t('Анализы')}: ${new Set(h.labs.map((l) => l.name.toLowerCase())).size}</summary>${labsTable(h.labs)}</details>` : ''}
+    ${h.studies.length ? `<details class="mc-sub" ${h.studies.length < 8 ? 'open' : ''}><summary>${t('Обследования и заключения')}: ${h.studies.length}</summary><ul class="mc-list">${h.studies.slice().reverse().map((s) => li('studies', s, esc(s.text))).join('')}</ul></details>` : ''}
+    ${h.docs.length ? `<details class="mc-sub"><summary>${t('Документы архива')}: ${h.docs.length}</summary><ul class="mc-list">${h.docs.slice().reverse().map((d) => li('docs', d, `<b>${esc(d.title || d.kind)}</b> — ${esc(d.summary)}`)).join('')}</ul></details>` : ''}
     <h4>${t('Указания мастерам')}</h4>
     <ul class="mc-list">
       <li><span>${t('Силовые')}: ${S?.doctorOk ? t('врач разрешил') : t('врач ещё не разрешил — только умеренно')}</span></li>

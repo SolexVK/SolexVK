@@ -3,7 +3,7 @@
 // чтобы любой модуль (brain, meilin, team, course, program) мог это импортировать без циклов.
 import { state } from './store.js';
 
-const LISTS = ['diagnoses', 'meds', 'allergies', 'labs', 'studies', 'rules', 'exclude'];
+const LISTS = ['diagnoses', 'meds', 'allergies', 'labs', 'studies', 'rules', 'exclude', 'docs', 'medHistory'];
 export function health() {
   const h = state.health && typeof state.health === 'object' ? state.health : (state.health = {});
   for (const k of LISTS) if (!Array.isArray(h[k])) h[k] = [];
@@ -58,7 +58,9 @@ export function cardText() {
     const dates = [...new Set(h.labs.map((l) => l.date))].sort().reverse().slice(0, 8);
     out.push(`Анализы:\n${dates.map((d) => `${d}: ${h.labs.filter((l) => l.date === d).map(fmtLab).join('; ')}`).join('\n')}`);
   } else out.push('Анализы: в карту не внесены.');
-  if (h.studies.length) out.push(`Обследования и заключения:\n${h.studies.slice(-12).map((s) => `${s.date || '?'}: ${s.text}${s.source ? ` (${s.source})` : ''}`).join('\n')}`);
+  if (h.medHistory.length) out.push(`История лекарств из архива (что принимается сейчас — уточнить у ученика):\n${h.medHistory.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}${m.how ? `, ${m.how}` : ''} (${m.first || '?'} — ${m.last || '?'}${m.status === 'likely_current' ? ', возможно, принимает сейчас' : ', в прошлом'})`).join('\n')}`);
+  if (h.studies.length) out.push(`Обследования и заключения:\n${h.studies.slice(-30).map((s) => `${s.date || '?'}: ${s.text}${s.source ? ` (${s.source})` : ''}`).join('\n')}`);
+  if (h.docs.length) out.push(`Документы архива (${h.docs.length}, последние 60):\n${h.docs.slice(-60).map((d) => `${d.date || '?'} — ${d.kind}: ${d.title}${d.source ? ` (${d.source})` : ''}. ${d.summary}`).join('\n')}`);
   if (h.notes) out.push(`Заметки: ${h.notes}`);
   out.push(...teamFrame());
   return out.join('\n');
@@ -84,6 +86,8 @@ export function doctorFrame(who) {
   if (h.diagnoses.length) out.push(`Диагнозы: ${h.diagnoses.map((d) => d.text).join('; ')}.`);
   const meds = h.meds.filter((m) => !m.stopped);
   if (meds.length) out.push(`Лекарства: ${meds.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}${m.when ? ` (${m.when})` : ''}`).join('; ')}.`);
+  const maybe = h.medHistory.filter((m) => m.status === 'likely_current' && !meds.some((x) => x.name.toLowerCase() === m.name.toLowerCase()));
+  if (maybe.length) out.push(`Возможно, принимает (по архиву, не подтверждено): ${maybe.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}`).join('; ')}.`);
   if (h.allergies.length) out.push(`Аллергии и непереносимость: ${h.allergies.map((a) => a.text).join('; ')}.`);
   const labs = latestLabs(who === 'meilin' ? 25 : 10).filter((l) => who === 'meilin' || l.flag);
   if (labs.length) out.push(`${who === 'meilin' ? 'Последние анализы' : 'Анализы с отклонениями'}: ${labs.map((l) => `${l.date} ${fmtLab(l)}`).join('; ')}.`);

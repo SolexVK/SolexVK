@@ -11,6 +11,7 @@ import { MASTERS, MASTER_IDS, chatOf, pushChat, askTeam } from './team.js';
 import { applyAction } from './meilin.js';
 import { applyShenAction } from './shen.js';
 import { medcardHTML, bindMedcard } from './medcard.js';
+import { bindImport, importBoxHTML } from './medimport.js';
 import { readAttachment, rememberFiles, fileMeta, ACCEPT, MAX_FILES } from './attach.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
@@ -622,7 +623,7 @@ function renderMaster() {
       <p>${esc(state.memory?.summary || t('Заметок пока нет: они появятся, когда подключена нейросеть.'))}</p>
       ${state.log?.length ? `<h4>${t('Последние беседы')}</h4><ul class="journal">${state.log.slice(-12).reverse().map((e) => `<li><span>${new Date(e.at).toLocaleDateString(locale())} · ${esc({ intake: t('знакомство'), checkin: t('перед занятием'), review: t('пересмотр'), session: t('занятие'), chat: t('беседа') }[e.kind] || e.kind)}</span>${esc(e.role === 'user' ? t('Вы ответили на вопросы') : String(e.text).slice(0, 220))}</li>`).join('')}</ul>` : ''}
     </details>` : ''}
-    ${who === 'shen' ? `<div id="medcard">${medcardHTML()}</div>` : ''}
+    ${who === 'shen' ? `${importBoxHTML()}<div id="medcard">${medcardHTML()}</div>` : ''}
     <section class="chat" id="chat" aria-live="polite"></section>
     ${hasKey() ? '' : `<p class="note chat-note">${t('Без ключа наставник отвечает только по курсу. Свободный разговор включается в настройках.')} <button class="link" data-open="settings">${t('Открыть')}</button></p>`}
     <div class="chips" id="chips">${M.chips.map((c) => `<button class="chip">${esc(t(c))}</button>`).join('')}</div>
@@ -634,7 +635,18 @@ function renderMaster() {
       <textarea id="ask-input" rows="1" placeholder="${t('Ваш вопрос')}" aria-label="${t('Вопрос наставнику')}"></textarea>
       <button class="btn" type="submit">${t('Спросить')}</button>
     </form>`;
-  if (who === 'shen') bindMedcard($('#medcard'), refreshMedcard);
+  if (who === 'shen') {
+    bindMedcard($('#medcard'), refreshMedcard);
+    // Архив медкарты: после «Внести всё» — сводка в чат и предложение разобрать архив с доктором.
+    bindImport({ toast, onApplied: (memo) => {
+      refreshMedcard();
+      const msg = { role: 'assistant', text: t('Архив внесён в медкарту. Попросите меня разобрать его — я скажу, что важно, уточню, какие лекарства вы принимаете сейчас, и дам указания мастерам.'), at: Date.now(), ...(memo ? { memo } : {}) };
+      pushChat('shen', msg);
+      save();
+      $('#chat')?.append(bubble(msg));
+      $('#ask-input').value = t('Разберите мой архив медкарты: что важно, какие лекарства уточнить и какие указания дать мастерам.');
+    } });
+  }
   const chat = $('#chat');
   if (!chatOf(who).length) chat.append(bubble({ role: 'assistant', text: t(M.hello) }));
   chatOf(who).slice(-30).forEach((m) => chat.append(bubble(m)));
