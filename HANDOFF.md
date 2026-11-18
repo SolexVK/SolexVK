@@ -168,6 +168,10 @@
   Та же кнопка принимает готовый разбор `.json` (`format: 'taichi-medarchive'`, `version: 1`, `id`, `files[{n, name,
   status, reason, result по DOC_SCHEMA}]`, `summary` по SUMMARY_SCHEMA) — его можно подготовить в сессии Claude Code
   без затрат API; вносится в медкарту без сервера (`readPrepared` → `applyImport`). Медданные в репозиторий не класть.
+  Сводка (SUMMARY_SCHEMA) включает `timeline` (история по годам → `health.timeline`) и план доктора `questions`,
+  `exams`, `team` (→ `health.plan`); Шэн видит их в `cardText` вместе с динамикой анализов по показателям
+  (`labTrends`) и начинает с них разговор; предложения мастерам превращает в `set_rule` после согласия ученика.
+  Повторная загрузка того же разбора с другим id не задваивает документы (сверка по файлу, дате и названию).
 
 ### Язык интерфейса
 

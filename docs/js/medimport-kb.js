@@ -41,13 +41,21 @@ export const SUMMARY_SYSTEM = `Ты — доктор Шэн, врач-терап
 1. diagnoses — список уникальных диагнозов: одинаковые по смыслу объедини (самая точная и свежая формулировка), first — дата первого упоминания, last — последнего (ГГГГ-ММ-ДД, ГГГГ-ММ или ГГГГ). Острые эпизоды, давно прошедшие, отметь active: false.
 2. meds — история лекарств: уникальные препараты, последняя известная доза и схема, first и last — даты первого и последнего упоминания, status: likely_current — назначен или упомянут в документах последнего года и не отменён; past — давно не упоминается или отменён. Это предположение: что принимается сейчас, уточнит пациент.
 3. memo — сводка по архиву для пациента на 8–15 строк простыми словами: главные диагнозы и их история, что важно в анализах в динамике, что стоит уточнить или пересдать, о чём спросить врача. Строки начинай с дефиса.
+4. timeline — история болезни по годам и важным событиям (date: ГГГГ или ГГГГ-ММ, text: что произошло, ключевые цифры), от старых к новым.
+5. questions — 8–14 вопросов, которые врач должен задать пациенту, чтобы закрыть пробелы в документах (что принимает сейчас, симптомы, результаты обследований, которых нет в архиве, образ жизни, семейный анамнез).
+6. exams — обследования, которые стоит обсудить с лечащим врачом: what, why (почему, с цифрами из архива), when (сейчас / в ближайшие недели / в ближайший месяц / планово).
+7. team — предложения мастерам приложения: who — lao (тайцзи и цигун), meilin (питание), ligan (силовые) или all; text — конкретное ограничение или правило, вытекающее из документов.
 Ничего не добавляй от себя сверх документов.`;
 
 export const SUMMARY_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['diagnoses', 'meds', 'memo'],
+  type: 'object', additionalProperties: false, required: ['diagnoses', 'meds', 'memo', 'timeline', 'questions', 'exams', 'team'],
   properties: {
     diagnoses: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['text', 'first', 'last', 'active'], properties: { text: { type: 'string' }, first: { type: 'string' }, last: { type: 'string' }, active: { type: 'boolean' } } } },
     meds: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['name', 'dose', 'how', 'first', 'last', 'status'], properties: { name: { type: 'string' }, dose: { type: 'string' }, how: { type: 'string' }, first: { type: 'string' }, last: { type: 'string' }, status: { type: 'string', enum: ['likely_current', 'past'] } } } },
     memo: { type: 'string' },
+    timeline: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['date', 'text'], properties: { date: { type: 'string' }, text: { type: 'string' } } } },
+    questions: { type: 'array', items: { type: 'string' } },
+    exams: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['what', 'why', 'when'], properties: { what: { type: 'string' }, why: { type: 'string' }, when: { type: 'string' } } } },
+    team: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['who', 'text'], properties: { who: { type: 'string', enum: ['lao', 'meilin', 'ligan', 'all'] }, text: { type: 'string' } } } },
   },
 };

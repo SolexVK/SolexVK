@@ -1939,4 +1939,7 @@ export default {
   "в прошлом": "in the past",
   "Документы архива": "Archive documents",
   "Файл не похож на разбор медкарты.": "This file does not look like a medical record review.",
+  "Разберите мой архив медкарты: что сейчас главное, какие вопросы вам нужно мне задать, какие обследования нужны и какие указания дать мастерам.": "Review my medical record archive: what matters most now, what questions you need to ask me, which examinations are needed and what instructions to give the masters.",
+  "История болезни по годам": "Medical history by year",
+  "Что обследовать: {n}": "Examinations to do: {n}",
 };

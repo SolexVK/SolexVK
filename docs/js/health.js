@@ -43,6 +43,19 @@ export function latestLabs(n = 25) {
   return [...by.values()].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, n);
 }
 
+// Динамика анализов: по каждому показателю все значения по датам (крупные анализы мочи и крови — тоже).
+function labTrends() {
+  const by = new Map();
+  for (const l of state.health?.labs || []) { const k = String(l.name); if (!by.has(k)) by.set(k, []); by.get(k).push(l); }
+  const rows = [...by.entries()].map(([name, arr]) => {
+    arr.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const last = arr.at(-1);
+    return { name, last: String(last.date), line: `${name}${last.unit ? ` (${last.unit})` : ''}: ${arr.slice(-8).map((l) => `${l.value}${l.flag === 'high' ? '↑' : l.flag === 'low' ? '↓' : ''} [${l.date}]`).join(', ')}${last.ref ? `; норма ${String(last.ref).slice(0, 60)}` : ''}` };
+  });
+  rows.sort((a, b) => b.last.localeCompare(a.last));
+  return rows.slice(0, 140).map((r) => r.line).join('\n');
+}
+
 // Полная карта — для самого доктора Шэна.
 export function cardText() {
   const h = health();
@@ -54,13 +67,18 @@ export function cardText() {
   const stopped = h.meds.filter((m) => m.stopped);
   if (stopped.length) out.push(`Отменены: ${stopped.map((m) => `${m.name} (${m.stopped})`).join('; ')}.`);
   out.push(`Аллергии и непереносимость: ${h.allergies.length ? h.allergies.map((a) => a.text).join('; ') : 'не внесены'}.`);
-  if (h.labs.length) {
-    const dates = [...new Set(h.labs.map((l) => l.date))].sort().reverse().slice(0, 8);
-    out.push(`Анализы:\n${dates.map((d) => `${d}: ${h.labs.filter((l) => l.date === d).map(fmtLab).join('; ')}`).join('\n')}`);
-  } else out.push('Анализы: в карту не внесены.');
+  if (h.timeline?.length) out.push(`История болезни по годам (по документам архива):\n${h.timeline.map((x) => `${x.date}: ${x.text}`).join('\n')}`);
+  if (h.labs.length) out.push(`Анализы — динамика по показателям (значения по датам, старые → новые; ↑↓ — вне нормы лаборатории):\n${labTrends()}`);
+  else out.push('Анализы: в карту не внесены.');
   if (h.medHistory.length) out.push(`История лекарств из архива (что принимается сейчас — уточнить у ученика):\n${h.medHistory.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}${m.how ? `, ${m.how}` : ''} (${m.first || '?'} — ${m.last || '?'}${m.status === 'likely_current' ? ', возможно, принимает сейчас' : ', в прошлом'})`).join('\n')}`);
-  if (h.studies.length) out.push(`Обследования и заключения:\n${h.studies.slice(-30).map((s) => `${s.date || '?'}: ${s.text}${s.source ? ` (${s.source})` : ''}`).join('\n')}`);
-  if (h.docs.length) out.push(`Документы архива (${h.docs.length}, последние 60):\n${h.docs.slice(-60).map((d) => `${d.date || '?'} — ${d.kind}: ${d.title}${d.source ? ` (${d.source})` : ''}. ${d.summary}`).join('\n')}`);
+  if (h.studies.length) out.push(`Обследования и заключения (по датам):\n${h.studies.slice(-60).map((s) => `${s.date || '?'}: ${String(s.text).slice(0, 260)}`).join('\n')}`);
+  if (h.docs.length) out.push(`Документы в карте: ${h.docs.length}, с ${h.docs[0].date || '?'} по ${h.docs.at(-1).date || '?'}. Последние:\n${h.docs.slice(-15).map((d) => `${d.date || '?'} — ${d.kind}: ${d.title}. ${d.summary}`).join('\n')}`);
+  const P = h.plan;
+  if (P) {
+    if (P.questions?.length) out.push(`Твой план после разбора архива — вопросы ученику (задавай по одному, ответы вноси в карту; отмечай, что уже выяснено):\n${P.questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`);
+    if (P.exams?.length) out.push(`Твой план — обследования, которые нужно обсудить с врачом:\n${P.exams.map((e) => `- ${e.what} — ${e.why} [${e.when}]`).join('\n')}`);
+    if (P.team?.length) out.push(`Твой план — предложения мастерам (предлагай ученику кнопками set_rule, когда обсудите; уже действующие указания — ниже):\n${P.team.map((x) => `- ${WHO_NAME[x.who] || x.who}: ${x.text}`).join('\n')}`);
+  }
   if (h.notes) out.push(`Заметки: ${h.notes}`);
   out.push(...teamFrame());
   return out.join('\n');

@@ -95,11 +95,12 @@ export function applyImport(j) {
   const h = health();
   const docs = j.files.filter((f) => f.status === 'ok' && f.result);
   const has = new Set(h.docs.map((d) => d.ref));
+  const seen = new Set(h.docs.map((d) => `${d.file}|${d.date}|${d.title}`)); // тот же документ из другого разбора
   let labs = 0;
   for (const f of docs) {
     const r = f.result;
     const ref = `${j.id}:${f.n}`;
-    if (has.has(ref)) continue;
+    if (has.has(ref) || seen.has(`${f.name}|${clean(r.date)}|${clean(r.title)}`)) continue;
     const src = [r.title, r.source].filter(Boolean).join(', ');
     h.docs.push({ id: newId(), ref, date: clean(r.date), kind: r.kind, title: clean(r.title), source: clean(r.source), summary: clean(r.summary), file: f.name });
     for (const l of r.labs || []) {
@@ -108,7 +109,7 @@ export function applyImport(j) {
       const dup = h.labs.find((x) => x.date === rec.date && x.name.toLowerCase() === rec.name.toLowerCase());
       if (dup) Object.assign(dup, rec); else { h.labs.push({ id: newId(), ...rec }); labs++; }
     }
-    for (const s of r.studies || []) if (clean(s)) h.studies.push({ id: newId(), date: clean(r.date), text: clean(s), source: src });
+    for (const s of r.studies || []) if (clean(s) && !h.studies.some((x) => x.date === clean(r.date) && x.text === clean(s))) h.studies.push({ id: newId(), date: clean(r.date), text: clean(s), source: src });
     for (const a of r.allergies || []) if (clean(a) && !h.allergies.some((x) => x.text.toLowerCase() === clean(a).toLowerCase())) h.allergies.push({ id: newId(), text: clean(a), source: src });
   }
   const S = j.summary || {};
@@ -128,6 +129,9 @@ export function applyImport(j) {
   h.labs.sort((a, b) => String(a.date).localeCompare(String(b.date)));
   h.studies.sort((a, b) => String(a.date).localeCompare(String(b.date)));
   h.docs.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  // История по годам и план доктора (вопросы, обследования, предложения мастерам) — из сводки разбора.
+  if (S.timeline?.length) h.timeline = S.timeline.map((x) => ({ date: clean(x.date), text: clean(x.text) })).sort((a, b) => a.date.localeCompare(b.date));
+  if (S.questions?.length || S.exams?.length || S.team?.length) h.plan = { at: dateStr(), questions: (S.questions || []).map(clean), exams: (S.exams || []).map((e) => ({ what: clean(e.what), why: clean(e.why), when: clean(e.when) })), team: (S.team || []).map((x) => ({ who: x.who, text: clean(x.text) })) };
   h.imports = [...(h.imports || []), { id: j.id, at: dateStr(), docs: docs.length }];
   save();
   return { docs: docs.length, labs };

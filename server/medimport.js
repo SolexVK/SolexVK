@@ -242,15 +242,15 @@ export function createMedImport({ dataDir, appDir, claude }) {
       for (const m of r.meds || []) meds.push(`${r.date || '?'}: ${m.name} ${m.dose} ${m.how} [${m.status}]`);
       for (const l of r.labs || []) { const k = l.name.toLowerCase(); const p = labs.get(k); if (!p || String(r.date) >= String(p.date)) labs.set(k, { ...l, date: r.date }); }
     }
-    if (!ok.length) { job.summary = { diagnoses: [], meds: [], memo: '' }; return; }
+    if (!ok.length) { job.summary = { diagnoses: [], meds: [], memo: '', timeline: [], questions: [], exams: [], team: [] }; return; }
     const labLines = [...labs.values()].map((l) => `${l.date}: ${l.name} ${l.value} ${l.unit} (норма ${l.ref || '?'})${l.flag ? ` ${l.flag}` : ''}`);
     const docs = ok.map((f) => `${f.result.date || '?'} — ${f.result.kind}: ${f.result.title}. ${f.result.summary}`);
     const text = `Документов разобрано: ${ok.length}.\n\nДиагнозы по документам:\n${diag.join('\n') || 'нет'}\n\nЛекарства по документам:\n${meds.join('\n') || 'нет'}\n\nПоследние значения анализов:\n${labLines.join('\n') || 'нет'}\n\nДокументы:\n${docs.join('\n')}`.slice(0, 300000);
     try {
-      const { out } = await ask(SUMMARY_SYSTEM, [{ type: 'text', text }], SUMMARY_SCHEMA, 12000);
+      const { out } = await ask(SUMMARY_SYSTEM, [{ type: 'text', text }], SUMMARY_SCHEMA, 16000);
       job.summary = out;
     } catch (err) {
-      job.summary = { diagnoses: [], meds: [], memo: '', error: String(err.message || err).slice(0, 200) };
+      job.summary = { diagnoses: [], meds: [], memo: '', timeline: [], questions: [], exams: [], team: [], error: String(err.message || err).slice(0, 200) };
     }
   }
 
