@@ -804,3 +804,5 @@ body::after {
 .mc-sub { margin: 10px 0; }
 .mc-sub > summary { font-weight: 600; cursor: pointer; }
 .mi-pick { display: flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 8px; cursor: pointer; }
+.mi-pastebox textarea { width: 100%; font-size: 13px; margin: 6px 0; }
+#mi-paste { margin-top: 8px; }

@@ -1947,4 +1947,8 @@ export default {
   "Архив zip разбирается на вашем сервере — подключите сервер в настройках.": "A zip archive is processed on your server; connect the server in settings.",
   "Нужен архив .zip или файл разбора медкарты .json.": "A .zip archive or a medical record review .json file is needed.",
   "Это разбор медкарты. Проверьте итог вверху и нажмите «Внести всё в медкарту».": "This is a medical record review. Check the summary at the top and tap “Add everything to the medical record”.",
+  "Вставить медкарту из буфера обмена": "Paste medical record from clipboard",
+  "Откройте файл медкарты на телефоне, выделите весь текст и скопируйте, затем вставьте сюда.": "Open the medical record file on your phone, select all text and copy it, then paste it here.",
+  "Загрузить вставленный текст": "Load pasted text",
+  "Это не файл медкарты или скопирован не весь текст.": "This is not a medical record file, or not all the text was copied.",
 };

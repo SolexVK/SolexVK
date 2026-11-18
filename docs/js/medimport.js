@@ -46,7 +46,9 @@ function upload(file, onPct) {
 const cost = (u) => (u ? (u.input * 2 + u.output * 10) / 1e6 : 0);
 
 function boxHTML() {
-  const pick = `<label class="btn wide mi-pick" for="mi-file">${t('Загрузить медкарту: архив zip или файл json')}</label><input type="file" id="mi-file" hidden>`;
+  const pick = `<label class="btn wide mi-pick" for="mi-file">${t('Загрузить медкарту: архив zip или файл json')}</label><input type="file" id="mi-file" hidden>
+    <button type="button" class="btn ghost wide" id="mi-paste">${t('Вставить медкарту из буфера обмена')}</button>
+    <div class="mi-pastebox" id="mi-pastebox" hidden><p class="note">${t('Откройте файл медкарты на телефоне, выделите весь текст и скопируйте, затем вставьте сюда.')}</p><textarea id="mi-text" rows="4" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea><button type="button" class="btn wide" id="mi-text-go">${t('Загрузить вставленный текст')}</button></div>`;
   if (!serverConfig() && !local) return `${pick}<p class="note">${t('Архив zip разбирается на вашем сервере — для него подключите сервер в настройках. Готовый файл разбора (.json) загружается и без сервера.')}</p>`;
   if (uploading) return `<p><b>${t('Отправляю архив на сервер: {p} %', { p: uploading.pct })}</b></p><progress max="100" value="${uploading.pct}"></progress><p class="note">${t('Не закрывайте приложение, пока архив не отправится.')}</p>`;
   const j = local || last;
@@ -166,6 +168,23 @@ export function bindImport(ui) {
     }, 5000);
   };
   const wire = (box) => {
+    // Запасной путь без выбора файла (на iPhone файл из iCloud бывает недоступен для выбора): буфер обмена.
+    const takeText = (txt) => {
+      let data;
+      try { data = JSON.parse(String(txt || '').trim()); } catch { ui.toast(t('Это не файл медкарты или скопирован не весь текст.')); return false; }
+      try { local = readPrepared(data); } catch (err) { ui.toast(err.message); return false; }
+      draw();
+      return true;
+    };
+    box.querySelector('#mi-paste')?.addEventListener('click', async () => {
+      let txt = '';
+      try { txt = await navigator.clipboard.readText(); } catch { /* нет доступа — покажем поле для вставки */ }
+      if (txt && txt.includes('taichi-medarchive')) { takeText(txt); return; }
+      const pb = box.querySelector('#mi-pastebox');
+      pb.hidden = false;
+      pb.querySelector('textarea').focus();
+    });
+    box.querySelector('#mi-text-go')?.addEventListener('click', () => takeText(box.querySelector('#mi-text').value));
     box.querySelector('#mi-file')?.addEventListener('change', async (e) => {
       const f = e.target.files[0];
       e.target.value = '';
