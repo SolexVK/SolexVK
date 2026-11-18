@@ -13,6 +13,7 @@ import { MODELS } from './ai-request.js';
 import { callJSON } from './brain.js';
 import { aiLanguage } from './i18n.js';
 import { MEILIN_ROLE, MEILIN_METHOD } from './meilin-kb.js';
+import { doctorFrame } from './health.js';
 import { targets, dayMeals, dayTotals, weightAvg, latestWeight, saveMeal, newMealId } from './nutrition.js';
 import { GROUPS, pantry, menu, menuDay, makeMenu, replaceMeal, phase } from './menu.js';
 
@@ -68,16 +69,11 @@ function healthBlock() {
   const bp = [];
   for (let i = 0; i < 14; i++) { const b = peekDay(addDays(today, -i))?.bp; if (b?.sys) bp.push(b); }
   const avg = (k) => Math.round(bp.reduce((a, b) => a + Number(b[k]), 0) / bp.length);
-  const h = state.health || {};
   const lines = [
     `Диагнозы из анкеты: ${(it.diagnoses || []).join(', ') || 'нет'}; обычное давление: ${it.bp || '?'}. Ограничения программы: ${(pr.flags || []).join(', ') || 'нет'}.`,
     bp.length ? `Давление за 14 дней: среднее ${avg('sys')}/${avg('dia')} по ${bp.length} измерениям, последнее ${bp[0].sys}/${bp[0].dia}.` : 'Давление за 14 дней не записывали.',
   ];
-  if (h.meds?.length) lines.push(`Лекарства: ${h.meds.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}${m.when ? ` (${m.when})` : ''}`).join('; ')}.`);
-  else lines.push('Лекарства в приложение не внесены.');
-  const labs = (h.labs || []).slice(-25);
-  if (labs.length) lines.push(`Анализы: ${labs.map((l) => `${l.date} ${l.name} ${l.value}${l.unit ? ` ${l.unit}` : ''}${l.ref ? ` (норма ${l.ref})` : ''}`).join('; ')}.`);
-  if (h.notes) lines.push(`Заметки доктора Шэна: ${h.notes}`);
+  lines.push(doctorFrame('meilin'));
   return lines.join('\n');
 }
 

@@ -6,6 +6,7 @@ import { chatReply, aiAvailable, studentContext } from './brain.js';
 import { offlineAnswer, MasterError } from './master.js';
 import { targets, dayTotals } from './nutrition.js';
 import { meilinChat, meilinBrief } from './meilin.js';
+import { shenChat } from './shen.js';
 import { st as strength, phaseDef, strengthToday, LIGAN_EX, BAND_NAME } from './strength.js';
 import { bpMode } from './course.js';
 import { t, aiLanguage } from './i18n.js';
@@ -22,8 +23,8 @@ export const MASTERS = {
     hello: 'Ли Ган на связи. Спросите про силовые, резинки, технику или как прошло занятие.',
     chips: ['Когда следующее силовое?', 'Какую резинку брать?', 'После силовой болят мышцы — это нормально?', 'Как дышать при усилии?'] },
   shen: { name: 'Доктор Шэн', full: 'Доктор Шэн', role: 'здоровье', seal: '医',
-    hello: 'Здравствуйте, я доктор Шэн. Слежу за давлением, весом, болью и анализами и согласую работу всех мастеров. Расскажите, что беспокоит, или спросите про анализы.',
-    chips: ['Как у меня с давлением за неделю?', 'Что спросить у врача?', 'Объясните мои анализы', 'Можно ли мне силовые?'] },
+    hello: 'Здравствуйте, я доктор Шэн, ваш личный врач в команде. Я веду вашу медицинскую карту: диагнозы, лекарства, анализы и заключения врачей — и передаю мастерам Лао, Мэйлин и Ли Гану, что им нужно учитывать. Пришлите выписку или анализы — фото, PDF или Excel, — или давайте познакомимся.',
+    chips: ['Давайте познакомимся', 'Подготовьте сводку для врача', 'Объясните мои анализы', 'Как у меня с давлением за неделю?', 'Что сейчас должны учитывать мастера?'] },
 };
 export const MASTER_IDS = Object.keys(MASTERS);
 
@@ -60,9 +61,6 @@ export function teamState({ forMeilin = false } = {}) {
   const S = state.strength;
   if (S) lines.push(`Силовые (Ли Ган): этап «${phaseDef().name}», дни ${S.days.join(',')} (0 — вс), врач разрешил силовые: ${S.doctorOk ? 'да' : 'нет, пока только умеренно'}.`);
   if (!forMeilin) { try { lines.push(meilinBrief()); } catch { /* нет данных */ } }
-  const h = state.health;
-  if (h?.meds?.length) lines.push(`Лекарства: ${h.meds.map((m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}`).join('; ')}.`);
-  if (h?.notes) lines.push(`Заметки доктора Шэна: ${h.notes}`);
   return lines.join('\n');
 }
 function recentWithOthers(who) {
@@ -90,8 +88,7 @@ function healthContext(days = 14) {
     if (d.checkin?.answers) p.push(`самочувствие ${JSON.stringify(d.checkin.answers)}`);
     if (p.length) rows.push(`${ds}: ${p.join('; ')}`);
   }
-  const labs = (state.health?.labs || []).slice(-30).map((l) => `${l.date}: ${l.name} ${l.value}${l.unit ? ` ${l.unit}` : ''}${l.ref ? ` (норма ${l.ref})` : ''}`);
-  return `Показатели за ${days} дней:\n${rows.join('\n') || 'нет записей'}${labs.length ? `\nАнализы:\n${labs.join('\n')}` : '\nАнализов в приложении пока нет.'}`;
+  return `Показатели за ${days} дней (давление, пульс, вес, талия, боль в пояснице 0–10, опрос самочувствия):\n${rows.join('\n') || 'нет записей'}`;
 }
 
 function strengthContext() {
@@ -107,12 +104,7 @@ function systemFor(who) {
   if (who === 'ligan') {
     return `Ты — Ли Ган, наставник по силовым тренировкам в личном приложении ученика. Тренируешь людей зрелого возраста с больной спиной и повышенным давлением: резинки-эспандеры, стул и вес тела, два раза в неделю до часа. Цель ученика — сохранить и нарастить мышцы, сжечь висцеральный жир, укрепить спину. Говоришь бодро, коротко и уверенно, но бережно.
 Твои правила: пока врач не разрешил силовые — только умеренная интенсивность, когда можно говорить фразами; выдох на усилии, без задержки дыхания и натуживания; никакой осевой нагрузки на позвоночник, скручиваний с весом, наклонов с круглой спиной и резких рывков; шея нейтрально (протрузия C5–C6); боль, отдающая в ногу или руку, — стоп. Прогрессия медленная: сначала повторы, потом резинка туже. Мышечная усталость на следующий день — нормально, острая боль в суставе или спине — нет.
-[Силовые ученика]\n${strengthContext()}\n\n${common}\n\n${studentContext({ days: 7 })}`;
-  }
-  if (who === 'shen') {
-    return `Ты — доктор Шэн, мастер здоровья в личном приложении ученика. Ты сочетаешь знания современной медицины и восточного подхода к здоровью и долголетию. Твоя задача — следить за давлением, пульсом, весом, талией, болью, анализами и лекарствами, объяснять результаты простыми словами, замечать тревожные тенденции, помогать подготовить вопросы к врачу и согласовывать работу мастеров Лао, Мэйлин и Ли Гана. Говоришь спокойно, точно и по-доброму.
-Ты не заменяешь лечащего врача: не ставишь диагнозов, не назначаешь, не меняешь и не отменяешь лекарства и дозы. Назначения врача главнее твоих советов. Если показатели вне нормы, объясни, что это может значить, насколько срочно и к какому врачу идти.
-[Здоровье ученика]\n${healthContext()}\n\n${common}\n\n${studentContext({ days: 7 })}`;
+[Силовые ученика]\n${strengthContext()}\n\n${common}\n\n${studentContext({ days: 7, who: 'ligan' })}`;
   }
   return null; // Лао — его собственная системная подсказка в brain.js
 }
@@ -178,6 +170,13 @@ export async function askTeam(who, { text, image, extra, onDelta, signal, files 
       const r = await meilinChat(text, { history, extra: extra2, signal, blocks });
       onDelta?.(r.text);
       return { text: r.text, actions: r.actions, remembered: r.remembered, offline: false };
+    }
+    if (who === 'shen') {
+      // Доктор Шэн — агент: ведёт медкарту и даёт указания мастерам (по кнопкам ученика).
+      const extra2 = `${TEAM}\n\n${SAFETY}\n\n${FILES}\n\n[Показатели из дневника]\n${healthContext(28)}\n\n[Решения команды]\n${teamState()}\n\n${recentWithOthers(who)}\n\n${studentContext({ days: 7, who: 'shen' })}${extra ? `\n\n[Сейчас]\n${extra}` : ''}`;
+      const r = await shenChat(text, { history, extra: extra2, signal, blocks });
+      onDelta?.(r.text);
+      return { text: r.text, memo: r.memo, actions: r.actions, offline: false };
     }
     const out = await chatReply(text, { extra: who === 'lao' && blocks ? `${extra || ''}${extra ? '\n' : ''}${FILES}` : extra, image, signal, system: systemFor(who), history, blocks });
     onDelta?.(out);

@@ -773,3 +773,23 @@ body::after {
 .usage li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
 .move-steps { margin: 8px 0 14px; padding-left: 20px; }
 .move-steps li { margin: 4px 0; }
+/* медкарта доктора Шэна */
+.medcard h4 { margin: 12px 0 4px; }
+.mc-list { list-style: none; margin: 0; padding: 0; }
+.mc-list li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.mc-list li > span { flex: 1; }
+.mc-list small, .mc-labs small { display: inline-block; color: var(--muted); margin-left: 4px; }
+.mc-list li > span > small { display: block; margin-left: 0; }
+.mc-del { background: none; border: 0; color: var(--muted); font-size: 15px; min-width: 32px; min-height: 32px; cursor: pointer; }
+.mc-labs { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+.mc-labs th:nth-child(1) { width: 36%; } .mc-labs th:nth-child(3) { width: 21%; } .mc-labs th:nth-child(4) { width: 32px; }
+.mc-labs td { white-space: normal; overflow-wrap: anywhere; word-break: break-word; hyphens: auto; }
+.mc-labs td:first-child { font-size: 13px; }
+.mc-labs .mc-d { display: block; margin-left: 0; }
+.mc-labs th, .mc-labs td { text-align: left; vertical-align: top; padding: 5px 4px; border-bottom: 1px solid var(--line); }
+.mc-labs th { color: var(--muted); font-weight: 500; }
+.mc-labs tr.mc-high td:nth-child(2) b, .mc-labs tr.mc-low td:nth-child(2) b { color: var(--danger); }
+.mc-labs .mc-del { min-height: 24px; }
+.mc-notes { white-space: pre-wrap; }
+.msg-memo { margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg, transparent); }
+.msg-memo p { white-space: pre-wrap; margin: 0 0 8px; font-size: 14px; }

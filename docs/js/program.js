@@ -3,6 +3,7 @@
 import { LEVELS, DOSES, EXERCISES, PROGRESSION } from './kb.js';
 import { state, dateStr, addDays, daysBetween, peekDay, coreDone } from './store.js';
 import { t } from './i18n.js';
+import { healthExclude } from './health.js';
 
 const has = (arr, v) => Array.isArray(arr) && arr.includes(v);
 
@@ -86,6 +87,8 @@ export function resolvePlan(prog = state.program, { ignoreTime = false } = {}) {
   const secs = (k, min = 10) => (D[k] == null ? 0 : Math.max(min, Math.round(pick(k) * scale / 10) * 10)); // круглые числа: голосу так проще
   const flags = new Set(prog.flags || []);
   const exclude = new Set(prog.exclude || []);
+  // Упражнения, которые исключил доктор Шэн (по медкарте) — для занятий Лао и силовых Ли Гана.
+  if (prog === state.program) for (const id of healthExclude()) exclude.add(id);
   for (const [id, ex] of Object.entries(EXERCISES)) {
     if ((ex.avoid || []).some((f) => flags.has(f))) exclude.add(id);
     if (ex.min > lvl) exclude.add(id);

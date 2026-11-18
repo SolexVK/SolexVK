@@ -9,6 +9,8 @@ import { cameraSupported } from './pose.js';
 import { hasKey } from './master.js';
 import { MASTERS, MASTER_IDS, chatOf, pushChat, askTeam } from './team.js';
 import { applyAction } from './meilin.js';
+import { applyShenAction } from './shen.js';
+import { medcardHTML, bindMedcard } from './medcard.js';
 import { readAttachment, rememberFiles, fileMeta, ACCEPT, MAX_FILES } from './attach.js';
 import { lineChart, weekBars } from './charts.js';
 import { SessionRunner } from './session.js';
@@ -543,7 +545,21 @@ function bubble(m) {
     }
     b.prepend(fl);
   }
-  // Предложения агента (Мэйлин): кнопки действий под ответом.
+  // Письменный текст доктора Шэна (сводка для врача, разбор анализов) — не озвучивается.
+  if (m.memo) {
+    const memo = document.createElement('div');
+    memo.className = 'msg-memo';
+    const pre = document.createElement('p');
+    pre.textContent = m.memo;
+    const cp = document.createElement('button');
+    cp.type = 'button';
+    cp.className = 'btn small ghost';
+    cp.textContent = t('Скопировать');
+    cp.addEventListener('click', () => copyText(m.memo));
+    memo.append(pre, cp);
+    b.append(memo);
+  }
+  // Предложения агента (Мэйлин, доктор Шэн): кнопки действий под ответом.
   if (m.actions?.length) {
     const row = document.createElement('div');
     row.className = 'msg-acts';
@@ -559,12 +575,13 @@ function bubble(m) {
         const old = btn.textContent;
         btn.textContent = t('Выполняю…');
         try {
-          const msg = await applyAction(a);
+          const msg = a.agent === 'shen' ? applyShenAction(a) : await applyAction(a);
           m.applied = { ...(m.applied || {}), [i]: true };
           save();
           btn.textContent = `✓ ${a.label}`;
           btn.classList.add('ghost');
           toast(t(msg));
+          if (a.agent === 'shen' && view === 'master') refreshMedcard();
         } catch (err) {
           btn.disabled = false;
           btn.textContent = old;
@@ -584,6 +601,16 @@ function bubble(m) {
   return b;
 }
 
+// Перерисовать медкарту, не трогая чат (после кнопки «внести» или удаления записи).
+function refreshMedcard() {
+  const box = document.getElementById('medcard');
+  if (!box) return;
+  const open = box.querySelector('details')?.open;
+  box.innerHTML = medcardHTML();
+  if (open != null) box.querySelector('details').open = open || box.querySelector('details').open;
+  bindMedcard(box, refreshMedcard);
+}
+
 let masterWho = (() => { try { return MASTERS[localStorage.getItem('taichi.master')] ? localStorage.getItem('taichi.master') : 'lao'; } catch { return 'lao'; } })();
 function renderMaster() {
   const who = masterWho;
@@ -595,6 +622,7 @@ function renderMaster() {
       <p>${esc(state.memory?.summary || t('Заметок пока нет: они появятся, когда подключена нейросеть.'))}</p>
       ${state.log?.length ? `<h4>${t('Последние беседы')}</h4><ul class="journal">${state.log.slice(-12).reverse().map((e) => `<li><span>${new Date(e.at).toLocaleDateString(locale())} · ${esc({ intake: t('знакомство'), checkin: t('перед занятием'), review: t('пересмотр'), session: t('занятие'), chat: t('беседа') }[e.kind] || e.kind)}</span>${esc(e.role === 'user' ? t('Вы ответили на вопросы') : String(e.text).slice(0, 220))}</li>`).join('')}</ul>` : ''}
     </details>` : ''}
+    ${who === 'shen' ? `<div id="medcard">${medcardHTML()}</div>` : ''}
     <section class="chat" id="chat" aria-live="polite"></section>
     ${hasKey() ? '' : `<p class="note chat-note">${t('Без ключа наставник отвечает только по курсу. Свободный разговор включается в настройках.')} <button class="link" data-open="settings">${t('Открыть')}</button></p>`}
     <div class="chips" id="chips">${M.chips.map((c) => `<button class="chip">${esc(t(c))}</button>`).join('')}</div>
@@ -606,6 +634,7 @@ function renderMaster() {
       <textarea id="ask-input" rows="1" placeholder="${t('Ваш вопрос')}" aria-label="${t('Вопрос наставнику')}"></textarea>
       <button class="btn" type="submit">${t('Спросить')}</button>
     </form>`;
+  if (who === 'shen') bindMedcard($('#medcard'), refreshMedcard);
   const chat = $('#chat');
   if (!chatOf(who).length) chat.append(bubble({ role: 'assistant', text: t(M.hello) }));
   chatOf(who).slice(-30).forEach((m) => chat.append(bubble(m)));
@@ -665,7 +694,7 @@ function renderMaster() {
         text, files, signal: masterAbort.signal,
         onDelta: (dlt) => { acc += dlt; out.textContent = acc; out.classList.remove('pending'); toEnd(); if (view === 'master' && masterWho === who) say.push(dlt); },
       });
-      const reply = { role: 'assistant', text: res.text || acc, at: Date.now(), ...(res.actions?.length ? { actions: res.actions } : {}), ...(res.remembered?.length ? { remembered: res.remembered } : {}) };
+      const reply = { role: 'assistant', text: res.text || acc, at: Date.now(), ...(res.memo ? { memo: res.memo } : {}), ...(res.actions?.length ? { actions: res.actions } : {}), ...(res.remembered?.length ? { remembered: res.remembered } : {}) };
       out.replaceWith(bubble(reply));
       toEnd();
       pushChat(who, userMsg, reply);

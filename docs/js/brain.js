@@ -3,6 +3,7 @@
 import Anthropic from '../vendor/anthropic-sdk.mjs';
 import { MODELS, prepareRequest, runRequest, responseText } from './ai-request.js';
 import { state, getApiKey, dateStr, addDays, peekDay, save, logEntry } from './store.js';
+import { doctorFrame } from './health.js';
 import { PRINCIPLES, LEVELS, EXERCISES, INTAKE, CHECKIN, CHECKIN_REPLIES } from './kb.js';
 import { FLOW_LINES } from './flow-lines.js';
 import { serverConfig, api } from './sync.js';
@@ -131,7 +132,7 @@ ${LEVELS.map((l) => `- Уровень ${l.n} «${l.name}»: ${l.who} Цель: $
 const VOICE_RULES = `Пиши на ${aiLanguage()} языке. Твой ответ прозвучит вслух через синтез речи. Пиши простыми фразами, без списков, скобок, эмодзи и разметки. Числа пиши словами, если их удобнее произнести.`;
 
 // Сводка об ученике для нейросети: анкета, программа, память, последние дни.
-export function studentContext({ days = 7 } = {}) {
+export function studentContext({ days = 7, who = 'lao' } = {}) {
   const today = dateStr();
   const lines = [`Сегодня ${today}.`];
   const p = state.profile;
@@ -158,6 +159,8 @@ export function studentContext({ days = 7 } = {}) {
     if (parts.length) rows.push(`${ds}: ${parts.join('; ')}`);
   }
   if (rows.length) lines.push(`Дневник:\n${rows.join('\n')}`);
+  // Медицинские рамки от доктора Шэна (у самого доктора — полная карта отдельно).
+  if (who !== 'shen') lines.push(doctorFrame(who));
   return lines.join('\n');
 }
 

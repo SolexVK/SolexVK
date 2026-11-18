@@ -2,6 +2,7 @@
 import { state, daysBetween, dateStr } from './store.js';
 import { resolvePlan, allPlans } from './program.js';
 import { buildStrength } from './strength.js';
+import { bpLimits } from './health.js';
 
 export const PHASES = [
   { n: 1, name: 'Разбудить тело', weeks: [1, 4], text: 'Дыхание, суставная разминка, три движения цигун, стояние столбом. Днём ходьба и пять упражнений для кора и ног.' },
@@ -19,8 +20,10 @@ export function courseInfo(date = dateStr()) {
 // Правило давления перед занятием.
 export function bpMode(sys, dia) {
   if (!sys || !dia) return 'unknown';
-  if (sys > 170 || dia > 105) return 'none';
-  if (sys >= 150 || dia >= 95) return 'light';
+  // Общие пороги или личные от врача (через доктора Шэна) — личные могут быть только строже.
+  const L = bpLimits();
+  if (sys >= L.stop.sys || dia >= L.stop.dia) return 'none';
+  if (sys >= L.light.sys || dia >= L.light.dia) return 'light';
   return 'full';
 }
 export const BP_TEXT = {
