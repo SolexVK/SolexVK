@@ -13,6 +13,7 @@ const RUNNING = ['uploaded', 'unpacking', 'reading', 'summary'];
 let last = null;      // последний ответ сервера о разборе
 let uploading = null; // { pct } — пока архив отправляется
 let timer = null;
+let local = null;     // готовый разбор из файла .json (подготовлен заранее, без разбора на сервере)
 
 async function getStatus() {
   const cfg = serverConfig();
@@ -46,9 +47,9 @@ const cost = (u) => (u ? (u.input * 2 + u.output * 10) / 1e6 : 0);
 
 function boxHTML() {
   if (!serverConfig()) return `<p class="note">${t('Загрузка архива медкарты работает, когда приложение подключено к вашему серверу.')}</p>`;
-  const pick = `<label class="btn wide mi-pick" for="mi-file">${t('Загрузить архив медкарты (zip)')}</label><input type="file" id="mi-file" accept=".zip,application/zip,application/x-zip-compressed" hidden>`;
+  const pick = `<label class="btn wide mi-pick" for="mi-file">${t('Загрузить архив медкарты (zip)')}</label><input type="file" id="mi-file" accept=".zip,application/zip,application/x-zip-compressed,.json,application/json" hidden>`;
   if (uploading) return `<p><b>${t('Отправляю архив на сервер: {p} %', { p: uploading.pct })}</b></p><progress max="100" value="${uploading.pct}"></progress><p class="note">${t('Не закрывайте приложение, пока архив не отправится.')}</p>`;
-  const j = last;
+  const j = local || last;
   if (!j) return `${pick}<p class="note">${t('Соберите все документы — анализы, выписки, заключения, МРТ, фото и сканы — в один zip-архив. Сервер распакует его, доктор Шэн прочитает каждый документ, а вы одной кнопкой внесёте всё в медкарту.')}</p>`;
   if (RUNNING.includes(j.state)) {
     const what = j.state === 'reading' ? t('Доктор Шэн читает документы: {d} из {n}', { d: j.done, n: j.total }) : j.state === 'summary' ? t('Документы прочитаны, доктор Шэн составляет сводку…') : t('Распаковываю архив…');
@@ -75,9 +76,18 @@ function boxHTML() {
     ${probs.length ? `<p class="note">${t('Не прочитаны или пропущены: {n} — список ниже. Их можно исправить и загрузить вторым архивом.', { n: probs.length })}</p>` : ''}
     ${S.memo ? `<div class="msg-memo"><p>${esc(S.memo)}</p></div>` : ''}
     ${report}
-    <p class="note">${t('Разбор стоил около {c} $.', { c: cost(j.usage).toFixed(2) })}</p>
+    ${j.usage ? `<p class="note">${t('Разбор стоил около {c} $.', { c: cost(j.usage).toFixed(2) })}</p>` : ''}
     ${retry}
     <button type="button" class="btn wide" id="mi-apply">${t('Внести всё в медкарту')}</button>`;
+}
+
+// Готовый разбор из файла: { format: 'taichi-medarchive', version: 1, id, created, files: [{ n, name, status, reason, result }], summary }.
+function readPrepared(d) {
+  if (d?.format !== 'taichi-medarchive' || !Array.isArray(d.files)) throw new Error(t('Файл не похож на разбор медкарты.'));
+  const files = d.files.map((f, i) => ({ n: f.n ?? i + 1, name: String(f.name || ''), status: f.result && f.status !== 'skip' && f.status !== 'fail' ? 'ok' : (f.status === 'fail' ? 'fail' : 'skip'), reason: String(f.reason || ''), result: f.result || null }));
+  const count = (st) => files.filter((f) => f.status === st).length;
+  const done = health().imports?.some((x) => x.id === d.id);
+  return { id: String(d.id || `file-${Date.now()}`), created: d.created || new Date().toISOString(), state: 'done', total: files.length, done: files.length, ok: count('ok'), skipped: count('skip'), failed: 0, usage: null, applied: done ? new Date().toISOString() : null, files, summary: d.summary || null };
 }
 
 // Внести результат разбора в медкарту.
@@ -145,7 +155,14 @@ export function bindImport(ui) {
       const f = e.target.files[0];
       e.target.value = '';
       if (!f) return;
+      if (/\.json$/i.test(f.name)) {
+        // Готовый разбор архива (файл taichi-medarchive): показываем итог, вносится той же кнопкой.
+        try { local = readPrepared(JSON.parse(await f.text())); } catch (err) { ui.toast(err.message || t('Файл не похож на разбор медкарты.')); return; }
+        draw();
+        return;
+      }
       if (!/\.zip$/i.test(f.name) && !/zip/.test(f.type)) { ui.toast(t('Нужен архив .zip.')); return; }
+      local = null;
       uploading = { pct: 0 };
       draw();
       try {
@@ -172,15 +189,19 @@ export function bindImport(ui) {
     });
     box.querySelector('#mi-apply')?.addEventListener('click', async (e) => {
       e.currentTarget.disabled = true;
-      const res = applyImport(last);
-      try {
-        const cfg = serverConfig();
-        await fetch(`${cfg.url}/api/med/import/${encodeURIComponent(last.id)}/applied`, { method: 'POST', headers: { Authorization: `Bearer ${cfg.token}` } });
-        last.applied = new Date().toISOString();
-      } catch { /* отметка на сервере не обязательна */ }
+      const j = local || last;
+      const res = applyImport(j);
+      if (local) local.applied = new Date().toISOString();
+      else {
+        try {
+          const cfg = serverConfig();
+          await fetch(`${cfg.url}/api/med/import/${encodeURIComponent(last.id)}/applied`, { method: 'POST', headers: { Authorization: `Bearer ${cfg.token}` } });
+          last.applied = new Date().toISOString();
+        } catch { /* отметка на сервере не обязательна */ }
+      }
       ui.toast(t('В медкарту внесено документов: {d}, показателей анализов: {l}.', { d: res.docs, l: res.labs }));
       draw();
-      ui.onApplied(last.summary?.memo || '');
+      ui.onApplied(j.summary?.memo || '');
     });
   };
   draw();

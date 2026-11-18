@@ -1938,4 +1938,5 @@ export default {
   "возможно, принимаете сейчас — уточните у доктора": "you may be taking it now; confirm with the doctor",
   "в прошлом": "in the past",
   "Документы архива": "Archive documents",
+  "Файл не похож на разбор медкарты.": "This file does not look like a medical record review.",
 };

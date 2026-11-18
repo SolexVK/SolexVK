@@ -165,6 +165,9 @@
   `applyImport`): `health.docs` (опись документов), labs, studies, allergies, diagnoses (из сводки), `medHistory`
   (status likely_current/past — что принимается сейчас, Шэн уточняет у ученика; другим мастерам — «возможно, принимает»).
   Оригиналы остаются на сервере. Проверка: `mi/` в scratchpad (мок Claude через `ANTHROPIC_BASE_URL`).
+  Та же кнопка принимает готовый разбор `.json` (`format: 'taichi-medarchive'`, `version: 1`, `id`, `files[{n, name,
+  status, reason, result по DOC_SCHEMA}]`, `summary` по SUMMARY_SCHEMA) — его можно подготовить в сессии Claude Code
+  без затрат API; вносится в медкарту без сервера (`readPrepared` → `applyImport`). Медданные в репозиторий не класть.
 
 ### Язык интерфейса
 
